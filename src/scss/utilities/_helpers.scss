@@ -1,0 +1,252 @@
+/* ==========================================================================
+   NOVAADMIN — Utility helpers
+   --------------------------------------------------------------------------
+   The small set of helpers that must win the cascade. Kept intentionally
+   short: everything else comes from Bootstrap's utility API (spacing, flex,
+   display, sizing, position) which is generated from the same tokens.
+   ========================================================================== */
+
+/* ------------------------------------------------------------ token colours */
+.bg-primary-soft {
+  background-color: var(--nv-primary-soft) !important;
+}
+.text-primary-2 {
+  color: var(--nv-primary) !important;
+}
+.text-success {
+  color: var(--nv-success) !important;
+}
+.text-warning {
+  color: var(--nv-warning) !important;
+}
+.text-danger {
+  color: var(--nv-danger) !important;
+}
+.text-info {
+  color: var(--nv-info) !important;
+}
+.text-inverse {
+  color: var(--nv-text-inverse) !important;
+}
+.bg-success-soft {
+  background-color: var(--nv-success-soft) !important;
+}
+.bg-warning-soft {
+  background-color: var(--nv-warning-soft) !important;
+}
+.bg-danger-soft {
+  background-color: var(--nv-danger-soft) !important;
+}
+.bg-info-soft {
+  background-color: var(--nv-info-soft) !important;
+}
+.border-primary-2 {
+  border-color: rgba(var(--nv-primary-rgb), 0.4) !important;
+}
+.shadow-token-xs {
+  box-shadow: var(--nv-shadow-xs) !important;
+}
+.shadow-token-sm {
+  box-shadow: var(--nv-shadow-sm) !important;
+}
+.shadow-token-md {
+  box-shadow: var(--nv-shadow-md) !important;
+}
+.shadow-token-lg {
+  box-shadow: var(--nv-shadow-lg) !important;
+}
+.shadow-none {
+  box-shadow: none !important;
+}
+
+/* ------------------------------------------------------------------ radius */
+.radius-xs {
+  border-radius: var(--nv-radius-xs) !important;
+}
+.radius-sm {
+  border-radius: var(--nv-radius-sm) !important;
+}
+.radius-md {
+  border-radius: var(--nv-radius-md) !important;
+}
+.radius-lg {
+  border-radius: var(--nv-radius-lg) !important;
+}
+.radius-xl {
+  border-radius: var(--nv-radius-xl) !important;
+}
+.radius-pill {
+  border-radius: var(--nv-radius-pill) !important;
+}
+
+/* --------------------------------------------------------------- typography */
+.fs-display {
+  font-size: var(--nv-text-display) !important;
+}
+.fs-h1 {
+  font-size: var(--nv-text-h1) !important;
+}
+.fs-h2 {
+  font-size: var(--nv-text-h2) !important;
+}
+.fs-h3 {
+  font-size: var(--nv-text-h3) !important;
+}
+.fs-h4 {
+  font-size: var(--nv-text-h4) !important;
+}
+.fs-sm {
+  font-size: var(--nv-text-body-sm) !important;
+}
+.fs-caption {
+  font-size: var(--nv-text-caption) !important;
+}
+.fs-micro {
+  font-size: var(--nv-text-micro) !important;
+}
+.fw-black {
+  font-weight: var(--nv-fw-black) !important;
+}
+.lh-tight {
+  line-height: var(--nv-lh-tight) !important;
+}
+.lh-relaxed {
+  line-height: var(--nv-lh-relaxed) !important;
+}
+.letter-wide {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------------- sizing */
+.min-w-0 {
+  min-width: 0 !important;
+}
+.min-h-0 {
+  min-height: 0 !important;
+}
+.max-w-full {
+  max-width: 100% !important;
+}
+.w-1-5 {
+  width: 1.5rem !important;
+}
+.h-100vh {
+  height: 100vh !important;
+}
+.aspect-square {
+  aspect-ratio: 1 !important;
+}
+.aspect-video {
+  aspect-ratio: 16 / 9 !important;
+}
+
+/* ------------------------------------------------------------------ opacity */
+.cursor-pointer {
+  cursor: pointer !important;
+}
+.cursor-grab {
+  cursor: grab !important;
+}
+.pointer-events-none {
+  pointer-events: none !important;
+}
+.user-select-none {
+  user-select: none !important;
+}
+
+/* ------------------------------------------------------------------ helpers */
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.object-cover {
+  object-fit: cover !important;
+}
+.overflow-hidden {
+  overflow: hidden !important;
+}
+.position-sticky-top {
+  position: sticky;
+  inset-block-start: calc(var(--nv-header-h) + var(--nv-space-4));
+}
+.z-header {
+  z-index: var(--nv-z-header) !important;
+}
+
+/* ---------------------------------------------------- logical property shim
+   Bootstrap 5.3 utilities still use physical properties for a handful of
+   classes. We keep using the logical shorthand in the product and mirror the
+   Bootstrap ones that we actually rely on in markup.                        */
+[dir='rtl'] .text-start {
+  text-align: right !important;
+}
+[dir='rtl'] .text-end {
+  text-align: left !important;
+}
+[dir='rtl'] .float-start {
+  float: right !important;
+}
+[dir='rtl'] .float-end {
+  float: left !important;
+}
+[dir='rtl'] .dropdown-menu-start {
+  --bs-position: end;
+}
+[dir='rtl'] .dropdown-menu-end {
+  --bs-position: start;
+}
+[dir='rtl'] .border-start {
+  border-right: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color) !important;
+  border-left: 0 !important;
+}
+[dir='rtl'] .border-end {
+  border-left: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color) !important;
+  border-right: 0 !important;
+}
+[dir='rtl'] .rounded-start {
+  border-top-right-radius: var(--bs-border-radius) !important;
+  border-bottom-right-radius: var(--bs-border-radius) !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+[dir='rtl'] .rounded-end {
+  border-top-left-radius: var(--bs-border-radius) !important;
+  border-bottom-left-radius: var(--bs-border-radius) !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+/* ------------------------------------------------ scrollbar for app panels */
+.pretty-scroll {
+  scrollbar-gutter: stable;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ------------------------------------------------------------ print helpers */
+.print-only {
+  display: none;
+}
+@media print {
+  .print-only {
+    display: block;
+  }
+  body {
+    background: #fff !important;
+  }
+}

@@ -1,0 +1,253 @@
+/* ==========================================================================
+   NOVAADMIN — Progress, gauges, spinners and loaders
+   ========================================================================== */
+
+.progress {
+  display: flex;
+  height: 0.5rem;
+  overflow: hidden;
+  background: var(--nv-surface-3);
+  border-radius: var(--nv-radius-pill);
+}
+.progress--sm {
+  height: 0.35rem;
+}
+.progress--lg {
+  height: 0.85rem;
+}
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--nv-primary);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: var(--nv-fw-semibold);
+  transition: width var(--nv-dur-slow) var(--nv-ease-out);
+}
+.progress-bar--success {
+  background: var(--nv-success);
+}
+.progress-bar--warning {
+  background: var(--nv-warning);
+}
+.progress-bar--danger {
+  background: var(--nv-danger);
+}
+.progress-bar--info {
+  background: var(--nv-info);
+}
+.progress-bar--striped {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.22) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.22) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 1rem 1rem;
+}
+.progress-bar--animated {
+  animation: nv-progress-stripes 1s linear infinite;
+}
+@keyframes nv-progress-stripes {
+  from {
+    background-position: 1rem 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+.progress-labelled {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+}
+.progress-labelled__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.progress-labelled__head strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------- circular gauge */
+.gauge {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--gauge-size, 6rem);
+  height: var(--gauge-size, 6rem);
+}
+.gauge svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+.gauge circle {
+  fill: none;
+  stroke-width: var(--gauge-stroke, 8);
+  stroke-linecap: round;
+}
+.gauge__track {
+  stroke: var(--nv-surface-3);
+}
+.gauge__value {
+  stroke: var(--nv-primary);
+  transition: stroke-dashoffset var(--nv-dur-slow) var(--nv-ease-out);
+}
+.gauge__label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+.gauge__number {
+  font-size: 1.15rem;
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  font-variant-numeric: tabular-nums;
+}
+.gauge__caption {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* --------------------------------------------------------------- spinners */
+.spinner {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--nv-primary-ring);
+  border-block-start-color: var(--nv-primary);
+  border-radius: 50%;
+  animation: nv-spin 0.7s linear infinite;
+}
+.spinner--sm {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 2px;
+}
+.spinner--lg {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 3px;
+}
+.spinner--light {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-block-start-color: #fff;
+}
+@keyframes nv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.dots span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--nv-primary);
+  opacity: 0.4;
+  animation: nv-dot 1.2s var(--nv-ease) infinite;
+}
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes nv-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* -------------------------------------------------------------- page loader */
+.page-loader {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--nv-surface);
+  z-index: var(--nv-z-toast);
+}
+.page-loader__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nv-space-4);
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+}
+
+/* ------------------------------------------------------------- top progress */
+.top-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: 3px;
+  background: transparent;
+  z-index: var(--nv-z-command);
+  pointer-events: none;
+}
+.top-progress__bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-primary-hover));
+  transition: width var(--nv-dur) var(--nv-ease);
+}
+
+/* ------------------------------------------------------------------- meters */
+.meter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+}
+.meter-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+  align-items: center;
+  gap: var(--nv-space-4);
+  font-size: var(--nv-text-caption);
+}
+.meter-row__label {
+  color: var(--nv-text-2);
+  font-weight: var(--nv-fw-medium);
+}
+.meter-row__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--nv-heading);
+  font-weight: var(--nv-fw-semibold);
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  .meter-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .meter-row .progress {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}

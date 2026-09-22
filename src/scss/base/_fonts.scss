@@ -1,0 +1,168 @@
+/* ==========================================================================
+   NOVAADMIN — Type system
+   --------------------------------------------------------------------------
+   Persian first: Vazirmatn (SIL OFL) ships with the template as a variable
+   font, so every weight is available in one request. The stack is a token, so
+   swapping in Estedad / IRANSans / any Latin font is a one line change.
+   ========================================================================== */
+
+/* Vazirmatn variable font face (resolved from node_modules by Vite, then
+   fingerprinted into assets/fonts on build). */
+@import 'vazirmatn/Vazirmatn-Variable-font-face.css';
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--nv-font-sans);
+  font-size: var(--nv-text-body);
+  font-weight: var(--nv-fw-regular);
+  line-height: var(--nv-lh-base);
+  color: var(--nv-text);
+  background-color: var(--nv-bg);
+  font-feature-settings: 'ss01' on, 'cv01' on;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Latin text inside an RTL page still gets a proper stack */
+[lang='en'],
+.font-latin {
+  font-family: var(--nv-font-sans);
+  font-feature-settings: normal;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+.display-1,
+.display-2,
+.display-3,
+.display-4 {
+  font-family: var(--nv-font-sans);
+  font-weight: var(--nv-fw-bold);
+  line-height: var(--nv-lh-tight);
+  letter-spacing: var(--nv-tracking-tight);
+  color: var(--nv-heading);
+  margin-block-end: var(--nv-space-3);
+}
+
+h1,
+.h1 {
+  font-size: var(--nv-text-h1);
+}
+h2,
+.h2 {
+  font-size: var(--nv-text-h2);
+}
+h3,
+.h3 {
+  font-size: var(--nv-text-h3);
+}
+h4,
+.h4 {
+  font-size: var(--nv-text-h4);
+}
+h5,
+.h5 {
+  font-size: var(--nv-text-h5);
+  font-weight: var(--nv-fw-semibold);
+}
+h6,
+.h6 {
+  font-size: var(--nv-text-h6);
+  font-weight: var(--nv-fw-semibold);
+}
+.display-1,
+.display-2,
+.display-3,
+.display-4 {
+  font-size: var(--nv-text-display);
+  font-weight: var(--nv-fw-black);
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin-block-end: var(--nv-space-4);
+}
+
+small,
+.small,
+.text-small {
+  font-size: var(--nv-text-body-sm);
+}
+
+.text-caption {
+  font-size: var(--nv-text-caption);
+  line-height: 1.6;
+}
+
+.text-micro {
+  font-size: var(--nv-text-micro);
+}
+
+.lead {
+  font-size: 1.0625rem;
+  font-weight: var(--nv-fw-regular);
+  line-height: var(--nv-lh-relaxed);
+  color: var(--nv-text-2);
+}
+
+strong,
+b {
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+
+/* Numbers: tabular by default so tables and KPIs never jitter */
+.numeric,
+.stat-card__value,
+.table td.numeric,
+.financial {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+.text-monospace,
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--nv-font-mono);
+  font-size: 0.875em;
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.4rem;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-text-2);
+  background: var(--nv-surface-3);
+  border: 1px solid var(--nv-border);
+  border-block-end-width: 2px;
+  border-radius: var(--nv-radius-xs);
+  line-height: 1.5;
+}
+
+/* Arabic needs slightly more line height to breathe */
+[lang='ar'] body,
+[lang='ar'] h1,
+[lang='ar'] h2,
+[lang='ar'] h3 {
+  line-height: calc(var(--nv-lh-base) + 0.08);
+}

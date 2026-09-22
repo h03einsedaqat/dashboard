@@ -1,0 +1,218 @@
+/* ==========================================================================
+   NOVAADMIN — Application header
+   --------------------------------------------------------------------------
+   Sticky, translucent top bar: navigation toggles, global search trigger,
+   demo switcher, language + theme controls, notifications and the user menu.
+   In `horizontal` layout the same header hosts the top navigation row.
+   ========================================================================== */
+
+.app-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--nv-z-header);
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--nv-space-4);
+  min-height: var(--nv-header-h);
+  padding-inline: var(--nv-content-pad);
+  background: var(--nv-header-bg);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-block-end: 1px solid var(--nv-border);
+}
+
+.app-header__left,
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  min-width: 0;
+}
+
+.app-header__right {
+  justify-content: flex-end;
+}
+
+.app-header__brand {
+  display: none;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+/* ---------------------------------------------------------- search trigger */
+.search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  min-width: 15rem;
+  height: var(--nv-control-h);
+  padding-inline: var(--nv-space-4);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-muted);
+  font-family: inherit;
+  font-size: var(--nv-text-body-sm);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease),
+    box-shadow var(--nv-dur-fast) var(--nv-ease);
+}
+.search-trigger:hover {
+  border-color: var(--nv-primary);
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-focus);
+  color: var(--nv-text-2);
+}
+.search-trigger i {
+  color: var(--nv-text-2);
+}
+.search-trigger__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-trigger__kbd {
+  flex: 0 0 auto;
+  background: var(--nv-surface);
+}
+.search-trigger--block {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+  .search-trigger {
+    min-width: 0;
+    width: var(--nv-control-h);
+    padding: 0;
+    justify-content: center;
+    border-radius: var(--nv-radius-md);
+  }
+  .search-trigger__text,
+  .search-trigger__kbd {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------- user chip */
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--nv-radius-pill);
+  background: transparent;
+  color: var(--nv-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), border-color var(--nv-dur-fast) var(--nv-ease);
+}
+[dir='rtl'] .user-chip {
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+}
+.user-chip:hover {
+  background: var(--nv-surface-2);
+  border-color: var(--nv-border);
+}
+.user-chip__meta {
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+.user-chip__name {
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.user-chip__role {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+@media (max-width: 767.98px) {
+  .app-header {
+    padding-inline: var(--nv-space-4);
+    gap: var(--nv-space-2);
+  }
+}
+
+/* ----------------------------------------------------- horizontal nav bar */
+.topnav .nav__link {
+  min-height: 2.5rem;
+  border-radius: var(--nv-radius-md);
+}
+.topnav .nav__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.85rem;
+  background: transparent;
+}
+.topnav .nav__link.is-active .nav__icon {
+  background: transparent;
+  color: var(--nv-primary);
+  box-shadow: none;
+}
+.topnav .nav__link.is-active {
+  background: var(--nv-primary-soft);
+}
+
+/* The horizontal nav flattens the tree: section headers are hidden and
+   second-level items are rendered as dropdown panels. */
+.topnav .nav__sub .nav__link {
+  min-height: 2.2rem;
+}
+
+/* ------------------------------------------------------------ breadcrumbs */
+.breadcrumb-nav {
+  min-width: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.breadcrumb__item + .breadcrumb__item::before {
+  content: '';
+  width: 0.3rem;
+  height: 0.3rem;
+  border-inline-start: 1.5px solid var(--nv-border-strong);
+  border-block-start: 1.5px solid var(--nv-border-strong);
+  transform: rotate(45deg);
+  margin-inline: 0.15rem;
+  opacity: 0.9;
+}
+[dir='rtl'] .breadcrumb__item + .breadcrumb__item::before {
+  transform: rotate(225deg);
+}
+
+.breadcrumb__item a {
+  color: var(--nv-text-muted);
+  font-weight: var(--nv-fw-medium);
+}
+.breadcrumb__item a:hover {
+  color: var(--nv-primary);
+}
+.breadcrumb__item[aria-current='page'] span {
+  color: var(--nv-text-2);
+  font-weight: var(--nv-fw-semibold);
+}

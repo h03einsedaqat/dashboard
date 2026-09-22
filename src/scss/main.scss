@@ -1,0 +1,73 @@
+/* ==========================================================================
+   NOVAADMIN — stylesheet entry
+   --------------------------------------------------------------------------
+   Import order matters and is intentionally explicit:
+
+   1. tokens + palettes   → design decisions (CSS custom properties)
+   2. bootstrap           → grid, utilities, 4 JS components (selective)
+   3. themes              → semantic light/dark mapping + Bootstrap bridge
+   4. base                → typography, element defaults
+   5. layout              → app shell, sidebar, header, layouts, docs, auth
+   6. components          → the NOVAADMIN component library
+   7. pages               → page level composition (landing, dashboards…)
+   8. utilities           → helpers that must win the cascade
+   ========================================================================== */
+
+/* 1 ------------------------------------------------------------- tokens */
+@import 'base/tokens';
+@import 'base/palettes';
+
+/* 2 ---------------------------------------------------------- bootstrap */
+@import 'base/bootstrap';
+
+/* 3 ------------------------------------------------------------- themes */
+@import 'base/themes';
+@import 'base/fonts';
+@import 'base/reset';
+
+/* 5 ------------------------------------------------------------ layouts */
+@import 'layout/shell';
+@import 'layout/sidebar';
+@import 'layout/header';
+@import 'layout/page-head';
+@import 'layout/docs';
+@import 'layout/auth';
+
+/* 6 --------------------------------------------------------- components */
+@import 'components/buttons';
+@import 'components/forms';
+@import 'components/cards';
+@import 'components/badges';
+@import 'components/avatars';
+@import 'components/dropdowns';
+@import 'components/modals';
+@import 'components/overlays';
+@import 'components/alerts';
+@import 'components/toasts';
+@import 'components/tables';
+@import 'components/datatable';
+@import 'components/tabs';
+@import 'components/progress';
+@import 'components/timeline';
+@import 'components/pagination';
+@import 'components/charts';
+@import 'components/stats';
+@import 'components/kanban';
+@import 'components/calendar';
+@import 'components/chat';
+@import 'components/mail';
+@import 'components/files';
+@import 'components/misc';
+@import 'components/ai';
+@import 'components/composition';
+
+/* 7 -------------------------------------------------------------- pages */
+@import 'pages/landing';
+@import 'pages/invoice';
+@import 'pages/dashboard';
+
+/* 8 ---------------------------------------------------------- utilities */
+@import 'utilities/helpers';
+
+/* 9 ------------------------------------------------- edge breakpoints */
+@import 'base/breakpoints';

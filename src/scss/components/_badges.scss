@@ -1,0 +1,222 @@
+/* ==========================================================================
+   NOVAADMIN — Badges, pills, chips, tags & status dots
+   ========================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--nv-radius-sm);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  line-height: 1.6;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.badge i {
+  font-size: 0.85em;
+}
+
+.badge--soft-primary {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.badge--soft-success {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.badge--soft-warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.badge--soft-danger {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.badge--soft-info {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.badge--soft-secondary,
+.badge--soft-neutral {
+  background: var(--nv-neutral-soft);
+  color: var(--nv-neutral-soft-fg);
+}
+.badge--soft-violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme='dark'] .badge--soft-violet {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+.badge--soft-dark {
+  background: var(--nv-surface-3);
+  color: var(--nv-text-2);
+}
+
+.badge--solid-primary {
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+}
+.badge--solid-success {
+  background: var(--nv-success);
+  color: #fff;
+}
+.badge--solid-danger {
+  background: var(--nv-danger);
+  color: #fff;
+}
+.badge--solid-warning {
+  background: var(--nv-warning);
+  color: #fff;
+}
+
+.badge--outline {
+  background: transparent;
+  border-color: var(--nv-border-strong);
+  color: var(--nv-text-2);
+}
+
+.badge--pill {
+  border-radius: var(--nv-radius-pill);
+  padding-inline: 0.7rem;
+}
+.badge--lg {
+  font-size: var(--nv-text-caption);
+  padding: 0.3rem 0.7rem;
+}
+
+/* ------------------------------------------------------------------- dots */
+.status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--nv-neutral);
+  flex: 0 0 auto;
+}
+.status-dot--success,
+.status-dot--online,
+.status-dot--active {
+  background: var(--nv-success);
+  box-shadow: 0 0 0 3px rgba(var(--nv-success-rgb), 0.18);
+}
+.status-dot--warning,
+.status-dot--pending {
+  background: var(--nv-warning);
+  box-shadow: 0 0 0 3px rgba(var(--nv-warning-rgb), 0.18);
+}
+.status-dot--danger,
+.status-dot--offline,
+.status-dot--cancelled {
+  background: var(--nv-danger);
+  box-shadow: 0 0 0 3px rgba(var(--nv-danger-rgb), 0.18);
+}
+.status-dot--info {
+  background: var(--nv-info);
+  box-shadow: 0 0 0 3px rgba(var(--nv-info-rgb), 0.18);
+}
+.status-dot--muted,
+.status-dot--away {
+  background: var(--nv-text-muted);
+}
+.status-dot--pulse {
+  animation: nv-pulse 1.8s var(--nv-ease) infinite;
+}
+
+@keyframes nv-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(var(--nv-success-rgb), 0);
+  }
+}
+
+/* ------------------------------------------------------------------ chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3);
+  border: 1px solid transparent;
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-medium);
+  cursor: default;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.chip--removable {
+  cursor: pointer;
+}
+.chip--filter {
+  cursor: pointer;
+}
+.chip--filter:hover {
+  background: var(--nv-surface-2);
+  border-color: var(--nv-border);
+  color: var(--nv-heading);
+}
+.chip.is-active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  border-color: rgba(var(--nv-primary-rgb), 0.25);
+}
+.chip__remove {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+.chip__remove:hover {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------- tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--nv-radius-xs);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-medium);
+  background: var(--nv-surface-3);
+  color: var(--nv-text-2);
+}
+
+/* ------------------------------------------------------------------- kbd */
+.badge-dot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-3);
+}
+
+/* --------------------------------------------------------------- progress ring labels */
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--nv-warning);
+  font-size: 0.9rem;
+}
+.rating i {
+  line-height: 1;
+}
+.rating--sm {
+  font-size: 0.75rem;
+}
+.rating__value {
+  margin-inline-start: 0.35rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+  font-weight: var(--nv-fw-semibold);
+}

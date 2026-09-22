@@ -1,0 +1,163 @@
+/* ==========================================================================
+   NOVAADMIN — Semantic themes (light / dark / system)
+   --------------------------------------------------------------------------
+   Themed through `data-theme="light|dark"` on <html>. Also bridges NoVA tokens
+   into the few Bootstrap CSS variables we still rely on (colour utilities,
+   radius, opacity-safe rgb values) so Bootstrap utilities inherit the theme.
+   ========================================================================== */
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* surfaces */
+  --nv-bg: #f4f6fb;
+  --nv-bg-alt: #eef1f8;
+  --nv-surface: #ffffff;
+  --nv-surface-2: #f8fafc;
+  --nv-surface-3: #f1f5f9;
+  --nv-surface-hover: #f8fafc;
+  --nv-surface-inset: #f9fafb;
+  --nv-sidebar-bg: #ffffff;
+  --nv-header-bg: rgba(255, 255, 255, 0.86);
+
+  /* lines */
+  --nv-border: #e6e9f0;
+  --nv-border-strong: #d3d9e4;
+  --nv-divider: #eef1f6;
+
+  /* text */
+  --nv-heading: #0f172a;
+  --nv-text: #1e293b;
+  --nv-text-2: #55617a;
+  --nv-text-muted: #8b95a9;
+  --nv-text-disabled: #b8c0cf;
+  --nv-text-inverse: #ffffff;
+
+  /* states */
+  --nv-success: #16a34a;
+  --nv-success-rgb: 22, 163, 74;
+  --nv-success-soft: #eefbf3;
+  --nv-success-soft-fg: #15803d;
+  --nv-warning: #d97706;
+  --nv-warning-rgb: 217, 119, 6;
+  --nv-warning-soft: #fef6e7;
+  --nv-warning-soft-fg: #b45309;
+  --nv-danger: #dc2626;
+  --nv-danger-rgb: 220, 38, 38;
+  --nv-danger-soft: #fef2f2;
+  --nv-danger-soft-fg: #b91c1c;
+  --nv-info: #0891b2;
+  --nv-info-rgb: 8, 145, 178;
+  --nv-info-soft: #ecfeff;
+  --nv-info-soft-fg: #0e7490;
+  --nv-neutral: #64748b;
+  --nv-neutral-rgb: 100, 116, 139;
+  --nv-neutral-soft: #f1f5f9;
+  --nv-neutral-soft-fg: #475569;
+
+  --nv-overlay: rgba(15, 23, 42, 0.48);
+  --nv-scrollbar: #cbd5e1;
+  --nv-scrollbar-hover: #94a3b8;
+  --nv-glass: rgba(255, 255, 255, 0.72);
+  --nv-shadow-color: 15, 23, 42;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --nv-bg: #0b1017;
+  --nv-bg-alt: #0e141d;
+  --nv-surface: #131a24;
+  --nv-surface-2: #172029;
+  --nv-surface-3: #1d2734;
+  --nv-surface-hover: #1a2330;
+  --nv-surface-inset: #101822;
+  --nv-sidebar-bg: #0e141d;
+  --nv-header-bg: rgba(19, 26, 36, 0.86);
+
+  --nv-border: #232d3c;
+  --nv-border-strong: #2f3b4d;
+  --nv-divider: #1b2432;
+
+  --nv-heading: #f2f6fc;
+  --nv-text: #dbe3ee;
+  --nv-text-2: #a3aec0;
+  --nv-text-muted: #7d889a;
+  --nv-text-disabled: #5a6474;
+  --nv-text-inverse: #0b1017;
+
+  --nv-success: #22c55e;
+  --nv-success-rgb: 34, 197, 94;
+  --nv-success-soft: rgba(34, 197, 94, 0.14);
+  --nv-success-soft-fg: #6ee7a4;
+  --nv-warning: #f59e0b;
+  --nv-warning-rgb: 245, 158, 11;
+  --nv-warning-soft: rgba(245, 158, 11, 0.14);
+  --nv-warning-soft-fg: #fcd34d;
+  --nv-danger: #ef4444;
+  --nv-danger-rgb: 239, 68, 68;
+  --nv-danger-soft: rgba(239, 68, 68, 0.14);
+  --nv-danger-soft-fg: #fca5a5;
+  --nv-info: #22d3ee;
+  --nv-info-rgb: 34, 211, 238;
+  --nv-info-soft: rgba(34, 211, 238, 0.14);
+  --nv-info-soft-fg: #7dd3fc;
+  --nv-neutral: #94a3b8;
+  --nv-neutral-rgb: 148, 163, 184;
+  --nv-neutral-soft: rgba(148, 163, 184, 0.14);
+  --nv-neutral-soft-fg: #cbd5e1;
+
+  --nv-overlay: rgba(3, 7, 14, 0.66);
+  --nv-scrollbar: #2b3646;
+  --nv-scrollbar-hover: #3c4a5e;
+  --nv-glass: rgba(19, 26, 36, 0.72);
+  --nv-shadow-color: 2, 6, 12;
+
+  --nv-shadow-xs: 0 1px 2px rgba(2, 6, 12, 0.4);
+  --nv-shadow-sm: 0 1px 3px rgba(2, 6, 12, 0.5), 0 1px 2px rgba(2, 6, 12, 0.3);
+  --nv-shadow-md: 0 8px 20px -8px rgba(2, 6, 12, 0.66), 0 2px 8px -4px rgba(2, 6, 12, 0.4);
+  --nv-shadow-lg: 0 26px 52px -18px rgba(2, 6, 12, 0.72), 0 10px 22px -14px rgba(2, 6, 12, 0.5);
+}
+
+/* ------------------------------------------------- Bootstrap variable bridge */
+:root {
+  --bs-primary: var(--nv-primary);
+  --bs-primary-rgb: var(--nv-primary-rgb);
+  --bs-secondary: var(--nv-neutral);
+  --bs-secondary-rgb: var(--nv-neutral-rgb);
+  --bs-success: var(--nv-success);
+  --bs-success-rgb: var(--nv-success-rgb);
+  --bs-warning: var(--nv-warning);
+  --bs-warning-rgb: var(--nv-warning-rgb);
+  --bs-danger: var(--nv-danger);
+  --bs-danger-rgb: var(--nv-danger-rgb);
+  --bs-info: var(--nv-info);
+  --bs-info-rgb: var(--nv-info-rgb);
+  --bs-light: var(--nv-surface-3);
+  --bs-light-rgb: 241, 245, 249;
+  --bs-dark: var(--nv-heading);
+  --bs-dark-rgb: 15, 23, 42;
+  --bs-body-bg: var(--nv-bg);
+  --bs-body-color: var(--nv-text);
+  --bs-border-color: var(--nv-border);
+  --bs-border-radius: var(--nv-radius-md);
+  --bs-border-radius-sm: var(--nv-radius-sm);
+  --bs-border-radius-lg: var(--nv-radius-lg);
+  --bs-link-color: var(--nv-primary);
+  --bs-link-hover-color: var(--nv-primary-hover);
+  --bs-emphasis-color: var(--nv-heading);
+  --bs-secondary-color: var(--nv-text-2);
+  --bs-tertiary-color: var(--nv-text-muted);
+  --bs-body-font-family: var(--nv-font-sans);
+  --bs-body-font-size: var(--nv-text-body);
+  --bs-body-line-height: var(--nv-lh-base);
+  --bs-dropdown-bg: var(--nv-surface);
+  --bs-dropdown-border-color: var(--nv-border);
+  --bs-dropdown-link-hover-bg: var(--nv-surface-hover);
+  --bs-dropdown-link-color: var(--nv-text);
+  --bs-modal-bg: var(--nv-surface);
+  --bs-modal-color: var(--nv-text);
+  --bs-offcanvas-bg: var(--nv-surface);
+  --bs-emphasis-color-rgb: var(--nv-shadow-color);
+}

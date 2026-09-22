@@ -1,0 +1,318 @@
+/* ==========================================================================
+   NOVAADMIN — Base layer
+   --------------------------------------------------------------------------
+   Element defaults, scrollbars, focus visibility, print styling and a handful
+   of global behaviours (reduced motion, forced colours, RTL icon flipping).
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+a {
+  color: var(--nv-primary);
+  text-decoration: none;
+  transition: color var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease);
+}
+a:hover {
+  color: var(--nv-primary-hover);
+}
+
+hr {
+  border: 0;
+  border-block-start: 1px solid var(--nv-divider);
+  opacity: 1;
+  margin-block: var(--nv-space-5);
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+strong,
+b {
+  font-weight: var(--nv-fw-semibold);
+}
+
+figure {
+  margin: 0;
+}
+
+/* --------------------------------------------------------------- scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--nv-scrollbar) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--nv-scrollbar);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--nv-radius-pill);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--nv-scrollbar-hover);
+}
+
+/* ------------------------------------------------------------------ focus */
+:focus-visible {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+  border-radius: var(--nv-radius-xs);
+}
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--nv-shadow-focus);
+}
+
+/* -------------------------------------------------------------- skip link */
+.skip-link {
+  position: fixed;
+  inset-block-start: calc(var(--nv-space-3) * -4);
+  inset-inline-start: var(--nv-space-4);
+  z-index: calc(var(--nv-z-toast) + 1);
+  padding: var(--nv-space-2) var(--nv-space-4);
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  border-radius: var(--nv-radius-sm);
+  font-weight: var(--nv-fw-semibold);
+  transition: inset-block-start var(--nv-dur) var(--nv-ease);
+}
+.skip-link:focus {
+  inset-block-start: var(--nv-space-4);
+  color: var(--nv-primary-contrast);
+}
+
+/* ------------------------------------------------------------------- code */
+pre {
+  padding: var(--nv-space-4);
+  background: var(--nv-surface-inset);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  overflow: auto;
+  direction: ltr;
+  text-align: start;
+  line-height: 1.7;
+}
+pre code {
+  color: var(--nv-text);
+}
+
+:not(pre) > code {
+  padding: 0.15rem 0.4rem;
+  color: var(--nv-primary-soft-fg);
+  background: var(--nv-primary-soft);
+  border-radius: var(--nv-radius-xs);
+}
+
+/* ---------------------------------------------------------------- helpers */
+.flip-rtl {
+  transition: transform var(--nv-dur) var(--nv-ease);
+}
+[dir='rtl'] .flip-ltr {
+  transform: scaleX(-1);
+}
+[dir='ltr'] .flip-rtl {
+  transform: scaleX(-1);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+}
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+}
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+}
+.cluster-sm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+}
+.surface {
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+}
+.surface-pad {
+  padding: var(--nv-card-pad);
+}
+.rounded-circle {
+  border-radius: var(--nv-radius-circle);
+}
+.shadow-hover {
+  transition: box-shadow var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease);
+}
+.shadow-hover:hover {
+  box-shadow: var(--nv-shadow-md);
+  transform: translateY(-2px);
+}
+.divider-y {
+  border-block-start: 1px solid var(--nv-divider);
+  margin-block: var(--nv-space-5);
+}
+.divider-x {
+  width: 1px;
+  align-self: stretch;
+  background: var(--nv-divider);
+}
+.text-heading {
+  color: var(--nv-heading) !important;
+}
+.text-secondary-2 {
+  color: var(--nv-text-2) !important;
+}
+.text-muted {
+  color: var(--nv-text-muted) !important;
+}
+.bg-surface {
+  background-color: var(--nv-surface) !important;
+}
+.bg-surface-2 {
+  background-color: var(--nv-surface-2) !important;
+}
+.bg-surface-3 {
+  background-color: var(--nv-surface-3) !important;
+}
+.bg-app {
+  background-color: var(--nv-bg) !important;
+}
+.border-token {
+  border-color: var(--nv-border) !important;
+}
+.fw-medium {
+  font-weight: var(--nv-fw-medium) !important;
+}
+.fw-semibold {
+  font-weight: var(--nv-fw-semibold) !important;
+}
+.opacity-hover:hover {
+  opacity: 0.85;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.visually-hidden-focusable:not(:focus):not(:focus-within) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* --------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------ forced-colors mode */
+@media (forced-colors: active) {
+  .card,
+  .stat-card,
+  .app-sidebar,
+  .app-header {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* --------------------------------------------------------------- printing */
+@media print {
+  .app-sidebar,
+  .app-header,
+  .app-footer,
+  .page-head__actions,
+  .customizer,
+  .command-palette,
+  .toast-host,
+  .no-print {
+    display: none !important;
+  }
+  .app-shell,
+  .app-main,
+  .app-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .card,
+  .surface {
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+  a[href]::after {
+    content: '';
+  }
+}

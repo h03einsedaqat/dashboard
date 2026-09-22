@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="{{DEFAULT_LANG}}" dir="{{DEFAULT_DIR}}" data-theme="{{DEFAULT_THEME}}" data-theme-mode="{{DEFAULT_THEME}}" data-primary="{{DEFAULT_PRIMARY}}" data-layout="sidebar" data-direction="{{DEFAULT_DIR}}" data-density="comfortable" data-font-size="md" data-sidebar-style="fixed" data-calendar="jalali">
+<head>
+  <!-- @include head.html -->
+  <title>{{APP_NAME}} — قالب مدیریت حرفه‌ای فارسی‌محور</title>
+</head>
+<body class="landing-body" data-page="index.html" data-section="landing" data-kind="landing">
+  <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
+
+  <header class="landing-header" data-landing-header>
+    <div class="landing-header__inner">
+      <a class="brand" href="{{ROOT}}index.html" aria-label="{{APP_NAME}}">
+        <img class="brand__mark" src="{{ROOT}}assets/logo-mark.svg" alt="" width="34" height="34">
+        <span class="brand__text"><span class="brand__name">{{APP_NAME}}</span><span class="brand__tag">{{TAGLINE}}</span></span>
+      </a>
+
+      <nav class="landing-nav" aria-label="ناوبری سایت">
+        <a href="#features" data-i18n="landing.navFeatures">ویژگی‌ها</a>
+        <a href="#demos" data-i18n="landing.navDemos">دموها</a>
+        <a href="#ai" data-i18n="landing.navAi">کارگاه هوش مصنوعی</a>
+        <a href="#pricing" data-i18n="landing.navPricing">قیمت‌ها</a>
+        <a href="{{ROOT}}docs/introduction.html" data-i18n="landing.navDocs">مستندات</a>
+      </nav>
+
+      <div class="landing-header__actions">
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="تغییر حالت روشن/تاریک"><i class="bi bi-moon-stars" data-theme-icon></i></button>
+        <div class="dropdown">
+          <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان"><i class="bi bi-translate"></i></button>
+          <ul class="dropdown-menu" data-dropdown-menu data-language-switch>
+            <li><button class="dropdown-item" type="button" data-lang="fa"><span class="lang-flag">فا</span> فارسی</button></li>
+            <li><button class="dropdown-item" type="button" data-lang="en"><span class="lang-flag">EN</span> English</button></li>
+            <li><button class="dropdown-item" type="button" data-lang="ar"><span class="lang-flag">ع</span> العربية</button></li>
+          </ul>
+        </div>
+        <a class="btn btn-light" href="{{ROOT}}auth/login.html" data-i18n="landing.signIn">ورود</a>
+        <a class="btn btn-primary" href="{{ROOT}}dashboards/analytics.html" data-i18n="landing.livePreview">مشاهده زنده قالب</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" data-landing>
+    <!-- Hero -->
+    <section class="landing-hero">
+      <div class="landing-hero__inner">
+        <span class="badge badge--soft-primary" data-i18n="landing.badge">نسخه ۱.۰.۰ — ۲۰۰ صفحه آماده</span>
+        <h1 class="landing-hero__title" data-i18n="landing.heroTitle">قالب مدیریت فارسی‌محور، با پشتیبانی کامل RTL و تقویم شمسی</h1>
+        <p class="landing-hero__text" data-i18n="landing.heroText">
+          ده داشبورد تخصصی، کارگاه هوش مصنوعی، مدیریت کاربران، فروشگاه، CRM، مالی، پروژه‌ها و پشتیبانی —
+          همه بر پایه یک سیستم طراحی یکپارچه با توکن‌های رنگ، حالت تاریک و ده‌ها کامپوننت آماده.
+        </p>
+        <div class="landing-hero__actions">
+          <a class="btn btn-primary btn-lg" href="{{ROOT}}dashboards/analytics.html"><i class="bi bi-play-fill"></i> ورود به دمو</a>
+          <a class="btn btn-light btn-lg" href="{{ROOT}}docs/introduction.html"><i class="bi bi-book"></i> مطالعه مستندات</a>
+        </div>
+        <dl class="landing-counters">
+          <div class="landing-counter"><dt>صفحه</dt><dd data-counter="200">۰</dd></div>
+          <div class="landing-counter"><dt>کامپوننت</dt><dd data-counter="120">۰</dd></div>
+          <div class="landing-counter"><dt>داشبورد</dt><dd data-counter="10">۰</dd></div>
+          <div class="landing-counter"><dt>زبان</dt><dd data-counter="3">۰</dd></div>
+        </dl>
+
+        <div class="landing-preview" data-reveal>
+          <div class="landing-preview__bar"><span></span><span></span><span></span></div>
+          <div class="landing-preview__body">
+            <div class="landing-preview__side">
+              <span class="landing-preview__line" style="width:70%"></span>
+              <span class="landing-preview__line" style="width:90%"></span>
+              <span class="landing-preview__line" style="width:55%"></span>
+              <span class="landing-preview__line" style="width:80%"></span>
+            </div>
+            <div class="landing-preview__main">
+              <div class="landing-preview__kpis">
+                <div class="landing-preview__kpi"><span>درآمد</span><strong>۲٫۴ میلیارد</strong></div>
+                <div class="landing-preview__kpi"><span>سفارش</span><strong>۱٫۲۸۴</strong></div>
+                <div class="landing-preview__kpi"><span>رشد</span><strong>۱۸٫۴٪</strong></div>
+              </div>
+              <div class="landing-preview__chart">
+                <span style="block-size:42%"></span><span style="block-size:66%"></span><span style="block-size:38%"></span>
+                <span style="block-size:88%"></span><span style="block-size:56%"></span><span style="block-size:74%"></span>
+                <span style="block-size:96%"></span><span style="block-size:64%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Highlights -->
+    <section class="landing-section" id="features">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.featuresTitle">هر آنچه برای ساخت پنل مدیریت لازم دارید</h2>
+        <p class="landing-section__text" data-i18n="landing.featuresText">سیستم طراحی، چیدمان‌ها، کامپوننت‌ها و منطق داده — همه آماده و مستندسازی‌شده.</p>
+      </header>
+      <div class="landing-grid" data-landing-highlights></div>
+    </section>
+
+    <!-- Demos -->
+    <section class="landing-section landing-section--soft" id="demos">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.demosTitle">ده داشبورد تخصصی، هر یک با داده و نمودار اختصاصی</h2>
+        <p class="landing-section__text" data-i18n="landing.demosText">آنالیتیکس، فروشگاهی، CRM، SaaS، مالی، پروژه‌ها، منابع انسانی، پشتیبانی، هوش مصنوعی و لجستیک.</p>
+      </header>
+      <div class="landing-grid landing-grid--demos">
+        <a class="landing-demo" href="{{ROOT}}dashboards/analytics.html"><i class="bi bi-graph-up-arrow"></i><strong>آنالیتیکس</strong><span>KPI، قیف، منابع ترافیک</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/ecommerce.html"><i class="bi bi-bag"></i><strong>فروشگاهی</strong><span>سفارش، موجودی، بازگشتی</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/crm.html"><i class="bi bi-person-lines-fill"></i><strong>مدیریت مشتری</strong><span>قیف فروش و فعالیت‌ها</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/saas.html"><i class="bi bi-cloud"></i><strong>سرویس ابری</strong><span>MRR، ریزش، پلن‌ها</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/finance.html"><i class="bi bi-cash-stack"></i><strong>مالی</strong><span>جریان نقدی و مطالبات</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/projects.html"><i class="bi bi-kanban"></i><strong>پروژه‌ها</strong><span>پیشرفت، تیم، مایل‌استون</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/hr.html"><i class="bi bi-people"></i><strong>منابع انسانی</strong><span>حضور، مرخصی، استخدام</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/support.html"><i class="bi bi-headset"></i><strong>پشتیبانی</strong><span>SLA، تیکت، رضایت</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/ai.html"><i class="bi bi-stars"></i><strong>هوش مصنوعی</strong><span>مصرف، مدل‌ها، هزینه</span></a>
+        <a class="landing-demo" href="{{ROOT}}dashboards/logistics.html"><i class="bi bi-truck"></i><strong>لجستیک</strong><span>محموله، مسیر، راننده</span></a>
+      </div>
+    </section>
+
+    <!-- AI showcase -->
+    <section class="landing-section" id="ai">
+      <div class="landing-split">
+        <div>
+          <span class="badge badge--soft-violet" data-i18n="landing.aiBadge">پرچم‌دار قالب</span>
+          <h2 class="landing-section__title" data-i18n="landing.aiTitle">کارگاه هوش مصنوعی با ۱۲ فضای کاری</h2>
+          <p class="landing-section__text" data-i18n="landing.aiText">
+            چت دستیار، استودیو نویسندگی، خلاصه‌ساز، بازتولید محتوا، کتابخانه پرامپت، استودیو تصویر،
+            زمان‌بندی کارها، مصرف و هزینه، تنظیمات مدل و کلیدهای API — همه با رابط کاربری واقعی.
+          </p>
+          <ul class="checklist">
+            <li>پاسخ‌های شبیه‌سازی‌شده با تأخیر واقعی و شمارش توکن</li>
+            <li>پرامپت‌های آماده با متغیر و اجرای زنده</li>
+            <li>گالری تصویر با تولید، حذف و برچسب‌گذاری</li>
+            <li>داشبورد مصرف با تفکیک مدل و هزینه</li>
+          </ul>
+          <a class="btn btn-primary" href="{{ROOT}}ai/dashboard.html"><i class="bi bi-stars"></i> ورود به کارگاه</a>
+        </div>
+        <div class="card card--glass" data-reveal>
+          <div class="card__body">
+            <div class="msg msg--in"><span class="msg__avatar"><img class="avatar avatar--sm" src="{{ROOT}}assets/img/avatars/avatar-02.svg" alt=""></span>
+              <div class="msg__body"><div class="msg__bubble">گزارش فروش ماه گذشته را خلاصه کن و سه پیشنهاد بهبود بده.</div></div></div>
+            <div class="msg msg--out"><span class="msg__avatar"><img class="avatar avatar--sm" src="{{ROOT}}assets/img/avatars/avatar-08.svg" alt=""></span>
+              <div class="msg__body"><div class="msg__bubble">فروش ۱۸٪ رشد کرد؛ بیشترین سهم مربوط به دسته هدفون بود. پیشنهاد: افزایش موجودی، تخفیف بسته‌ای، و کمپین بازگشت مشتری.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="landing-section landing-section--soft">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.testimonialsTitle">تیم‌هایی که با نووا جلوتر می‌روند</h2>
+      </header>
+      <div class="landing-grid landing-grid--testimonials" data-landing-testimonials></div>
+    </section>
+
+    <!-- Tech + pricing + FAQ + CTA -->
+    <section class="landing-section">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.techTitle">ساخته‌شده با استانداردهای امروز</h2>
+      </header>
+      <div class="landing-grid landing-grid--tech" data-landing-tech></div>
+    </section>
+
+    <section class="landing-section landing-section--soft" id="pricing">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.pricingTitle">پلن مناسب شما</h2>
+      </header>
+      <div class="pricing-grid" data-landing-pricing></div>
+    </section>
+
+    <section class="landing-section" id="faq">
+      <header class="landing-section__head">
+        <h2 class="landing-section__title" data-i18n="landing.faqTitle">پرسش‌های متداول</h2>
+      </header>
+      <div data-landing-faq></div>
+    </section>
+
+    <section class="landing-cta">
+      <div class="landing-cta__inner">
+        <h2 data-i18n="landing.ctaTitle">آماده‌اید پنل بعدی خود را سریع‌تر بسازید؟</h2>
+        <p data-i18n="landing.ctaText">همین حالا دموی زنده را باز کنید و همه بخش‌ها را بررسی کنید.</p>
+        <form class="landing-newsletter" data-newsletter>
+          <input class="form-control" type="email" name="email" placeholder="ایمیل شما" aria-label="ایمیل خبرنامه" required>
+          <button class="btn btn-primary" type="submit"><i class="bi bi-envelope-paper"></i> عضویت در خبرنامه</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="landing-footer">
+    <div class="landing-footer__inner">
+      <div>
+        <img src="{{ROOT}}assets/logo.svg" alt="{{APP_NAME}}" width="120" height="26">
+        <p class="text-muted" data-i18n="landing.footerText">قالب مدیریت چندمنظوره با پشتیبانی کامل فارسی، RTL و تقویم شمسی.</p>
+      </div>
+      <nav aria-label="پیوندهای پانویس">
+        <a href="{{ROOT}}docs/introduction.html" data-i18n="nav.doc-intro">مقدمه</a>
+        <a href="{{ROOT}}docs/installation.html" data-i18n="nav.doc-install">نصب و راه‌اندازی</a>
+        <a href="{{ROOT}}system/changelog.html" data-i18n="nav.sys-changelog">تغییرات</a>
+        <a href="{{ROOT}}system/help-center.html" data-i18n="nav.sys-help">مرکز راهنما</a>
+        <a href="{{ROOT}}system/status.html" data-i18n="nav.sys-status">وضعیت سرویس</a>
+      </nav>
+      <p class="landing-footer__legal">© {{YEAR}} {{APP_NAME}} — v{{VERSION}}</p>
+    </div>
+  </footer>
+
+  <!-- @include overlays.html -->
+  <!-- @include customizer.html -->
+  <!-- @include scripts.html -->
+</body>
+</html>

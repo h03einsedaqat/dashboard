@@ -1,0 +1,181 @@
+/* ==========================================================================
+   Small-screen & wide-screen refinements
+   --------------------------------------------------------------------------
+   The template is fluid first: the grid, typography and spacing already scale
+   with the viewport. This file only handles the edges of the supported range:
+
+     · 320–414px  — compact phones: tighter gutters, stacked headers, wrapping
+                    toolbars and 40px touch targets
+     · ≥1920px    — ultra-wide: cap the reading width so tables and text do not
+                    stretch across the whole monitor
+
+   Bootstrap's own breakpoints (575.98 / 767.98 / 991.98 / 1199.98 / 1399.98)
+   are used everywhere else; the values below are deliberately additive.
+   ========================================================================== */
+
+/* ------------------------------------------------------------- ≤ 414px ---- */
+
+@media (max-width: 414px) {
+  .app-content {
+    padding-inline: var(--nv-space-3);
+    padding-block: var(--nv-space-3);
+  }
+
+  /* Page headers: the action row moves under the title and stretches. */
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--nv-space-3);
+  }
+
+  .page-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nv-space-2);
+  }
+
+  .page-head__actions > .btn,
+  .page-head__actions > .dropdown,
+  .page-head__actions > .dropdown > .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Cards inside grids keep an edge-to-edge rhythm instead of thin slivers. */
+  .stat-card,
+  .card {
+    padding: var(--nv-space-4);
+  }
+
+  .stat-card__value {
+    font-size: 1.5rem;
+  }
+
+  /* Tables stay readable: smaller type, comfortable row height, no wrap
+     on the primary column so the horizontal scroll stays meaningful. */
+  .table th,
+  .table td {
+    padding-block: var(--nv-space-2);
+    font-size: 0.8125rem;
+  }
+
+  /* Toolbars, filter bars and segmented controls wrap instead of clipping. */
+  .datatable-toolbar,
+  .bulk-actions,
+  .filter-bar,
+  .toolbar {
+    flex-wrap: wrap;
+    gap: var(--nv-space-2);
+  }
+
+  .datatable-toolbar__search,
+  .filter-bar__search {
+    flex: 1 1 100%;
+  }
+
+  /* Kanban columns become one-per-screen swipeable panels. */
+  .kanban__column,
+  .pipeline-stage {
+    min-width: min(78vw, 20rem);
+  }
+
+  /* Chat and email: the reading pane gets the full width. */
+  .chat-layout,
+  .mail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-sidebar,
+  .mail-sidebar {
+    display: none;
+  }
+
+  .chat-sidebar.is-open,
+  .mail-sidebar.is-open {
+    display: block;
+  }
+
+  /* Overlays must never touch the screen edges. */
+  .modal-dialog,
+  .swal2-popup {
+    margin-inline: var(--nv-space-2);
+  }
+
+  .dropdown-menu {
+    min-width: min(16rem, calc(100vw - 2rem));
+  }
+
+  /* Long words (URLs, codes, Latin brand names inside Persian text). */
+  .page-body,
+  .docs-article,
+  .msg__bubble {
+    overflow-wrap: anywhere;
+  }
+
+  /* Touch targets: never below 40px inside the content area. */
+  .btn-icon,
+  .pagination .page-link,
+  .nav-link {
+    min-block-size: 2.5rem;
+    min-inline-size: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ------------------------------------------------------------- ≤ 359px ---- */
+
+@media (max-width: 359.98px) {
+  .app-content {
+    padding-inline: var(--nv-space-2);
+  }
+
+  /* 320px screens: a two-column KPI row is still usable, three is not. */
+  .row > [class*='col-4'],
+  .row > [class*='col-3'] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .stat-card__icon {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+  }
+
+  .toolbar,
+  .datatable-toolbar {
+    gap: var(--nv-space-1);
+  }
+
+  .chip,
+  .badge {
+    font-size: 0.6875rem;
+  }
+}
+
+/* ------------------------------------------------------------ ≥ 1920px ---- */
+
+@media (min-width: 1920px) {
+  .app-content {
+    max-width: 1800px;
+    margin-inline: auto;
+  }
+
+  .landing-section__inner,
+  .landing-header__inner,
+  .landing-hero__inner {
+    max-width: 1600px;
+    margin-inline: auto;
+  }
+}
+
+/* -------------------------------------------------------- orientation ----- */
+
+@media (max-height: 30rem) and (orientation: landscape) {
+  /* Phones in landscape: keep drawers scrollable, not taller than the screen. */
+  .app-sidebar,
+  .drawer {
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+}

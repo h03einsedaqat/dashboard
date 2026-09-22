@@ -1,0 +1,103 @@
+NOVAADMIN — PREMIUM PERSIAN-FIRST MULTI-PURPOSE ADMIN DASHBOARD TEMPLATE
+Version 1.0.0 — released 2026-09-22
+
+Copyright (c) 2026 NOVAADMIN. All rights reserved.
+
+==============================================================================
+1. WHAT THIS LICENSE GRANTS YOU
+==============================================================================
+
+Purchasing NOVAADMIN gives you a non-exclusive, non-transferable licence to:
+
+  a) Use the template to build websites and web applications for yourself or
+     for a single client per licence ("one end product").
+  b) Modify the source files — HTML, SCSS, JavaScript, configuration, data and
+     documentation — as much as your project requires.
+  c) Deploy the compiled output on any number of domains or hosting accounts
+     that belong to the same end product.
+  d) Use the template in commercial work, including paid client projects.
+
+You do NOT need to display an attribution link, but you may not claim that you
+designed or developed the template itself.
+
+==============================================================================
+2. WHAT THIS LICENSE DOES NOT ALLOW
+==============================================================================
+
+Without prior written permission you may NOT:
+
+  a) Sell, resell, sublicense, rent, lease, share or redistribute the template,
+     its source files, or any derivative of them.
+  b) Publish the template (or a modified version of it) on any marketplace,
+     "free download" site, repository, torrent, or file-sharing service.
+  c) Include the template in another template, starter kit, UI library or
+     "website builder" product that is offered for sale or for free.
+  d) Distribute the template as part of a SaaS offering whose primary value is
+     the template itself (for example a "dashboard as a service" builder).
+  e) Use the NOVAADMIN name, logo or branding in a way that implies endorsement
+     or authorship of your own product.
+
+An extended licence is available for multi-site, multi-client and resale use.
+Contact the author (see section 6) to obtain one.
+
+==============================================================================
+3. THIRD-PARTY COMPONENTS
+==============================================================================
+
+The template bundles or depends on third-party software, each distributed
+under its own licence. These licences are independent of this one:
+
+  - Bootstrap 5.3.x ................. MIT
+  - Bootstrap Icons 1.13.x .......... MIT
+  - ApexCharts 3.54.x ............... MIT
+  - SortableJS 1.15.x ............... MIT
+  - SweetAlert2 11.x ................ MIT
+  - dayjs 1.11.x .................... MIT
+  - jalaali-js 2.0.x ................ MIT
+  - Vite 7.x ........................ MIT (build tool only)
+  - Sass 1.83.x ..................... MIT (build tool only)
+  - Vazirmatn font ................... SIL Open Font License 1.1
+
+All image assets shipped with the template (logos, avatars, product artwork and
+brand marks) are original vector files generated for this product and are
+covered by this licence. No stock photography is included.
+
+==============================================================================
+4. UPDATES AND SUPPORT
+==============================================================================
+
+  - Minor and patch updates (1.x) are provided free of charge for 12 months
+    from the purchase date.
+  - Support covers installation questions, bug reports and questions about the
+    documented features of the template.
+  - Support does NOT cover custom development, third-party integrations that
+    are not part of the template, or server/hosting configuration.
+  - Support requests should include the template version, browser, and steps to
+    reproduce the issue — and, where possible, the output of `npm run qa:all`.
+
+==============================================================================
+5. LIMITATION OF LIABILITY
+==============================================================================
+
+THE TEMPLATE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE TEMPLATE OR THE USE OF THE TEMPLATE.
+
+The demo data included in `src/data/**` is fictional and generated
+programmatically. It does not contain real personal, financial or business
+information, and must not be presented as such.
+
+==============================================================================
+6. CONTACT
+==============================================================================
+
+Licence questions, extended licences and support:
+  support@novaadmin.dev
+  https://novaadmin.dev
+
+==============================================================================
+END OF LICENCE
+==============================================================================

@@ -1,0 +1,254 @@
+/* ==========================================================================
+   NOVAADMIN — Dropdown menus, mega menu, notification panel, context menu
+   --------------------------------------------------------------------------
+   Bootstrap drives the behaviour/positioning; the visual language is ours.
+   ========================================================================== */
+
+.dropdown-menu {
+  --bs-dropdown-padding-y: var(--nv-space-2);
+  min-width: 13rem;
+  padding: var(--nv-space-2);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  color: var(--nv-text);
+  box-shadow: var(--nv-shadow-lg);
+  font-size: var(--nv-text-body-sm);
+  z-index: var(--nv-z-header);
+  animation: nv-dropdown-in var(--nv-dur) var(--nv-ease-out);
+}
+
+@keyframes nv-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--nv-radius-sm);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+  white-space: nowrap;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.dropdown-item i {
+  font-size: 1rem;
+  color: var(--nv-text-muted);
+  width: 1.15rem;
+  text-align: center;
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--nv-surface-hover);
+  color: var(--nv-heading);
+}
+.dropdown-item:hover i {
+  color: var(--nv-primary);
+}
+.dropdown-item.active,
+.dropdown-item:active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.dropdown-item--danger {
+  color: var(--nv-danger);
+}
+.dropdown-item--danger:hover {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger);
+}
+.dropdown-item--danger i {
+  color: var(--nv-danger);
+}
+.dropdown-item small {
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-micro);
+  margin-inline-start: auto;
+  padding-inline-start: var(--nv-space-3);
+}
+.dropdown-item--check::after {
+  content: '';
+  margin-inline-start: auto;
+}
+.dropdown-item.is-checked i.bi-check2 {
+  color: var(--nv-primary);
+}
+
+.dropdown-divider {
+  margin: var(--nv-space-2) calc(var(--nv-space-2) * -1);
+  border-block-start: 1px solid var(--nv-divider);
+  opacity: 1;
+}
+
+.dropdown-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-2) var(--nv-space-3) var(--nv-space-3);
+  margin-block-end: var(--nv-space-1);
+  border-block-end: 1px solid var(--nv-divider);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  font-size: var(--nv-text-body-sm);
+  flex-direction: column;
+  align-items: flex-start;
+}
+.dropdown-menu__head small {
+  color: var(--nv-text-muted);
+  font-weight: var(--nv-fw-regular);
+  font-size: var(--nv-text-micro);
+}
+.dropdown-menu__head:has(.btn) {
+  flex-direction: row;
+  align-items: center;
+}
+.dropdown-menu__foot {
+  padding: var(--nv-space-3) var(--nv-space-2) var(--nv-space-1);
+  margin-block-start: var(--nv-space-1);
+  border-block-start: 1px solid var(--nv-divider);
+}
+
+.dropdown-menu--wide {
+  min-width: 20rem;
+}
+.dropdown-menu--notifications,
+.dropdown-menu--demos {
+  min-width: 22rem;
+  padding: 0;
+}
+.dropdown-menu--notifications .dropdown-menu__head,
+.dropdown-menu--demos .dropdown-menu__head {
+  padding: var(--nv-space-4) var(--nv-space-4) var(--nv-space-3);
+  margin: 0;
+  flex-direction: row;
+  align-items: center;
+}
+.dropdown-menu--notifications .dropdown-menu__foot,
+.dropdown-menu--demos .dropdown-menu__foot {
+  padding: var(--nv-space-3);
+  margin: 0;
+}
+
+.dropdown-menu--demos .dropdown-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-3);
+}
+.dropdown-menu--demos .dropdown-menu__grid a {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3);
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+  border: 1px solid transparent;
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+}
+.dropdown-menu--demos .dropdown-menu__grid a:hover {
+  border-color: var(--nv-border);
+  color: var(--nv-heading);
+  background: var(--nv-surface);
+}
+.dropdown-menu--demos .dropdown-menu__grid a.is-active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.dropdown-menu--demos i {
+  font-size: 1rem;
+}
+
+/* ------------------------------------------------------------------ list */
+.notification-list {
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: var(--nv-space-1) var(--nv-space-2) var(--nv-space-2);
+}
+.notification-item {
+  display: flex;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3);
+  border-radius: var(--nv-radius-md);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.notification-item:hover {
+  background: var(--nv-surface-hover);
+}
+.notification-item.is-unread {
+  background: var(--nv-primary-soft);
+}
+.notification-item__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--nv-radius-md);
+  font-size: 0.95rem;
+}
+.notification-item__body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.notification-item__title {
+  display: block;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  margin-block-end: 0.15rem;
+}
+.notification-item__text {
+  margin: 0;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+  line-height: 1.6;
+}
+.notification-item__time {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- context menu */
+.context-menu {
+  position: fixed;
+  z-index: var(--nv-z-command);
+  min-width: 11rem;
+}
+
+/* ---------------------------------------------------------- lang flag chip */
+.lang-flag {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: var(--nv-radius-xs);
+  background: var(--nv-surface-3);
+  font-size: 0.65rem;
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-text-2);
+  letter-spacing: 0;
+}
+.dropdown-item[data-lang] {
+  display: flex;
+}
+.dropdown-item[data-lang].is-active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.dropdown-item[data-lang] small {
+  margin-inline-start: 0;
+}

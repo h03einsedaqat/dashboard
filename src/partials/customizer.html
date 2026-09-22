@@ -1,0 +1,105 @@
+<!-- Theme customizer drawer — live previews every design token -->
+<aside class="customizer" id="theme-customizer" aria-label="شخصی‌سازی تم" aria-hidden="true" hidden>
+  <div class="customizer__backdrop" data-customizer-close></div>
+  <div class="customizer__panel" role="dialog" aria-modal="true" aria-labelledby="customizer-title">
+    <header class="customizer__head">
+      <div>
+        <h2 class="customizer__title" id="customizer-title" data-i18n="ui.customizer">شخصی‌سازی تم</h2>
+        <p class="customizer__sub" data-i18n="ui.customizerHint">تغییرات بلافاصله اعمال و ذخیره می‌شوند.</p>
+      </div>
+      <button class="icon-btn" type="button" data-customizer-close aria-label="بستن" data-i18n-title="ui.close">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <div class="customizer__body">
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.themeMode">حالت تم</h3>
+        <div class="segmented" data-customizer="theme">
+          <button type="button" class="segmented__item" data-value="light"><i class="bi bi-sun"></i><span data-i18n="ui.light">روشن</span></button>
+          <button type="button" class="segmented__item" data-value="dark"><i class="bi bi-moon-stars"></i><span data-i18n="ui.dark">تاریک</span></button>
+          <button type="button" class="segmented__item" data-value="system"><i class="bi bi-display"></i><span data-i18n="ui.system">سیستم</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.primaryColor">رنگ اصلی</h3>
+        <div class="swatches" data-customizer="primary">
+          <button type="button" class="swatch" data-value="indigo" style="--swatch:#4f46e5" aria-label="Indigo"></button>
+          <button type="button" class="swatch" data-value="blue" style="--swatch:#2563eb" aria-label="Blue"></button>
+          <button type="button" class="swatch" data-value="emerald" style="--swatch:#059669" aria-label="Emerald"></button>
+          <button type="button" class="swatch" data-value="violet" style="--swatch:#7c3aed" aria-label="Violet"></button>
+          <button type="button" class="swatch" data-value="rose" style="--swatch:#e11d48" aria-label="Rose"></button>
+          <button type="button" class="swatch" data-value="orange" style="--swatch:#ea580c" aria-label="Orange"></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.layout">چیدمان</h3>
+        <div class="layout-grid" data-customizer="layout">
+          <button type="button" class="layout-option" data-value="sidebar"><span class="layout-option__preview is-sidebar"></span><span data-i18n="ui.layoutSidebar">سایدبار</span></button>
+          <button type="button" class="layout-option" data-value="mini"><span class="layout-option__preview is-mini"></span><span data-i18n="ui.layoutMini">مینی</span></button>
+          <button type="button" class="layout-option" data-value="collapse"><span class="layout-option__preview is-collapse"></span><span data-i18n="ui.layoutCollapse">جمع‌شده</span></button>
+          <button type="button" class="layout-option" data-value="horizontal"><span class="layout-option__preview is-horizontal"></span><span data-i18n="ui.layoutHorizontal">افقی</span></button>
+          <button type="button" class="layout-option" data-value="twocol"><span class="layout-option__preview is-twocol"></span><span data-i18n="ui.layoutTwoCol">دو ستونی</span></button>
+          <button type="button" class="layout-option" data-value="boxed"><span class="layout-option__preview is-boxed"></span><span data-i18n="ui.layoutBoxed">باکس‌دار</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.direction">جهت</h3>
+        <div class="segmented" data-customizer="direction">
+          <button type="button" class="segmented__item" data-value="rtl"><span data-i18n="ui.rtl">راست‌به‌چپ</span></button>
+          <button type="button" class="segmented__item" data-value="ltr"><span data-i18n="ui.ltr">چپ‌به‌راست</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.language">زبان</h3>
+        <div class="segmented" data-customizer="language">
+          <button type="button" class="segmented__item" data-value="fa"><span data-i18n="ui.persian">فارسی</span></button>
+          <button type="button" class="segmented__item" data-value="en"><span data-i18n="ui.english">English</span></button>
+          <button type="button" class="segmented__item" data-value="ar"><span data-i18n="ui.arabic">العربية</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.density">تراکم</h3>
+        <div class="segmented" data-customizer="density">
+          <button type="button" class="segmented__item" data-value="comfortable"><span data-i18n="ui.comfortable">راحت</span></button>
+          <button type="button" class="segmented__item" data-value="compact"><span data-i18n="ui.compact">فشرده</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.fontSize">اندازه فونت</h3>
+        <div class="segmented" data-customizer="fontSize">
+          <button type="button" class="segmented__item" data-value="sm">S</button>
+          <button type="button" class="segmented__item" data-value="md">M</button>
+          <button type="button" class="segmented__item" data-value="lg">L</button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.sidebarStyle">سبک سایدبار</h3>
+        <div class="segmented" data-customizer="sidebarStyle">
+          <button type="button" class="segmented__item" data-value="fixed"><span data-i18n="ui.fixed">ثابت</span></button>
+          <button type="button" class="segmented__item" data-value="floating"><span data-i18n="ui.floating">شناور</span></button>
+          <button type="button" class="segmented__item" data-value="compact"><span data-i18n="ui.compactSidebar">فشرده</span></button>
+        </div>
+      </section>
+
+      <section class="customizer__group">
+        <h3 class="customizer__label" data-i18n="ui.calendar">تقویم</h3>
+        <div class="segmented" data-customizer="calendar">
+          <button type="button" class="segmented__item" data-value="jalali"><span data-i18n="ui.jalali">شمسی</span></button>
+          <button type="button" class="segmented__item" data-value="gregorian"><span data-i18n="ui.gregorian">میلادی</span></button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="customizer__foot">
+      <button class="btn btn-light w-100" type="button" data-customizer-reset><i class="bi bi-arrow-counterclockwise me-1"></i><span data-i18n="ui.resetDefaults">بازنشانی به پیش‌فرض</span></button>
+    </footer>
+  </div>
+</aside>

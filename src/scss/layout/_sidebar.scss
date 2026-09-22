@@ -1,0 +1,700 @@
+/* ==========================================================================
+   NOVAADMIN — Sidebar (navigation)
+   --------------------------------------------------------------------------
+   One DOM tree drives all six layouts and both directions:
+     • vertical  → sections + accordion sub menus
+     • rail      → icons only, fly-out sub menus on hover
+     • horizontal→ top bar with dropdown panels (see _shell.scss)
+   ========================================================================== */
+
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  background: var(--nv-sidebar-bg);
+  border-inline-end: 1px solid var(--nv-border);
+  z-index: var(--nv-z-sidebar);
+  transition: transform var(--nv-dur-slow) var(--nv-ease-out), width var(--nv-dur) var(--nv-ease);
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.app-sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-5) var(--nv-space-5) var(--nv-space-4);
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  min-width: 0;
+  color: var(--nv-heading);
+}
+.brand:hover {
+  color: var(--nv-primary);
+}
+.brand__mark {
+  flex: 0 0 auto;
+  display: block;
+}
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+.brand__name {
+  font-size: 1.0625rem;
+  font-weight: var(--nv-fw-black);
+  letter-spacing: 0.02em;
+  color: var(--nv-heading);
+}
+.brand__tag {
+  font-size: 0.6875rem;
+  color: var(--nv-text-muted);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--nv-space-4) var(--nv-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+  scrollbar-gutter: stable;
+}
+
+.app-sidebar__search {
+  padding-inline: var(--nv-space-1);
+}
+
+.app-sidebar__promo {
+  margin-block-start: auto;
+  padding-inline: var(--nv-space-1);
+}
+
+.app-sidebar__foot {
+  flex: 0 0 auto;
+  padding: var(--nv-space-4);
+  border-block-start: 1px solid var(--nv-divider);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  border: 1px solid var(--nv-border);
+}
+.sidebar-user__meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.sidebar-user__name {
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.sidebar-user__mail {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- navigation */
+.app-nav {
+  min-width: 0;
+}
+
+.nav__root,
+.nav__sub {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav__section {
+  padding: var(--nv-space-5) var(--nv-space-3) var(--nv-space-2);
+  font-size: 0.6875rem;
+  font-weight: var(--nv-fw-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nv-text-muted);
+}
+
+.nav__item {
+  position: relative;
+  min-width: 0;
+}
+
+.nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  width: 100%;
+  min-height: var(--nv-nav-item-h);
+  padding: var(--nv-nav-pad-y) var(--nv-space-3);
+  border: 0;
+  border-radius: var(--nv-radius-md);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-family: inherit;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+
+.nav__link:hover {
+  background: var(--nv-surface-hover);
+  color: var(--nv-heading);
+}
+
+.nav__link.is-active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-weight: var(--nv-fw-semibold);
+}
+
+.nav__link.is-active .nav__icon {
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  box-shadow: 0 6px 14px -8px rgba(var(--nv-primary-rgb), 0.9);
+}
+
+.nav__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-surface-3);
+  color: var(--nv-text-2);
+  font-size: 0.95rem;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+
+.nav__link:hover .nav__icon {
+  background: var(--nv-surface);
+  color: var(--nv-primary);
+}
+
+.nav__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav__badge {
+  flex: 0 0 auto;
+}
+
+.nav__caret {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  color: var(--nv-text-muted);
+  transition: transform var(--nv-dur) var(--nv-ease);
+}
+
+.nav__item--has-sub.is-open > .nav__link {
+  color: var(--nv-heading);
+  background: var(--nv-surface-hover);
+}
+.nav__item--has-sub.is-open > .nav__link .nav__caret {
+  transform: rotate(180deg);
+}
+
+.nav__sub {
+  position: relative;
+  margin-block-start: 2px;
+  padding-inline-start: calc(1.85rem + var(--nv-space-3));
+  display: none;
+}
+.nav__item--has-sub.is-open > .nav__sub {
+  display: flex;
+}
+
+.nav__sub::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.35rem;
+  inset-inline-start: calc((1.85rem + var(--nv-space-3)) / 2 + var(--nv-space-3) - 0.5rem);
+  width: 1px;
+  background: var(--nv-divider);
+}
+
+.nav__sub .nav__link {
+  padding-inline-start: var(--nv-space-3);
+  min-height: 2.15rem;
+  font-size: var(--nv-text-caption);
+}
+
+.nav__sub .nav__link::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--nv-space-4) + 0.5rem);
+  width: 6px;
+  height: 6px;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-border-strong);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.nav__sub .nav__link {
+  position: relative;
+}
+.nav__sub .nav__link:hover::before,
+.nav__sub .nav__link.is-active::before {
+  background: var(--nv-primary);
+}
+.nav__sub .nav__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.8rem;
+  background: transparent;
+}
+.nav__sub .nav__link.is-active .nav__icon {
+  background: transparent;
+  color: var(--nv-primary-soft-fg);
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------- rail mode */
+.sidebar-collapsed,
+[data-layout='mini'],
+[data-layout='collapse'] {
+  .app-sidebar__head {
+    justify-content: center;
+    padding-inline: var(--nv-space-3);
+  }
+}
+
+.sidebar-collapsed .brand__text,
+[data-layout='mini'] .brand__text,
+[data-layout='collapse'] .brand__text,
+.sidebar-collapsed .nav__label,
+[data-layout='mini'] .nav__label,
+[data-layout='collapse'] .nav__label,
+.sidebar-collapsed .nav__caret,
+[data-layout='mini'] .nav__caret,
+[data-layout='collapse'] .nav__caret,
+.sidebar-collapsed .nav__badge,
+[data-layout='mini'] .nav__badge,
+[data-layout='collapse'] .nav__badge,
+.sidebar-collapsed .sidebar-user__meta,
+[data-layout='mini'] .sidebar-user__meta,
+[data-layout='collapse'] .sidebar-user__meta,
+.sidebar-collapsed .app-sidebar__promo,
+[data-layout='mini'] .app-sidebar__promo,
+[data-layout='collapse'] .app-sidebar__promo {
+  display: none;
+}
+
+.sidebar-collapsed .nav__section,
+[data-layout='mini'] .nav__section,
+[data-layout='collapse'] .nav__section {
+  padding: var(--nv-space-4) 0 var(--nv-space-2);
+  text-align: center;
+  font-size: 0.6rem;
+  letter-spacing: 0;
+  overflow: hidden;
+}
+
+.sidebar-collapsed .nav__link,
+[data-layout='mini'] .nav__link,
+[data-layout='collapse'] .nav__link {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar-collapsed .app-sidebar__body,
+[data-layout='mini'] .app-sidebar__body,
+[data-layout='collapse'] .app-sidebar__body {
+  padding-inline: var(--nv-space-3);
+  overflow: visible;
+}
+
+.sidebar-collapsed .sidebar-user,
+[data-layout='mini'] .sidebar-user,
+[data-layout='collapse'] .sidebar-user {
+  justify-content: center;
+  padding: var(--nv-space-2);
+}
+
+/* fly-out sub menus in rail mode */
+.sidebar-collapsed .nav__item--has-sub > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub > .nav__sub {
+  display: none;
+  position: absolute;
+  inset-inline-start: calc(100% + 0.5rem);
+  inset-block-start: 0;
+  min-width: 14rem;
+  padding: var(--nv-space-2);
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  box-shadow: var(--nv-shadow-lg);
+  z-index: var(--nv-z-drawer);
+}
+.sidebar-collapsed .nav__item--has-sub:hover > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub:hover > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub:hover > .nav__sub,
+.sidebar-collapsed .nav__item--has-sub:focus-within > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub:focus-within > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub:focus-within > .nav__sub {
+  display: flex;
+  animation: nv-fade-in var(--nv-dur) var(--nv-ease-out);
+}
+.sidebar-collapsed .nav__sub::before,
+[data-layout='mini'] .nav__sub::before,
+[data-layout='collapse'] .nav__sub::before {
+  display: none;
+}
+.sidebar-collapsed .nav__sub .nav__link,
+[data-layout='mini'] .nav__sub .nav__link,
+[data-layout='collapse'] .nav__sub .nav__link {
+  justify-content: flex-start;
+  padding-inline: var(--nv-space-3);
+}
+.sidebar-collapsed .nav__sub .nav__label,
+[data-layout='mini'] .nav__sub .nav__label,
+[data-layout='collapse'] .nav__sub .nav__label {
+  display: block;
+}
+.sidebar-collapsed .nav__sub .nav__link::before,
+[data-layout='mini'] .nav__sub .nav__link::before,
+[data-layout='collapse'] .nav__sub .nav__link::before {
+  display: none;
+}
+
+/* ------------------------------------------------------------ mobile drawer */
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: min(20rem, 86vw);
+    height: 100vh;
+    max-height: 100vh;
+    transform: translateX(var(--nv-drawer-offset, -100%));
+    box-shadow: none;
+    border-inline-end: 1px solid var(--nv-border);
+  }
+  [dir='rtl'] .app-sidebar {
+    --nv-drawer-offset: 100%;
+  }
+  .sidebar-open .app-sidebar {
+    transform: translateX(0);
+    box-shadow: var(--nv-shadow-lg);
+  }
+  .sidebar-open .sidebar-backdrop {
+    display: block;
+  }
+  .app-sidebar__close {
+    display: inline-flex;
+  }
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--nv-overlay);
+  z-index: calc(var(--nv-z-sidebar) - 1);
+  backdrop-filter: blur(2px);
+  animation: nv-fade-in var(--nv-dur) var(--nv-ease);
+}
+
+/* --------------------------------------------------------------- promo card */
+.promo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-4);
+  border-radius: var(--nv-radius-lg);
+  background: linear-gradient(180deg, var(--nv-primary-soft), transparent 70%), var(--nv-surface-2);
+  border: 1px solid var(--nv-border);
+  overflow: hidden;
+}
+.promo-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  font-size: 1.05rem;
+}
+.promo-card__body strong {
+  display: block;
+  font-size: var(--nv-text-body-sm);
+  margin-block-end: 0.25rem;
+}
+.promo-card__body p {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  line-height: 1.6;
+}
+
+/* -------------------------------------------------------------- animations */
+@keyframes nv-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nv-slide-in-start {
+  from {
+    opacity: 0;
+    transform: translateX(var(--nv-slide-from, 12px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ==========================================================================
+   Sidebar style variants
+   --------------------------------------------------------------------------
+   Driven by `[data-sidebar-style]` on <html> (set pre-paint by theme-boot.js):
+     • default (or `fixed`) → follows the active light/dark theme
+     • dark                 → dark panel in both themes
+     • brand                → primary gradient panel
+   The variant only re-points local tokens, so every nav rule above keeps
+   working without duplication — including the rail fly-out and mobile drawer.
+   ========================================================================== */
+
+[data-sidebar-style='dark'],
+[data-sidebar-style='brand'] {
+  --nv-sidebar-bg: #0b1220;
+  --nv-sidebar-fg: #e8edf7;
+  --nv-sidebar-muted: rgba(232, 237, 247, 0.62);
+  --nv-sidebar-border: rgba(255, 255, 255, 0.08);
+  --nv-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --nv-sidebar-active: rgba(255, 255, 255, 0.12);
+}
+
+[data-sidebar-style='brand'] {
+  --nv-sidebar-bg: linear-gradient(180deg, var(--nv-primary) 0%, var(--nv-primary-active) 100%);
+  --nv-sidebar-fg: #ffffff;
+  --nv-sidebar-muted: rgba(255, 255, 255, 0.72);
+  --nv-sidebar-border: rgba(255, 255, 255, 0.16);
+  --nv-sidebar-hover: rgba(255, 255, 255, 0.14);
+  --nv-sidebar-active: rgba(255, 255, 255, 0.22);
+}
+
+[data-sidebar-style='dark'] .app-sidebar,
+[data-sidebar-style='brand'] .app-sidebar {
+  background: var(--nv-sidebar-bg);
+  border-inline-end-color: var(--nv-sidebar-border);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .brand,
+[data-sidebar-style='dark'] .app-sidebar .brand__name,
+[data-sidebar-style='dark'] .app-sidebar .nav__section,
+[data-sidebar-style='brand'] .app-sidebar .brand,
+[data-sidebar-style='brand'] .app-sidebar .brand__name,
+[data-sidebar-style='brand'] .app-sidebar .nav__section {
+  color: var(--nv-sidebar-fg, #ffffff);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .brand__tag,
+[data-sidebar-style='dark'] .app-sidebar .nav__section,
+[data-sidebar-style='dark'] .app-sidebar .sidebar-user__mail,
+[data-sidebar-style='brand'] .app-sidebar .brand__tag,
+[data-sidebar-style='brand'] .app-sidebar .nav__section,
+[data-sidebar-style='brand'] .app-sidebar .sidebar-user__mail {
+  color: var(--nv-sidebar-muted);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .nav__link,
+[data-sidebar-style='brand'] .app-sidebar .nav__link {
+  color: var(--nv-sidebar-fg);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .nav__link:hover,
+[data-sidebar-style='brand'] .app-sidebar .nav__link:hover {
+  background: var(--nv-sidebar-hover);
+  color: var(--nv-sidebar-fg);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .nav__link.is-active,
+[data-sidebar-style='dark'] .app-sidebar .nav__item.is-open > .nav__link,
+[data-sidebar-style='brand'] .app-sidebar .nav__link.is-active,
+[data-sidebar-style='brand'] .app-sidebar .nav__item.is-open > .nav__link {
+  background: var(--nv-sidebar-active);
+  color: var(--nv-sidebar-fg);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .nav__sub,
+[data-sidebar-style='brand'] .app-sidebar .nav__sub {
+  border-inline-start-color: var(--nv-sidebar-border);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .app-sidebar__search .form-control,
+[data-sidebar-style='brand'] .app-sidebar .app-sidebar__search .form-control {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+  color: var(--nv-sidebar-fg);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .app-sidebar__search .form-control::placeholder,
+[data-sidebar-style='brand'] .app-sidebar .app-sidebar__search .form-control::placeholder {
+  color: var(--nv-sidebar-muted);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .promo-card,
+[data-sidebar-style='brand'] .app-sidebar .promo-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .promo-card__title,
+[data-sidebar-style='brand'] .app-sidebar .promo-card__title {
+  color: var(--nv-sidebar-fg);
+}
+
+[data-sidebar-style='dark'] .app-sidebar .promo-card__body p,
+[data-sidebar-style='brand'] .app-sidebar .promo-card__body p {
+  color: var(--nv-sidebar-muted);
+}
+
+/* ============================================================ sidebar styles
+   `data-sidebar-style` covers two families so every customizer option has a
+   visible effect:
+     • colour variants …… default | dark | brand
+     • position variants … fixed | floating | compact
+   Both families are additive: `default` and `fixed` are the shipped look.
+   ========================================================================== */
+
+/* --- floating: inset, rounded, elevated sidebar ------------------------- */
+[data-sidebar-style='floating'] .app-shell {
+  grid-template-columns: calc(var(--nv-sidebar-w) + var(--nv-space-4)) minmax(0, 1fr);
+}
+
+[data-sidebar-style='floating'] .app-sidebar {
+  margin: var(--nv-space-4);
+  margin-inline-end: 0;
+  inset-block: var(--nv-space-4);
+  block-size: auto;
+  max-block-size: calc(100vh - (var(--nv-space-4) * 2));
+  border-radius: var(--nv-radius-lg);
+  border: 1px solid var(--nv-border);
+  box-shadow: var(--nv-shadow-md);
+  overflow: hidden;
+}
+
+[data-sidebar-style='floating'] .app-sidebar__body {
+  padding-inline: var(--nv-space-2);
+}
+
+[data-sidebar-style='floating'] .app-sidebar + .app-main .app-header {
+  margin-inline: 0;
+}
+
+/* --- compact: permanent narrow rail, labels exposed on hover ------------ */
+[data-sidebar-style='compact'] .app-shell {
+  grid-template-columns: var(--nv-sidebar-compact-w) minmax(0, 1fr);
+}
+
+[data-sidebar-style='compact'] .app-sidebar {
+  width: var(--nv-sidebar-compact-w);
+}
+
+[data-sidebar-style='compact'] .app-sidebar .nav__label,
+[data-sidebar-style='compact'] .app-sidebar .brand__text,
+[data-sidebar-style='compact'] .app-sidebar .nav__caret,
+[data-sidebar-style='compact'] .app-sidebar .nav__badge,
+[data-sidebar-style='compact'] .app-sidebar .app-sidebar__search,
+[data-sidebar-style='compact'] .app-sidebar .nav__section span {
+  display: none;
+}
+
+[data-sidebar-style='compact'] .app-sidebar .nav__link {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+[data-sidebar-style='compact'] .app-sidebar .nav__sub {
+  display: none !important;
+}
+
+[data-sidebar-style='compact'] .app-sidebar:hover {
+  width: var(--nv-sidebar-w);
+}
+
+[data-sidebar-style='compact'] .app-sidebar:hover .nav__label,
+[data-sidebar-style='compact'] .app-sidebar:hover .brand__text,
+[data-sidebar-style='compact'] .app-sidebar:hover .nav__caret,
+[data-sidebar-style='compact'] .app-sidebar:hover .app-sidebar__search,
+[data-sidebar-style='compact'] .app-sidebar:hover .nav__section span {
+  display: revert;
+}
+
+[data-sidebar-style='compact'] .app-sidebar:hover .nav__link {
+  justify-content: flex-start;
+  padding-inline: var(--nv-space-3);
+}
+
+@media (max-width: 991.98px) {
+  [data-sidebar-style='floating'] .app-shell,
+  [data-sidebar-style='compact'] .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-sidebar-style='floating'] .app-sidebar,
+  [data-sidebar-style='compact'] .app-sidebar {
+    width: var(--nv-sidebar-w);
+    margin: 0;
+    inset-block: 0;
+    border-radius: 0;
+    border: 0;
+  }
+
+  [data-sidebar-style='compact'] .app-sidebar .nav__label,
+  [data-sidebar-style='compact'] .app-sidebar .brand__text,
+  [data-sidebar-style='compact'] .app-sidebar .nav__caret,
+  [data-sidebar-style='compact'] .app-sidebar .app-sidebar__search,
+  [data-sidebar-style='compact'] .app-sidebar .nav__section span {
+    display: revert;
+  }
+
+  [data-sidebar-style='compact'] .app-sidebar .nav__sub {
+    display: revert !important;
+  }
+}
