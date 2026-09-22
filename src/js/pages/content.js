@@ -17,13 +17,34 @@ import { setLanguage } from '../core/i18n.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
 import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
-import { createDataTable } from '../core/datatable.js';
 import { config } from '../../config/config.js';
 import { searchService, commandService } from '../../services/index.js';
 import { navigation, navigationSections, navigationCount } from '../../data/navigation.js';
 import * as kit from './kit.js';
 
-const { card, statCard, infoRows, timeline, paint, host, tabs, pageHeader, formMarkup, collectValues, openRecordForm, exportable, emptyState, statusBadge, toolButtons, statsFrom, chart, services } = kit;
+const {
+  card,
+  statCard,
+  infoRows,
+  timeline,
+  paint,
+  host,
+  tabs,
+  pageHeader,
+  formMarkup,
+  collectValues,
+  openRecordForm,
+  exportable,
+  kpiCards,
+  emptyState,
+  statusBadge,
+  toolButtons,
+  statsFrom,
+  chart,
+  asRows,
+  chartBox,
+  services,
+} = kit;
 
 /* ===================================================== landing / marketing */
 
@@ -317,8 +338,10 @@ export async function initDocs() {
 
 export async function initSettings() {
   const node = host();
-  const values = await services.settingsService.get();
+  const all = await services.settingsService.get();
   const section = kit.pageId().split('/').pop().replace('.html', '');
+  /* `get()` is grouped per settings section; a page shows its own slice. */
+  const values = { ...(all?.[section] ?? {}), ...(all?.general ?? {}), ...(all?.features ?? {}) };
   const titles = {
     general: 'تنظیمات عمومی',
     appearance: 'ظاهر و تم',
@@ -335,15 +358,108 @@ export async function initSettings() {
   render(
     node,
     `<div class="dashboard-shell">
-      ${pageHeader({ title: titles[section] ?? 'تنظیمات', subtitle: 'تغییرات بلافاصله ذخیره و اعمال می‌شوند', icon: 'gear', badges: [statusBadge('آخرین ذخیره: همین حالا', 'success')] })}
-      ${card({
-        flush: false,
-        body: `<form data-settings-form="${escapeHtml(section)}" novalidate>${formMarkup(settingsFields(section, values), {}, { wide: true })}
-          <div class="form-actions form-actions--end"><button class="btn btn-light" type="reset">بازنشانی</button><button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> ذخیره تنظیمات</button></div></form>`,
+      ${pageHeader({
+        title: titles[section] ?? 'تنظیمات',
+        subtitle: 'تغییرات بلافاصله ذخیره و اعمال می‌شوند',
+        icon: 'gear',
+        badges: [statusBadge('آخرین ذخیره: همین حالا', 'success')],
+        actions: '<a class="btn btn-light" href="settings/appearance.html"><i class="bi bi-palette2"></i> ظاهر</a><a class="btn btn-light" href="settings/api.html"><i class="bi bi-plug"></i> API</a>',
       })}
+      <div class="grid grid--sidebar">
+        <section class="card">
+          <header class="card__head">
+            <div>
+              <h2 class="card__title">${escapeHtml(titles[section] ?? 'تنظیمات')}</h2>
+              <p class="card__subtitle">${escapeHtml(settingsIntro[section] ?? 'سازگار با RTL، تقویم شمسی و ارقام فارسی')}</p>
+            </div>
+            <div class="card__actions">${statusBadge(`بخش ${escapeHtml(section)}`, 'neutral')}</div>
+          </header>
+          <div class="card__body">
+            <form data-settings-form="${escapeHtml(section)}" novalidate>
+              ${formMarkup(settingsFields(section, values), values ?? {}, { wide: true })}
+              <div class="form-actions form-actions--end">
+                <button class="btn btn-light" type="reset"><i class="bi bi-arrow-counterclockwise"></i> بازنشانی</button>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> ذخیره تنظیمات</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <div class="dashboard-shell">
+          ${card({
+            title: 'مقدارهای فعلی',
+            subtitle: 'خروجی سرویس تنظیمات، همان چیزی که صفحه می‌خواند',
+            body: `<div class="info-rows">${Object.entries(values ?? {})
+              .slice(0, 8)
+              .map(([key, value]) => infoRows([[key, `<span class="numeric">${escapeHtml(typeof value === 'boolean' ? (value ? 'فعال' : 'غیرفعال') : String(value ?? '—'))}</span>`]]))
+              .join('')}</div>`,
+          })}
+          ${card({
+            title: 'نکته‌های این بخش',
+            body: `<ul class="checklist">${(settingsTips[section] ?? settingsTips.general).map((tip) => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`,
+          })}
+          ${card({
+            title: 'تنظیمات مرتبط',
+            body: `<div class="demo-token-list">${[
+              ['general', 'عمومی', 'gear'],
+              ['appearance', 'ظاهر و تم', 'palette2'],
+              ['localization', 'بومی‌سازی', 'translate'],
+              ['notifications', 'اعلان‌ها', 'bell'],
+              ['security', 'امنیت', 'shield-check'],
+              ['api', 'API', 'plug'],
+            ]
+              .filter(([id]) => id !== section)
+              .map(([id, label, icon]) => `<a class="demo-token" href="settings/${id}.html"><span class="tile tile--soft tile--icon"><i class="bi bi-${icon}"></i></span><span>${label}</span><i class="bi bi-chevron-left ms-auto"></i></a>`)
+              .join('')}</div>`,
+          })}
+        </div>
+      </div>
     </div>`,
   );
+
+  const form = $('[data-settings-form]', node);
+  on(form, 'submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('[type="submit"]');
+    button?.classList.add('is-loading');
+    const next = collectValues(form);
+    await services.settingsService.update(section, next).catch(() => null);
+    button?.classList.remove('is-loading');
+    toast.success('تنظیمات ذخیره شد', 'تغییرات این بخش اعمال و در حساب شما نگه داشته شد.');
+    bus.emit(EVENTS.dataChanged, { resource: 'settings', action: 'update', id: section });
+  });
+  on(form, 'reset', () => toast.info('بازنشانی شد', 'مقدارها به آخرین وضعیت ذخیره‌شده بازگشتند.'));
 }
+
+/** Short description shown above each settings form. */
+const settingsIntro = {
+  general: 'نام برنامه، منطقه زمانی و قالب تاریخ پیش‌فرض کل قالب را کنترل می‌کند.',
+  appearance: 'تم، رنگ اصلی و تراکم — همان گزینه‌هایی که در تنظیمات سریع هدر هم هست.',
+  layout: 'چیدمان پیش‌فرض، جهت و رفتار هدر و منو برای همه کاربران جدید.',
+  localization: 'زبان، واحد پول، تقویم و نوع ارقام در همه ماژول‌ها اعمال می‌شود.',
+  notifications: 'تعیین کنید کدام رویدادها با ایمیل، مرورگر یا خلاصه دوره‌ای ارسال شوند.',
+  security: 'سیاست گذرواژه، ورود دو مرحله‌ای و محدودسازی نشست‌ها.',
+  integrations: 'اتصال درگاه پرداخت، فضای ذخیره‌سازی و وب‌هوک‌های خروجی.',
+  email: 'تنظیمات سرور ارسال ایمیل؛ با دکمه «ارسال آزمایشی» صحت اتصال را بسنجید.',
+  api: 'نشانی پایه، مهلت پاسخ و سیاست تلاش مجدد برای همه درخواست‌های سرویس.',
+  billing: 'پلن، تعداد کاربران و اطلاعات صورت‌حساب سازمان.',
+  system: 'حالت تعمیرات، اشکال‌زدایی، کش و پشتیبان‌گیری خودکار.',
+};
+
+/** Contextual guidance under each settings form. */
+const settingsTips = {
+  general: ['نام برنامه در عنوان صفحات و ایمیل‌های سیستمی استفاده می‌شود.', 'منطقه زمانی روی نمایش همه تاریخ‌ها اثر دارد.', 'قالب تاریخ برای تقویم شمسی و میلادی جداگانه اعمال می‌شود.'],
+  appearance: ['رنگ اصلی از میان شش پالت آماده انتخاب می‌شود و روی نمودارها هم اثر می‌گذارد.', 'حالت «سیستم» تنظیمات سیستم‌عامل کاربر را دنبال می‌کند.'],
+  layout: ['چیدمان افقی برای پنل‌های ساده و چیدمان دو ستونی برای صفحه‌های پرتراکم مناسب است.', 'هدر چسبان در موبایل تجربه بهتری می‌دهد.'],
+  localization: ['ارقام فارسی روی اعداد جدول، نمودار و مبالغ اعمال می‌شود.', 'تقویم شمسی برای کسب‌وکارهای ایرانی و میلادی برای تیم‌های بین‌المللی مناسب است.'],
+  notifications: ['اعلان مرورگر نیازمند اجازه کاربر است.', 'خلاصه دوره‌ای فشار اعلان‌ها را کم می‌کند.'],
+  security: ['ورود دو مرحله‌ای برای نقش‌های مدیریتی توصیه می‌شود.', 'پایان نشست کوتاه‌تر امنیت را بالا می‌برد و راحتی را کم می‌کند.'],
+  integrations: ['کليدهای دسترسی را در متغیرهای محیطی نگه دارید، نه در کد.', 'وب‌هوک را با یک سرور تست بسنجید.'],
+  email: ['برای سرویس‌های ابری معمولاً پورت ۵۸۷ با TLS توصیه می‌شود.', 'نام کاربری اغلب همان ایمیل کامل است.'],
+  api: ['در حالت نمایشی، پاسخ‌ها از لایه mock می‌آید و ساختار آن با API واقعی یکسان است.', 'برای اتصال به سرور واقعی، مقدار useMocks را در config.js خاموش کنید.'],
+  billing: ['تعداد کاربران روی مبلغ صورت‌حساب اثر دارد.', 'ایمیل صورت‌حساب معمولاً ایمیل واحد مالی است.'],
+  system: ['حالت تعمیرات دسترسی همه کاربران غیرمدیر را محدود می‌کند.', 'حالت اشکال‌زدایی فقط در محیط توسعه فعال شود.'],
+};
 
 function settingsFields(section, values) {
   const common = [
@@ -455,7 +571,7 @@ export async function initProfile() {
   const sessionHost = $('[data-session-list]', node);
   if (sessionHost) {
     const sessions = await services.sessionService.list();
-    render(sessionHost, `<ul class="list-group">${(sessions.items ?? sessions).map((session) => `<li class="list-item"><span class="tile tile--soft"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')} • ${escapeHtml(session.ip ?? '')}</span></span><span class="list-item__meta">${relativeTime(session.lastSeen)}<button class="btn btn-ghost btn-sm" type="button" data-revoke-session="${escapeHtml(session.id)}">پایان</button></span></li>`).join('')}</ul>`);
+    render(sessionHost, `<ul class="list-group">${(sessions.items ?? sessions).map((session) => `<li class="list-item"><span class="tile tile--soft tile--icon"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')} • ${escapeHtml(session.ip ?? '')}</span></span><span class="list-item__meta">${relativeTime(session.lastSeen)}<button class="btn btn-ghost btn-sm" type="button" data-revoke-session="${escapeHtml(session.id)}">پایان</button></span></li>`).join('')}</ul>`);
     on(sessionHost, 'click', async (event) => {
       const button = event.target.closest('[data-revoke-session]');
       if (!button) return;
@@ -542,162 +658,12 @@ const profileSecurity = () =>
     <div class="form-actions"><button class="btn btn-primary" type="button" data-change-password>تغییر گذرواژه</button><button class="btn btn-light" type="button" data-active-sessions>نمایش نشست‌های فعال</button></div>`,
   });
 
-/* ================================================================= UI kit */
-
-export async function initUiKit() {
-  const node = host();
-  const page = kit.pageId().split('/').pop().replace('.html', '');
-  node.dataset.appTitle = 'کیت رابط کاربری';
-
-  if (page === 'charts.html') {
-    const revenue = await services.analyticsService.revenue({ range: '30d' });
-    render(
-      node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'نمودارها', subtitle: 'همه انواع نمودار با توکن‌های طراحی و پشتیبانی RTL', icon: 'bar-chart-line' })}
-        <div class="widget-grid">
-          ${['area', 'column', 'bar', 'line']
-            .map(
-              (type) => `<div class="card"><div class="card__head"><div><h2 class="card__title">نمودار ${type}</h2></div></div><div class="card__body"><div class="chart" data-chart="${type}" data-chart-height="280" data-chart-series='${JSON.stringify(revenue.series.map((s) => ({ name: s.label, data: s.data })))}' data-chart-labels='${JSON.stringify(revenue.labels)}'></div></div></div>`,
-            )
-            .join('')}
-        </div>
-        <div class="widget-grid">
-          ${['donut', 'pie', 'radialBar', 'radar']
-            .map(
-              (type) => `<div class="card"><div class="card__head"><div><h2 class="card__title">نمودار ${type}</h2></div></div><div class="card__body"><div class="chart" data-chart="${type}" data-chart-height="280" data-chart-series='${JSON.stringify(type === 'radialBar' ? [72, 54, 36] : [44, 32, 24])}' data-chart-labels='${JSON.stringify(['فروشگاه', 'CRM', 'مالی', 'پشتیبانی'])}'></div></div></div>`,
-            )
-            .join('')}
-        </div>
-      </div>`,
-    );
-    initCharts(node);
-    return;
-  }
-
-  if (page === 'tables.html') {
-    render(
-      node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'جدول‌ها', subtitle: 'جدول داده پیشرفته با جستجو، فیلتر، مرتب‌سازی و انتخاب گروهی', icon: 'table' })}
-        <div class="card"><div class="card__body" data-datatable data-resource="orders">
-          <div class="table-wrap"><table class="table table--hover"><thead><tr>
-            <th data-column="number" data-type="primary" data-sub="customer" data-sortable>شماره سفارش</th>
-            <th data-column="placedAt" data-type="relative" data-sortable>تاریخ</th>
-            <th data-column="total" data-type="currency" data-sortable class="text-end">مبلغ</th>
-            <th data-column="status" data-type="badge" data-sortable>وضعیت</th>
-            <th data-column="actions" data-type="actions" data-href="ecommerce/order-details.html?id={id}">عملیات</th>
-          </tr></thead><tbody data-datatable-body></tbody></table></div>
-          <div class="datatable__foot" data-datatable-foot></div>
-        </div></div>
-      </div>`,
-    );
-    createDataTable($('[data-datatable]', node));
-    return;
-  }
-
-  if (page === 'colors.html') {
-    const palettes = ['indigo', 'blue', 'emerald', 'violet', 'rose', 'orange'];
-    const tokens = ['primary', 'secondary', 'success', 'warning', 'danger', 'info', 'surface', 'surface-2', 'border', 'divider', 'text', 'text-muted'];
-    render(
-      node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'رنگ‌ها', subtitle: 'توکن‌های رنگ و پالت‌های قابل تغییر در زمان اجرا', icon: 'droplet-half' })}
-        ${card({ title: 'پالت‌های اصلی', body: `<div class="swatches">${palettes.map((palette) => `<button class="swatch swatch--lg" style="--swatch: var(--nv-${palette}-500, var(--nv-${palette}))" data-theme-primary="${palette}" aria-label="${palette}"></button>`).join('')}</div>`, foot: '<span class="text-muted fs-caption">روی هر رنگ بزنید تا کل قالب بلافاصله تغییر کند.</span>' })}
-        ${card({ title: 'توکن‌های معنایی', body: `<div class="grid grid--3">${tokens
-          .map((token) => `<div class="tile"><span class="tile__label">${token}</span><span class="tile__value" style="background: var(--nv-${token}); block-size: 2.5rem; border-radius: var(--nv-radius-sm); border: 1px solid var(--nv-border)"></span></div>`)
-          .join('')}</div>` })}
-      </div>`,
-    );
-    on(node, 'click', (event) => {
-      const swatch = event.target.closest('[data-theme-primary]');
-      if (!swatch) return;
-      theme.set('primary', swatch.dataset.themePrimary);
-      toast.success('رنگ اصلی تغییر کرد', `پالت ${swatch.dataset.themePrimary} اعمال شد.`);
-    });
-    return;
-  }
-
-  if (page === 'icons.html') {
-    const icons = ['graph-up-arrow', 'bag', 'people', 'wallet2', 'kanban', 'headset', 'stars', 'truck', 'shield-check', 'bell', 'calendar3', 'envelope', 'chat-dots', 'folder2-open', 'gear', 'speedometer2', 'bar-chart-line', 'file-earmark-text', 'receipt', 'key', 'palette', 'translate', 'moon-stars', 'sun'];
-    render(
-      node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'آیکون‌ها', subtitle: 'Bootstrap Icons ۱.۱۳ — بیش از ۲۰۰۰ آیکون', icon: 'emoji-smile' })}
-        <div class="card"><div class="card__body"><div class="input-group input-group--icon mb-3"><i class="bi bi-search"></i><input class="form-control" type="search" placeholder="جستجوی آیکون" data-icon-search></div>
-        <div class="grid grid--cards" data-icon-grid>${icons
-          .map((icon) => `<button class="tile" type="button" data-copy-icon="${icon}"><i class="bi bi-${icon} fs-h4"></i><span class="tile__label">${icon}</span></button>`)
-          .join('')}</div></div></div>
-      </div>`,
-    );
-    on($('[data-icon-search]', node), 'input', (event) => {
-      const term = event.target.value.trim().toLowerCase();
-      $$('[data-copy-icon]', node).forEach((tile) => {
-        tile.hidden = term ? !tile.dataset.copyIcon.includes(term) : false;
-      });
-    });
-    on($('[data-icon-grid]', node), 'click', async (event) => {
-      const tile = event.target.closest('[data-copy-icon]');
-      if (!tile) return;
-      await navigator.clipboard?.writeText(`<i class="bi bi-${tile.dataset.copyIcon}"></i>`);
-      toast.success('کپی شد', 'نشانه آیکون در حافظه موقت قرار گرفت.');
-    });
-    return;
-  }
-
-  if (page === 'states.html') {
-    render(
-      node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'حالت‌ها', subtitle: 'بارگذاری، خالی، خطا، موفقیت و اسکلتون', icon: 'sliders2' })}
-        <div class="grid grid--2">
-          ${card({ title: 'بارگذاری', body: kit.skeleton(4) })}
-          ${card({ title: 'اسکلتون کارت', body: kit.skeleton(3, 'card') })}
-          ${card({ title: 'خالی', body: emptyState({ title: 'هیچ موردی ثبت نشده است', text: 'برای شروع، اولین مورد را بسازید.', icon: 'inbox', action: '<button class="btn btn-primary btn-sm">ایجاد مورد</button>' }) })}
-          ${card({ title: 'خطا', body: '<div class="state-error"><span class="state-error__icon"><i class="bi bi-exclamation-triangle"></i></span><h3 class="state-error__title">اتصال به سرور برقرار نشد</h3><p class="state-error__text">اتصال اینترنت خود را بررسی کنید.</p><button class="btn btn-primary btn-sm" type="button" onclick="location.reload()">تلاش دوباره</button></div>' })}
-        </div>
-        <div class="card"><div class="card__body"><div class="d-flex gap-3 flex-wrap align-items-center">
-          <span class="spinner"></span><span class="spinner spinner--lg"></span><span class="page-loader"><span class="page-loader__inner"></span></span>
-          <button class="btn btn-primary is-loading" type="button">در حال ذخیره</button>
-          <span class="badge badge--soft-success">موفق</span><span class="badge badge--soft-danger">ناموفق</span><span class="badge badge--soft-warning">هشدار</span>
-        </div></div></div>
-      </div>`,
-    );
-    return;
-  }
-
-  // Generic UI-kit showcase for the remaining ui/* pages
-  const groups = {
-    buttons: 'دکمه‌ها در همه اندازه‌ها، رنگ‌ها، حالت‌ها و آیکون‌ها',
-    badges: 'نشان‌ها، وضعیت‌ها و برچسب‌ها',
-    avatars: 'آواتارها، گروه‌ها و نشانگر وضعیت',
-    cards: 'کارت‌ها با هدر، بدنه، پانویس و رسانه',
-    dropdowns: 'منوهای کشویی، مگا منو و منوی زمینه',
-    forms: 'فرم‌ها با اعتبارسنجی و حالت‌های کامل',
-    inputs: 'ورودی‌ها، انتخاب‌گرها، تگ‌ها و اسلایدرها',
-    modals: 'پنجره‌ها، حذف تأییدی و کشوها',
-    tabs: 'تب‌ها، قرص‌ها و آکاردئون',
-    toasts: 'اعلان‌های شش‌موقعیتی سازگار با RTL',
-    tooltips: 'راهنماها و پاپ‌اورها',
-    timeline: 'خط زمانی و فید فعالیت',
-    progress: 'نوارها، حلقه‌ها و سنجه‌ها',
-    typography: 'مقیاس تایپوگرافی از نمایشی تا ریز',
-    grid: 'سیستم شبکه ۱۲ ستونی و چیدمان‌های آماده',
-  };
-  const description = groups[page] ?? 'کامپوننت‌های استاندارد قالب';
-  render(
-    node,
-    `<div class="dashboard-shell">
-      ${pageHeader({ title: node.dataset.title ?? 'کیت رابط کاربری', subtitle: description, icon: 'palette2', actions: '<a class="btn btn-light" href="docs/components.html">مستندات کامپوننت‌ها</a>' })}
-      <div class="card"><div class="card__body">
-        <div class="alert alert--info"><span class="alert__icon"><i class="bi bi-info-circle"></i></span><div class="alert__body"><p class="alert__title">نمونه زنده</p><p class="mb-0">این صفحه همه حالت‌ها را با داده واقعی نمایش می‌دهد؛ هر تغییر ظاهری بلافاصله اعمال می‌شود.</p></div></div>
-        <div class="d-flex flex-wrap gap-2 mt-3">${['اصلی', 'ثانویه', 'موفق', 'هشدار', 'خطر', 'اطلاعات'].map((label, index) => `<button class="btn btn-${['primary', 'secondary', 'success', 'warning', 'danger', 'info'][index]}" type="button">${label}</button>`).join('')}</div>
-        <div class="d-flex flex-wrap gap-2 mt-3">${['primary', 'success', 'warning', 'danger', 'info', 'neutral'].map((tone) => `<span class="badge badge--soft-${tone}">نشان ${tone}</span>`).join('')}</div>
-        <div class="grid grid--3 mt-4">${['کارت نمونه یک', 'کارت نمونه دو', 'کارت نمونه سه'].map((title) => `<article class="card"><div class="card__body"><h3 class="card__title">${title}</h3><p class="card__subtitle">توضیح کوتاه درباره این کارت نمونه.</p><a class="btn btn-soft-primary btn-sm" href="#">بیشتر بدانید</a></div></article>`).join('')}</div>
-      </div></div>
-    </div>`,
-  );
-}
+/* ================================================================== UI kit */
+/*
+ * The component library lives in `ui-kit.js` — one builder per `ui/*.html`
+ * page. It is routed from `main.js` (`'ui/'`), so nothing is referenced from
+ * this module any more; the shared primitives still come from `kit.js`.
+ */
 
 /* ========================================================= product preview */
 
@@ -959,8 +925,8 @@ export async function initSystemPages() {
         ${pageHeader({ title: 'پرسش‌های متداول', subtitle: 'پاسخ سریع به رایج‌ترین سؤالات', icon: 'patch-question' })}
         ${card({ body: `<div class="faq-list">${faq
           .map(
-            (item, index) => `<div class="accordion-item"><button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-accordion-toggle aria-expanded="${index === 0}">${escapeHtml(item.question)}<i class="bi bi-chevron-down"></i></button>
-              <div class="accordion-body" data-accordion-body ${index === 0 ? '' : 'hidden'}><p>${escapeHtml(item.answer)}</p></div></div>`,
+            (item, index) => `<div class="accordion-item"><button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-accordion-toggle aria-expanded="${index === 0}">${escapeHtml(item.q ?? item.question)}<i class="bi bi-chevron-down"></i></button>
+              <div class="accordion-body" data-accordion-body ${index === 0 ? '' : 'hidden'}><p>${escapeHtml(item.a ?? item.answer ?? '')}</p></div></div>`,
           )
           .join('')}</div>` })}
       </div>`,
@@ -976,12 +942,23 @@ export async function initSystemPages() {
         ${pageHeader({ title: 'تغییرات نسخه‌ها', subtitle: 'تاریخچه کامل نسخه‌ها و تغییرات هر انتشار', icon: 'clipboard-data' })}
         ${card({ body: log
           .map(
-            (release) => `<section class="changelog-item"><header class="d-flex align-items-center gap-3"><span class="changelog-item__version">v${escapeHtml(release.version)}</span><span class="changelog-item__date">${formatDate(release.date, { format: 'medium' })}</span>${release.badge ? statusBadge(release.badge, 'primary') : ''}</header>
-              ${(release.groups ?? [{ type: 'added', items: release.changes ?? [] }])
+            (release) => {
+              /**
+               * One release in the mock data: `{ version, date (Jalali string),
+               * highlights, items: [{ type, text }] }`. Entries are grouped by
+               * change type so the page can show the coloured type chips.
+               */
+              const items = release.items ?? [];
+              const groups = release.groups ?? [...new Set(items.map((item) => item.type ?? 'added'))].map((type) => ({ type, items: items.filter((item) => (item.type ?? 'added') === type) }));
+              const date = /^[۰-۹0-9/:-]+$/.test(String(release.date ?? '')) ? release.date : formatDate(release.date, { format: 'medium' });
+              return `<section class="changelog-item"><header class="d-flex align-items-center gap-3"><span class="changelog-item__version">v${escapeHtml(release.version)}</span><span class="changelog-item__date">${escapeHtml(date ?? '')}</span>${release.badge ? statusBadge(release.badge, 'primary') : ''}</header>
+              ${release.highlights ? `<p class="changelog-item__highlights">${escapeHtml(release.highlights)}</p>` : ''}
+              ${groups
                 .map(
-                  (group) => `<h4 class="mt-3"><span class="changelog-type changelog-type--${escapeHtml(group.type)}">${escapeHtml(group.type)}</span></h4><ul class="checklist">${(group.items ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`,
+                  (group) => `<h4 class="mt-3"><span class="changelog-type changelog-type--${escapeHtml(group.type)}">${escapeHtml(group.type)}</span></h4><ul class="checklist">${(group.items ?? []).map((item) => `<li>${escapeHtml(item.text ?? item)}</li>`).join('')}</ul>`,
                 )
-                .join('')}</section>`,
+                .join('')}</section>`;
+            },
           )
           .join('') })}
       </div>`,
@@ -1014,7 +991,7 @@ export async function initSystemPages() {
       node,
       `<div class="dashboard-shell">
         ${pageHeader({ title: 'مرکز راهنما', subtitle: 'راهنمای گام‌به‌گام برای همه بخش‌های قالب', icon: 'life-preserver' })}
-        <div class="grid grid--cards">${topics.map((topic) => `<article class="card card--interactive"><div class="card__body"><span class="tile tile--soft"><i class="bi bi-${escapeHtml(topic.icon ?? 'book')}"></i></span><h3 class="card__title mt-2">${escapeHtml(topic.title)}</h3><p class="card__subtitle">${escapeHtml(topic.text ?? '')}</p><span class="badge badge--soft-primary">${toDigits(topic.count ?? 0)} مقاله</span></div></article>`).join('')}</div>
+        <div class="grid grid--cards">${topics.map((topic) => `<article class="card card--interactive"><div class="card__body"><span class="tile tile--soft tile--icon"><i class="bi bi-${escapeHtml(topic.icon ?? 'book')}"></i></span><h3 class="card__title mt-2">${escapeHtml(topic.title)}</h3><p class="card__subtitle">${escapeHtml(topic.text ?? '')}</p><span class="badge badge--soft-primary">${toDigits(topic.count ?? 0)} مقاله</span></div></article>`).join('')}</div>
         ${card({ title: 'پرخواننده‌ترین مقاله‌ها', flush: true, body: `<ul class="list-group">${articles.slice(0, 8).map((article) => `<li class="list-item list-item--interactive"><i class="bi bi-file-earmark-text"></i><span class="list-item__title">${escapeHtml(article.title)}<span class="list-item__sub">${escapeHtml(article.topic ?? '')}</span></span><span class="list-item__meta"><button class="btn btn-soft-primary btn-sm" type="button" data-rate="${escapeHtml(article.id)}">مفید بود</button></span></li>`).join('')}</ul>` })}
       </div>`,
     );
@@ -1078,9 +1055,9 @@ export async function initSystemPages() {
         ${pageHeader({ title: name === 'privacy' ? 'سیاست حفظ حریم خصوصی' : 'قوانین و شرایط استفاده', subtitle: `آخرین به‌روزرسانی: ${formatDate(new Date(), { format: 'long' })}`, icon: 'file-earmark-lock' })}
         <div class="grid grid--sidebar">
           ${card({ body: `<div class="legal-body">${(sections ?? [])
-            .map((section, index) => `<section><h2 id="legal-${index}">${escapeHtml(section.title)}</h2><p>${escapeHtml(section.text ?? '')}</p></section>`)
+            .map((section, index) => `<section><h2 id="legal-${index}">${escapeHtml(section.heading ?? section.title)}</h2><p>${escapeHtml(section.body ?? section.text ?? '')}</p></section>`)
             .join('')}</div>` })}
-          ${card({ title: 'فهرست مطالب', body: `<div class="legal-toc">${(sections ?? []).map((section, index) => `<a href="#legal-${index}">${escapeHtml(section.title)}</a>`).join('')}</div>` })}
+          ${card({ title: 'فهرست مطالب', body: `<div class="legal-toc">${(sections ?? []).map((section, index) => `<a href="#legal-${index}">${escapeHtml(section.heading ?? section.title)}</a>`).join('')}</div>` })}
         </div>
       </div>`,
     );
@@ -1094,21 +1071,77 @@ export async function initSystemPages() {
 
   // Error pages: 404 / 403 / 500 / maintenance / offline / coming-soon
   const states = {
-    404: { title: 'صفحه پیدا نشد', text: 'نشانی وارد شده وجود ندارد یا جابجا شده است.', icon: 'compass', tone: 'primary', action: '<a class="btn btn-primary" href="index.html">بازگشت به داشبورد</a>' },
-    403: { title: 'دسترسی مجاز نیست', text: 'حساب شما اجازه مشاهده این بخش را ندارد.', icon: 'shield-lock', tone: 'danger', action: '<a class="btn btn-primary" href="dashboards/analytics.html">بازگشت به داشبورد</a>' },
-    500: { title: 'خطای سرور', text: 'مشکلی در پردازش درخواست رخ داد. لطفاً دوباره تلاش کنید.', icon: 'bug', tone: 'danger', action: '<button class="btn btn-primary" type="button" data-retry-page>تلاش دوباره</button>' },
-    maintenance: { title: 'در حال به‌روزرسانی', text: 'برای ارتقای سرویس، دسترسی موقتاً محدود شده است.', icon: 'tools', tone: 'warning', action: '<a class="btn btn-primary" href="system/status.html">وضعیت سرویس‌ها</a>' },
-    offline: { title: 'اتصال اینترنت قطع است', text: 'پس از برقراری اتصال، داده‌ها به‌صورت خودکار همگام می‌شوند.', icon: 'wifi-off', tone: 'warning', action: '<button class="btn btn-primary" type="button" data-retry-page>بررسی دوباره</button>' },
-    'coming-soon': { title: 'به‌زودی', text: 'این بخش در نسخه‌های بعدی منتشر می‌شود.', icon: 'rocket-takeoff', tone: 'primary', action: '<a class="btn btn-light" href="index.html">بازگشت</a>' },
+    404: {
+      title: 'صفحه پیدا نشد',
+      text: 'نشانی وارد شده وجود ندارد یا جابجا شده است. می‌توانید از جستجوی سراسری استفاده کنید یا به داشبورد بازگردید.',
+      icon: 'compass',
+      tone: 'primary',
+      action: '<a class="btn btn-primary" href="index.html">بازگشت به داشبورد</a>',
+      hints: ['نشانی را دوباره بررسی کنید', 'از جستجوی سراسری (Ctrl + K) استفاده کنید', 'اگر از یک لینک قدیمی آمده‌اید، از منوی کنار صفحه مسیر تازه را پیدا کنید'],
+    },
+    403: {
+      title: 'دسترسی مجاز نیست',
+      text: 'نقش کاربری فعال شما اجازه مشاهده این بخش را ندارد. در صورت نیاز، از مدیر سیستم بخواهید سطح دسترسی را تغییر دهد.',
+      icon: 'shield-lock',
+      tone: 'danger',
+      action: '<a class="btn btn-primary" href="dashboards/analytics.html">بازگشت به داشبورد</a>',
+      hints: ['نقش‌ها و سطوح دسترسی در بخش نقش‌ها مدیریت می‌شوند', 'برای بررسی نشست‌های فعال به امنیت پروفایل سر بزنید'],
+    },
+    500: {
+      title: 'خطای سرور',
+      text: 'مشکلی در پردازش درخواست رخ داد. رخداد به‌صورت خودکار ثبت شد؛ چند لحظه بعد دوباره تلاش کنید.',
+      icon: 'bug',
+      tone: 'danger',
+      action: '<button class="btn btn-primary" type="button" data-retry-page>تلاش دوباره</button>',
+      hints: ['وضعیت سرویس‌ها را از صفحه وضعیت پیگیری کنید', 'در صورت تکرار، شناسه رخداد را به پشتیبانی بدهید'],
+    },
+    maintenance: {
+      title: 'در حال به‌روزرسانی',
+      text: 'برای ارتقای سرویس، دسترسی موقتاً محدود شده است. داده‌های شما امن است و پس از پایان کار همه چیز به‌حالت عادی بازمی‌گردد.',
+      icon: 'tools',
+      tone: 'warning',
+      action: '<a class="btn btn-primary" href="system/status.html">وضعیت سرویس‌ها</a>',
+      hints: ['زمان‌بندی به‌روزرسانی در صفحه وضعیت منتشر می‌شود'],
+    },
+    offline: {
+      title: 'اتصال اینترنت قطع است',
+      text: 'دسترسی به شبکه برقرار نیست. پس از وصل شدن اتصال، داده‌های نمایشی به‌صورت خودکار همگام می‌شوند.',
+      icon: 'wifi-off',
+      tone: 'warning',
+      action: '<button class="btn btn-primary" type="button" data-retry-page>بررسی دوباره</button>',
+      hints: ['اتصال Wi‑Fi یا داده موبایل را بررسی کنید', 'فیلترشکن یا پروکسی سازمانی می‌تواند مانع اتصال باشد'],
+    },
+    'coming-soon': {
+      title: 'به‌زودی',
+      text: 'این بخش در نسخه‌های بعدی منتشر می‌شود. برای اطلاع از زمان انتشار، خبرنامه محصول را دنبال کنید.',
+      icon: 'rocket-takeoff',
+      tone: 'primary',
+      action: '<a class="btn btn-light" href="index.html">بازگشت</a>',
+      hints: ['تغییرات نسخه‌ها در صفحه «تغییرات نسخه» ثبت می‌شود'],
+    },
   };
   const state = states[name] ?? states[404];
   render(
     node,
-    `<div class="status-hero status-hero--${state.tone}" style="flex-direction:column;text-align:center;padding-block:4rem">
-      <span class="status-hero__icon"><i class="bi bi-${state.icon}"></i></span>
-      <h1 class="status-hero__title">${escapeHtml(state.title)}</h1>
-      <p class="status-hero__text">${escapeHtml(state.text)}</p>
-      <div class="d-flex gap-2 justify-content-center">${state.action}<a class="btn btn-light" href="system/help-center.html">مرکز راهنما</a></div>
+    `<div class="dashboard-shell">
+      <div class="status-hero status-hero--${state.tone}" style="flex-direction:column;text-align:center;padding-block:3.5rem">
+        <span class="status-hero__icon"><i class="bi bi-${state.icon}"></i></span>
+        <h1 class="status-hero__title">${escapeHtml(state.title)}</h1>
+        <p class="status-hero__text">${escapeHtml(state.text)}</p>
+        <form class="input-group" data-error-search style="max-width:26rem;width:100%">
+          <input class="form-control" type="search" placeholder="جستجو در صفحات…" aria-label="جستجو">
+          <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">${state.action}<a class="btn btn-light" href="system/help-center.html">مرکز راهنما</a></div>
+      </div>
+      <div class="grid grid--3">
+        ${(state.hints ?? []).map((hint, index) => statCard({ label: `راهکار ${toDigits(index + 1)}`, value: `<span class="fs-body">${escapeHtml(hint)}</span>`, icon: ['check2-circle', 'search', 'headset'][index % 3], tone: ['success', 'info', 'primary'][index % 3] })).join('')}
+      </div>
+      <div class="grid grid--3">
+        <a class="demo-link" href="index.html"><i class="bi bi-house-door"></i> داشبورد</a>
+        <a class="demo-link" href="system/help-center.html"><i class="bi bi-life-preserver"></i> مرکز راهنما</a>
+        <a class="demo-link" href="system/contact.html"><i class="bi bi-envelope"></i> تماس با پشتیبانی</a>
+      </div>
     </div>`,
   );
   on($('[data-retry-page]', node), 'click', () => {
@@ -1142,8 +1175,8 @@ function compareTable(plans) {
  */
 export async function initWidgetsPage() {
   const node = host();
-  const [summary, series, activity, tasks, tickets] = await Promise.all([
-    statsFrom('orders'),
+  const [kpis, series, activity, tasks, tickets] = await Promise.all([
+    services.analyticsService.kpis('overview'),
     services.analyticsService.revenue({ range: '12m' }).catch(() => null),
     services.activityService.list({ perPage: 6 }),
     services.taskService.list({ perPage: 5 }),
@@ -1162,18 +1195,18 @@ export async function initWidgetsPage() {
         actions: `${toolButtons({})}<button class="btn btn-light" type="button" data-widget-edit><i class="bi bi-sliders"></i> شخصی‌سازی چیدمان</button>`,
       })}
       <div data-widget-editor hidden></div>
-      <div class="kpi-row">${summary.map((kpi) => statCard(kpi)).join('')}</div>
+      <div class="kpi-row">${kpiCards(kpis)}</div>
 
       <div class="widget-grid" id="widget-grid" data-widget-grid>
         <section class="card" data-widget="revenue-chart" data-widget-title="نمودار درآمد">
           <header class="card__head"><div><h2 class="card__title">نمودار درآمد ۱۲ ماه</h2><p class="card__subtitle">ناحیه‌ای با گرادیان پالت فعال</p></div>
             <div class="card__actions">${toolButtons({})}</div></header>
-          <div class="card__body">${chart({ key: 'widget-revenue', type: 'area', height: 300, series: [{ name: 'درآمد', data: series?.series?.[0]?.data ?? [42, 58, 51, 74, 63, 88, 71, 96, 82, 104, 92, 118] }], labels: series?.labels ?? months })}</div>
+          <div class="card__body">${chartBox({ key: 'widget-revenue', type: 'area', height: 300, series: [{ name: 'درآمد', data: series?.series?.[0]?.data ?? [42, 58, 51, 74, 63, 88, 71, 96, 82, 104, 92, 118] }], labels: series?.labels ?? months })}</div>
         </section>
 
         <section class="card" data-widget="device-split" data-widget-title="دستگاه‌ها">
           <header class="card__head"><div><h2 class="card__title">سهم دستگاه‌ها</h2><p class="card__subtitle">موبایل در صدر ترافیک ورودی</p></div></header>
-          <div class="card__body">${chart({ key: 'widget-devices', type: 'donut', height: 300, series: [58, 31, 11], labels: ['موبایل', 'دسکتاپ', 'تبلت'] })}</div>
+          <div class="card__body">${chartBox({ key: 'widget-devices', type: 'donut', height: 300, series: [58, 31, 11], labels: ['موبایل', 'دسکتاپ', 'تبلت'] })}</div>
         </section>
 
         <section class="card" data-widget="progress-goals" data-widget-title="اهداف">
@@ -1230,7 +1263,7 @@ export async function initWidgetsPage() {
           <header class="card__head"><div><h2 class="card__title">دسترسی سریع</h2><p class="card__subtitle">میان‌برهای پرکاربرد تیم</p></div></header>
           <div class="card__body">
             <div class="grid grid--2">${[['افزودن محصول', 'ecommerce/product-create.html', 'box-seam'], ['فاکتور جدید', 'finance/invoice-create.html', 'receipt'], ['کاربر جدید', 'users/create.html', 'person-plus'], ['گفتگوی هوشمند', 'ai/chat.html', 'chat-square-dots']]
-              .map(([label, url, icon]) => `<a class="tile tile--soft" href="${url}"><i class="bi bi-${icon}"></i><span>${label}</span></a>`)
+              .map(([label, url, icon]) => `<a class="tile tile--soft tile--icon" href="${url}"><i class="bi bi-${icon}"></i><span>${label}</span></a>`)
               .join('')}</div>
           </div>
         </section>
@@ -1241,4 +1274,4 @@ export async function initWidgetsPage() {
   initCharts(node);
 }
 
-export default { initLanding, initPreview, initSearchResults, initDocs, initSettings, initProfile, initUiKit, initAuth, initSystemPages, initWidgetsPage };
+export default { initLanding, initPreview, initSearchResults, initDocs, initSettings, initProfile, initAuth, initSystemPages, initWidgetsPage };

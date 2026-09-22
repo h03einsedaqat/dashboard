@@ -5,12 +5,32 @@
    row actions, selection column and a responsive card fallback for phones.
    ========================================================================== */
 
-.table-wrap {
+.table-wrap,
+.table-responsive {
   position: relative;
   width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* A visual hint that the table can be scrolled sideways on small screens. */
+@media (max-width: 767.98px) {
+  .table-wrap,
+  .table-responsive {
+    border-end-start-radius: var(--nv-radius-lg);
+    border-end-end-radius: var(--nv-radius-lg);
+  }
+  .table-wrap::after,
+  .table-responsive::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 1.5rem;
+    pointer-events: none;
+    background: linear-gradient(to var(--nv-gradient-dir, left), transparent, color-mix(in srgb, var(--nv-surface) 85%, transparent));
+  }
 }
 
 .table {

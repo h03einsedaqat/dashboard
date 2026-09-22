@@ -165,8 +165,17 @@ if (legacy.length) fail('legacy', `${legacy.length} legacy markers (jQuery / dat
 
 /* ---------------------------------------------------------- 3. css coverage */
 
-const css = cssFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
-// Class selectors as written by the compiler: .foo, .foo\,bar, .foo:hover
+/**
+ * Class inventory. The compiled bundle is the primary source (it also carries
+ * Bootstrap's utilities), but the SCSS sources are merged in so the check never
+ * depends on how fresh `dist/` is: a class defined in a partial that has not
+ * been rebuilt yet still counts as styled.
+ */
+const scssFiles = walk(path.join(ROOT, 'src/scss'), (name) => name.endsWith('.scss'));
+const stripScssComments = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+const css = [...cssFiles, ...scssFiles].map((file) => stripScssComments(fs.readFileSync(file, 'utf8'))).join('\n');
+// Class selectors as written by the compiler: .foo, .foo\\,bar, .foo:hover
 const cssClasses = new Set([...css.matchAll(/\.((?:\\.|[A-Za-z0-9_-])+)/g)].map((m) => m[1].replace(/\\/g, '')));
 
 /** Classes that are intentionally behaviour-only (toggled by JS, styled elsewhere). */
@@ -228,6 +237,39 @@ if (unstyledJs.length) {
   fail('css.js', `${unstyledJs.length} classes used by controllers have no CSS rule:\n    ${unstyledJs.map(([n, c]) => `${n} (${c}×)`).join(', ')}`);
 }
 
+/* -------------------------------------------------------- 3c. icon names -- */
+
+/**
+ * Bootstrap Icons renders a glyph through the `.bi-<name>::before` rule. A name
+ * that does not exist in the font shows up as an empty box in the browser, so
+ * every `bi bi-…` class in the built pages is checked against the shipped
+ * stylesheet. Dynamic class names (`bi-arrow-${dir}-short`) end with `-` and are
+ * skipped here; their concrete values are covered by the source scan in 3b.
+ */
+const iconSheetPath = path.join(ROOT, 'node_modules/bootstrap-icons/font/bootstrap-icons.css');
+if (fs.existsSync(iconSheetPath)) {
+  const iconSheet = fs.readFileSync(iconSheetPath, 'utf8');
+  const iconNames = new Set([...iconSheet.matchAll(/\.bi-([a-z0-9-]+)::before/g)].map((m) => m[1]));
+  const badIcons = new Set();
+  const checkIcons = (source) => {
+    for (const match of source.matchAll(/class=\\?["'`]([^"'`]*)/g)) {
+      for (const className of match[1].split(/\s+/)) {
+        if (!className.startsWith('bi-') || className.endsWith('-')) continue;
+        // `${…}` inside a template literal is data, not a literal icon name.
+        if (/[$`{}]/.test(className)) continue;
+        const name = className.slice(3);
+        if (!iconNames.has(name)) badIcons.add(name);
+      }
+    }
+  };
+  for (const file of htmlFiles) checkIcons(stripCodeSamples(fs.readFileSync(file, 'utf8')));
+  for (const file of walk(path.join(ROOT, 'src/js'), (name) => name.endsWith('.js'))) checkIcons(fs.readFileSync(file, 'utf8'));
+  if (badIcons.size) fail('icons', `${badIcons.size} bootstrap-icon names do not exist in the shipped font: ${[...badIcons].slice(0, 20).join(', ')}`);
+  else console.log(`  icons   ${iconNames.size} glyphs available / every referenced name resolves`);
+} else {
+  warn('icons', 'bootstrap-icons stylesheet not found — icon names were not verified');
+}
+
 /* -------------------------------------------------------- 4. js & console -- */
 
 const consoleLeftovers = [];
@@ -245,8 +287,9 @@ for (const file of cssFiles) {
   const text = fs.readFileSync(file, 'utf8');
   const dir = path.posix.dirname(rel(file));
   for (const match of text.matchAll(/url\((['"]?)([^'")]+)\1\)/g)) {
-    const url = match[2];
-    if (/^(?:data:|https?:|\/\/|#)/.test(url)) continue;
+    // Font files carry a cache-busting query string (`…woff2?e3485313`).
+    const url = match[2].split(/[?#]/)[0];
+    if (!url || /^(?:data:|https?:|\/\/|#)/.test(url)) continue;
     const resolved = path.posix.normalize(path.posix.join(dir, url));
     if (!fs.existsSync(path.join(DIST, resolved))) missingFontRefs.push(`${url} (from ${rel(file)})`);
   }

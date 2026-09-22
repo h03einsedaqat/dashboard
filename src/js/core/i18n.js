@@ -22,8 +22,13 @@ const state = {
   fallback: getLocale('fa'),
 };
 
-/** Resolves a dotted key (`table.noResults`) inside the active dictionary. */
+/**
+ * Resolves a dotted key (`table.noResults`) inside the active dictionary.
+ * Generated nav labels are stored as flat entries with their full dotted key
+ * (`dict['nav.dash-analytics']`), so those win before the nested walk.
+ */
 function lookup(dict, path) {
+  if (dict && typeof dict[path] === 'string') return dict[path];
   return String(path)
     .split('.')
     .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), dict);

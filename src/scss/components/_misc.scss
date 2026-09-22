@@ -394,6 +394,12 @@
   color: var(--nv-heading);
   font-size: var(--nv-text-body-sm);
 }
+.changelog-item__highlights {
+  margin-block: var(--nv-space-2) 0;
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-body-sm);
+}
+
 .changelog-item__date {
   display: block;
   font-size: var(--nv-text-micro);
@@ -607,6 +613,12 @@
 }
 
 /* ------------------------------------------------------------------- misc */
+/* Wrapper for a stack of `infoRows()` blocks (details panes, settings summary). */
+.info-rows {
+  display: grid;
+  gap: 0;
+}
+
 .info-row {
   display: flex;
   align-items: center;

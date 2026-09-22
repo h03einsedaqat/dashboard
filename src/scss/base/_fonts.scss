@@ -10,6 +10,11 @@
    fingerprinted into assets/fonts on build). */
 @import 'vazirmatn/Vazirmatn-Variable-font-face.css';
 
+/* Bootstrap Icons (MIT) — the glyph font behind every <i class="bi bi-*"> in
+   the template. Resolved from node_modules so the woff2 is emitted into
+   assets/fonts and no page depends on a CDN. */
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;

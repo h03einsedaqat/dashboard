@@ -369,3 +369,56 @@
     height: 3rem;
   }
 }
+
+/* ----------------------------------------------------------------- loading --
+   `.is-loading` is the shared busy state (`core/form.js` sets it on submit
+   buttons while a request is in flight, `calendar.js` on save actions). The
+   label stays readable and the action is locked, so a double click can never
+   fire the same request twice. */
+.btn.is-loading,
+.icon-btn.is-loading {
+  pointer-events: none;
+  cursor: progress;
+}
+
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: var(--nv-space-3);
+  inset-block-start: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-block-start: -0.42rem;
+  border: 2px solid currentColor;
+  border-block-start-color: transparent;
+  border-radius: 50%;
+  opacity: 0.75;
+  animation: nv-spin 0.7s linear infinite;
+}
+
+.btn.is-loading {
+  position: relative;
+  padding-inline-end: calc(var(--nv-space-3) * 2 + 0.85rem);
+  opacity: 0.85;
+}
+
+.btn.is-loading:has(.spinner)::after {
+  content: none;
+}
+
+.icon-btn.is-loading i {
+  animation: nv-spin 0.7s linear infinite;
+}
+
+@keyframes nv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-loading::after,
+  .icon-btn.is-loading i {
+    animation-duration: 2s;
+  }
+}

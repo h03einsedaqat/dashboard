@@ -20,6 +20,7 @@ import { toast } from './toast.js';
 import { modal } from './modal.js';
 import * as jdate from './jalali.js';
 import { toDigits, formatNumber } from './numbers.js';
+import { createSortable } from './dragdrop.js';
 
 const state = new WeakMap();
 
@@ -282,11 +283,10 @@ function paintMini(instance) {
 async function bindDrag(instance) {
   const draggables = $$('[data-calendar-event]', instance.root);
   if (!draggables.length) return;
-  const { default: Sortable } = await import('sortablejs');
-  $$('[data-calendar-day], [data-calendar-slot]', instance.root).forEach((zone) => {
+  $$('[data-calendar-day], [data-calendar-slot]', instance.root).forEach(async (zone) => {
     if (zone.dataset.sortableReady === '1') return;
     zone.dataset.sortableReady = '1';
-    Sortable.create(zone, {
+    const sortable = await createSortable(zone, {
       group: 'nova-calendar',
       animation: 140,
       draggable: '[data-calendar-event]',
@@ -312,6 +312,7 @@ async function bindDrag(instance) {
         }
       },
     });
+    if (!sortable) zone.dataset.sortableReady = '0';
   });
 }
 

@@ -37,6 +37,17 @@ function inlineIncludes(html, partialDir, warn, depth = 0, stack = []) {
   });
 }
 
+/**
+ * Resolves `@include` + `{{TOKEN}}` for a page document.
+ * Shared by the Vite plugin and the offline tooling (`build-pages`, `smoke`) so
+ * that the generated files, the dev server and the test harness all work on the
+ * exact same markup.
+ */
+export function renderPageHtml(html, { partialDir = 'src/partials', warn = console.warn } = {}) {
+  const partialAbs = path.resolve(process.cwd(), partialDir);
+  return applyTokens(inlineIncludes(html, partialAbs, warn));
+}
+
 /** Replace `{{TOKEN}}` placeholders using the product config. */
 export function applyTokens(html) {
   const tokens = {

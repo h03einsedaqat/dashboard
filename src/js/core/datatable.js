@@ -600,11 +600,11 @@ function renderFoot(instance, result) {
           ${[10, 20, 50, 100].map((size) => `<option value="${size}" ${size === state.perPage ? 'selected' : ''}>${toDigits(size)} ردیف</option>`).join('')}
         </select>
         <nav class="pagination" role="navigation" aria-label="صفحه‌بندی">
-          <button type="button" class="page-item ${state.page === 1 ? 'disabled' : ''}" data-page="first" aria-label="صفحه اول"><i class="bi bi-chevron-double-right" aria-hidden="true"></i></button>
-          <button type="button" class="page-item ${state.page === 1 ? 'disabled' : ''}" data-page="${state.page - 1}" aria-label="قبلی"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
-          ${numbers.map((number) => `<button type="button" class="page-item ${number === state.page ? 'is-active' : ''}" data-page="${number}" ${number === state.page ? 'aria-current="page"' : ''}>${toDigits(number)}</button>`).join('')}
-          <button type="button" class="page-item ${state.page >= pages ? 'disabled' : ''}" data-page="${state.page + 1}" aria-label="بعدی"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
-          <button type="button" class="page-item ${state.page >= pages ? 'disabled' : ''}" data-page="last" aria-label="صفحه آخر"><i class="bi bi-chevron-double-left" aria-hidden="true"></i></button>
+          <button type="button" class="page-item ${state.page === 1 ? 'is-disabled' : ''}" data-page="first" data-nav="first" ${state.page === 1 ? 'disabled' : ''} aria-label="صفحه اول"><span class="page-link"><i class="bi bi-chevron-double-right" aria-hidden="true"></i></span></button>
+          <button type="button" class="page-item ${state.page === 1 ? 'is-disabled' : ''}" data-page="${state.page - 1}" data-nav="prev" ${state.page === 1 ? 'disabled' : ''} aria-label="صفحه قبلی"><span class="page-link"><i class="bi bi-chevron-right" aria-hidden="true"></i></span></button>
+          ${numbers.map((number) => `<button type="button" class="page-item ${number === state.page ? 'is-active' : ''}" data-page="${number}" ${number === state.page ? 'aria-current="page"' : ''}><span class="page-link">${toDigits(number)}</span></button>`).join('')}
+          <button type="button" class="page-item ${state.page >= pages ? 'is-disabled' : ''}" data-page="${state.page + 1}" data-nav="next" ${state.page >= pages ? 'disabled' : ''} aria-label="صفحه بعدی"><span class="page-link"><i class="bi bi-chevron-left" aria-hidden="true"></i></span></button>
+          <button type="button" class="page-item ${state.page >= pages ? 'is-disabled' : ''}" data-page="last" data-nav="last" ${state.page >= pages ? 'disabled' : ''} aria-label="صفحه آخر"><span class="page-link"><i class="bi bi-chevron-double-left" aria-hidden="true"></i></span></button>
         </nav>
       </div>`,
     );

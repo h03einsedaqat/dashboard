@@ -222,3 +222,43 @@
   font-size: 2rem;
   color: var(--nv-danger);
 }
+
+/* Closable alert. `.alert__close` is the in-alert action; `[data-alert-close]`
+   is wired by the delegated handler in `core/ui.js`. */
+.alert--dismissible,
+.alert[data-alert] {
+  position: relative;
+  padding-inline-end: var(--nv-space-10);
+}
+
+.alert__close {
+  position: absolute;
+  inset-block-start: var(--nv-space-3);
+  inset-inline-end: var(--nv-space-3);
+  display: inline-grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-radius: var(--nv-radius-sm);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: var(--nv-transition);
+}
+
+.alert__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  opacity: 1;
+}
+
+[data-theme='dark'] .alert__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.alert.is-hiding {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease);
+}

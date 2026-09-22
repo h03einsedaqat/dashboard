@@ -19,6 +19,9 @@
   object-fit: cover;
   user-select: none;
 }
+.avatar--md {
+  --avatar-size: 2.5rem;
+}
 .avatar--sm {
   --avatar-size: 2rem;
 }
@@ -47,6 +50,10 @@
   border: 1px solid var(--nv-border);
 }
 
+.avatar--soft-neutral {
+  background: var(--nv-neutral-soft);
+  color: var(--nv-neutral-soft-fg);
+}
 .avatar--soft-primary {
   background: var(--nv-primary-soft);
   color: var(--nv-primary-soft-fg);

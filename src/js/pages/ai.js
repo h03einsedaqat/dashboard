@@ -640,7 +640,7 @@ async function aiScheduler() {
         <div class="card__body" data-scheduler-list>${(jobs.items ?? jobs)
           .map(
             (job) => `<div class="list-item" data-job="${escapeHtml(job.id)}">
-              <span class="tile tile--soft"><i class="bi bi-clock-history"></i></span>
+              <span class="tile tile--soft tile--icon"><i class="bi bi-clock-history"></i></span>
               <span class="list-item__title">${escapeHtml(job.name)}<span class="list-item__sub">${escapeHtml(job.cron ?? '')} • مدل ${escapeHtml(job.model ?? '')}</span></span>
               <span class="list-item__meta">${toDigits(job.runs ?? 0)} اجرا • ${job.lastRun ? relativeTime(job.lastRun) : 'بدون اجرا'}</span>
               <span class="badge badge--soft-${job.status === 'paused' ? 'warning' : 'success'}">${job.status === 'paused' ? 'متوقف' : 'فعال'}</span>
@@ -691,7 +691,7 @@ async function aiModels() {
         .map(
           (model) => `<article class="card card--interactive">
             <div class="card__body">
-              <div class="d-flex align-items-center gap-3"><span class="tile tile--soft tile--primary"><i class="bi bi-cpu"></i></span>
+              <div class="d-flex align-items-center gap-3"><span class="tile tile--soft tile--primary tile--icon"><i class="bi bi-cpu"></i></span>
                 <div><h3 class="card__title">${escapeHtml(model.name)}</h3><p class="card__subtitle">${escapeHtml(model.provider ?? '')}</p></div>
                 <span class="badge badge--soft-${model.status === 'active' ? 'success' : 'neutral'} ms-auto">${model.status === 'active' ? 'فعال' : 'غیرفعال'}</span></div>
               ${infoRows([
@@ -864,7 +864,7 @@ async function aiDashboard() {
       <div class="grid grid--2">
         ${card({ title: 'گفتگوهای اخیر', flush: true, body: `<ul class="list-group">${conversations
           .slice(0, 5)
-          .map((conversation) => `<li class="list-item"><span class="tile tile--soft"><i class="bi bi-chat-square-text"></i></span><span class="list-item__title">${escapeHtml(conversation.title)}<span class="list-item__sub">${relativeTime(conversation.updatedAt ?? conversation.createdAt)}</span></span><span class="list-item__meta"><a class="btn btn-ghost btn-sm" href="ai/chat.html">ادامه</a></span></li>`)
+          .map((conversation) => `<li class="list-item"><span class="tile tile--soft tile--icon"><i class="bi bi-chat-square-text"></i></span><span class="list-item__title">${escapeHtml(conversation.title)}<span class="list-item__sub">${relativeTime(conversation.updatedAt ?? conversation.createdAt)}</span></span><span class="list-item__meta"><a class="btn btn-ghost btn-sm" href="ai/chat.html">ادامه</a></span></li>`)
           .join('')}</ul>` })}
         ${card({ title: 'مدل‌های متصل', flush: true, body: `<ul class="list-group">${(models.items ?? models)
           .map((model) => `<li class="list-item"><span class="status-dot status-dot--${model.status === 'active' ? 'online' : 'offline'}"></span><span class="list-item__title">${escapeHtml(model.name)}<span class="list-item__sub">${escapeHtml(model.provider ?? '')}</span></span><span class="list-item__meta">${formatNumber(model.contextWindow ?? 0)} توکن</span></li>`)

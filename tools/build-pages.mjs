@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sidebar, extraPages } from './manifest.mjs';
 import { renderNav, flatten, trailFor, slug, href } from './nav.mjs';
+import { renderPageHtml } from './nova-plugin.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES_DIR = path.join(ROOT, 'src/pages');
@@ -88,6 +89,16 @@ function readBody(page) {
 
 function defaultBody(page) {
   const title = esc(page.label.fa);
+  if (page.kind === 'dashboard') {
+    /**
+     * Dashboard pages are rendered by the dashboard harness
+     * (`js/pages/generic.js` → `dashboardHarness`) which paints KPI cards,
+     * charts, the widget editor, range presets and the activity feed for the
+     * matching slug.
+     */
+    const slug = page.url.split('/').pop()?.replace('.html', '') ?? 'analytics';
+    return `<div data-app="dashboard" data-resource="${page.resource || slug}" data-slug="${slug}" data-title="${title}"></div>`;
+  }
   if (page.kind === 'list') {
     return `<div data-app="table" data-resource="${page.resource || 'generic'}" data-title="${title}"></div>`;
   }
@@ -310,6 +321,23 @@ function buildLocaleData() {
     nav.en[key] = section.label.en;
     nav.ar[key] = section.label.ar;
   }
+  /**
+   * Groups, superseded ids and nested detail pages are not part of the
+   * flattened page list, yet the sidebar and breadcrumbs still hook them with
+   * `data-i18n="nav.<id>"`. Emitting a label for *every* node in the tree keeps
+   * the language switch complete.
+   */
+  const walkNav = (items) => {
+    for (const item of items) {
+      if (item.id && item.label) {
+        nav.fa[`nav.${item.id}`] = item.label.fa;
+        nav.en[`nav.${item.id}`] = item.label.en;
+        nav.ar[`nav.${item.id}`] = item.label.ar;
+      }
+      if (item.children) walkNav(item.children);
+    }
+  };
+  for (const section of sidebar) walkNav(section.items);
   for (const page of pages) {
     navFaLabels[page.url] = page.label.fa;
   }
@@ -403,9 +431,17 @@ ${body}
 }
 
 /* ----------------------------------------------------------------- write */
+/**
+ * Writes a page with `@include` directives and `{{TOKEN}}` placeholders already
+ * resolved, so the files on disk are complete standalone documents: the dev
+ * server, the production build, the smoke harness and the QA pass all read the
+ * same markup (`{{ROOT}}` is still resolved later by the Vite plugin, because it
+ * depends on the depth of the built page).
+ */
 function write(file, contents) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, contents, 'utf8');
+  const resolved = renderPageHtml(contents, { warn: (msg) => console.warn(`  ⚠ ${msg}`) });
+  fs.writeFileSync(file, resolved, 'utf8');
 }
 
 function main() {

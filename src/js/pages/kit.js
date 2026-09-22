@@ -22,13 +22,60 @@ import { formatDate, relativeTime } from '../core/jalali.js';
 import { createDataTable } from '../core/datatable.js';
 import { createChart } from '../core/charts.js';
 import { validateForm, validateField } from '../core/form.js';
-import * as services from '../../services/index.js';
+import * as serviceModule from '../../services/index.js';
+
+/**
+ * Normalises a service payload to an array. Collections come back in three
+ * shapes across the mock layer (`{items}`, `{rows}` or a bare array); pages
+ * should not care which one a given service uses.
+ */
+export const asRows = (payload) =>
+  Array.isArray(payload) ? payload : (payload?.items ?? payload?.rows ?? payload?.data ?? []);
+
+/**
+ * Loads a record for a details page.
+ *
+ * `?id=…` (how the app links between screens) is resolved exactly; when the
+ * caller did not pass an id — the visitor opened the page from the sidebar —
+ * the first record of the collection is shown instead, so a details screen is
+ * never an empty error page in the demo. `isSample` tells the caller which of
+ * the two happened, and an id that does not exist still reports a real error.
+ *
+ * @returns {Promise<{ record: Object|null, isSample: boolean, notFound: boolean }>}
+ */
+export async function sampleRecord(resource, id = '') {
+  const service = services.default[resource];
+  if (!service) return { record: null, isSample: false, notFound: false };
+  if (id) {
+    try {
+      const record = service.get ? await service.get(id) : null;
+      if (record) return { record, isSample: false, notFound: false };
+      return { record: null, isSample: false, notFound: true };
+    } catch {
+      return { record: null, isSample: false, notFound: true };
+    }
+  }
+  try {
+    const payload = service.list ? await service.list({ perPage: 1 }) : null;
+    const record = asRows(payload)[0] ?? null;
+    return { record, isSample: Boolean(record), notFound: !record };
+  } catch {
+    return { record: null, isSample: false, notFound: true };
+  }
+}
 
 export const params = () => new URLSearchParams(window.location.search);
 export const queryParam = (name, fallback = '') => params().get(name) ?? fallback;
 export const pageId = () => document.body.dataset.page ?? '';
+/**
+ * Unified service surface for page code. The registry keys (`services.projects`,
+ * `services.apiKeys`) and the named instances (`services.projectService`) are
+ * both available, so pages may use whichever reads better. `services.default`
+ * stays for backwards compatibility.
+ */
+export const services = { ...serviceModule, ...serviceModule.default };
+
 export const resourceFor = (name) => services.default[name] ?? null;
-export { services };
 
 /* --------------------------------------------------------------- primitives */
 
@@ -52,6 +99,27 @@ export function statCard({ label = '', value = '', meta = '', trend = null, icon
     ${meta || trend !== null ? `<div class="stat-card__meta">${trend !== null ? `<span class="trend trend--${trend > 0 ? 'up' : trend < 0 ? 'down' : 'flat'}"><i class="bi bi-arrow-${trend > 0 ? 'up' : trend < 0 ? 'down' : 'right'}-short"></i>${formatPercent(Math.abs(trend), { decimals: 1 })}</span>` : ''}<span>${meta}</span></div>` : ''}
     ${spark ? `<div class="stat-card__spark" data-chart="sparkline" data-chart-height="46" data-chart-series='${JSON.stringify([{ name: label, data: spark }])}'></div>` : ''}
   </article>`;
+}
+
+/**
+ * KPI strip built straight from `analyticsService.kpis()` so the widget
+ * catalogue shows exactly the same cards the dashboards render.
+ */
+export function kpiCards(kpis = []) {
+  return `<div class="kpi-row">${kpis
+    .map((kpi) =>
+      statCard({
+        label: kpi.label,
+        value: kpiValue(kpi),
+        meta: kpi.meta ?? kpi.hint ?? '',
+        trend: Number.isFinite(kpi.delta) ? kpi.delta : null,
+        icon: kpi.icon ?? 'graph-up',
+        tone: kpi.tone ?? 'primary',
+        spark: kpi.spark ?? null,
+        id: kpi.id ?? '',
+      }),
+    )
+    .join('')}</div>`;
 }
 
 export function infoRows(rows) {
@@ -239,6 +307,15 @@ export function crudList({ root = document, resource, title, fields, subtitle = 
 }
 
 /* ------------------------------------------------------------------ charts */
+
+/**
+ * Chart placeholder markup for template strings. Page code composes markup as
+ * strings, so this is the string-shaped sibling of `chart(node, options)`:
+ * it emits the `data-chart-*` contract that `core/charts.js` mounts later.
+ */
+export function chartBox({ key = '', type = 'area', height = 320, series = [], labels = [], className = '' } = {}) {
+  return `<div class="chart${className ? ` ${className}` : ''}"${key ? ` data-chart-key="${escapeHtml(key)}"` : ''} data-chart="${escapeHtml(type)}" data-chart-height="${escapeHtml(String(height))}" data-chart-series='${JSON.stringify(series)}' data-chart-labels='${JSON.stringify(labels)}'></div>`;
+}
 
 export async function chart(node, options = {}) {
   if (!node) return null;

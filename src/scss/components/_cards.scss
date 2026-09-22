@@ -204,6 +204,46 @@
   border-color: transparent;
   background: var(--nv-surface-3);
 }
+/* Icon tile: a compact square used for module/role icons in lists and cards. */
+.tile--icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  flex: 0 0 auto;
+  border-radius: var(--nv-radius-md);
+  font-size: 1.05rem;
+}
+.tile--primary {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.tile--success {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.tile--warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.tile--danger {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.tile--info {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.tile--violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme='dark'] .tile--violet {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+
 .tile__label {
   font-size: var(--nv-text-micro);
   color: var(--nv-text-muted);

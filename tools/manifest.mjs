@@ -228,7 +228,7 @@ export const sidebar = [
           { id: 'users-departments', label: L('دپارتمان‌ها', 'Departments', 'الأقسام'), icon: 'diagram-3', url: 'users/departments.html', resource: 'departments', kind: 'list' },
           { id: 'users-invitations', label: L('دعوت‌نامه‌ها', 'Invitations', 'الدعوات'), icon: 'envelope-paper', url: 'users/invitations.html', resource: 'invitations', kind: 'list' },
           { id: 'users-activity', label: L('فعالیت کاربران', 'Activity Log', 'سجل النشاط'), icon: 'activity', url: 'users/activity.html', resource: 'activities', kind: 'app' },
-          { id: 'users-sessions', label: L('نشست‌ها', 'Sessions', 'الجلسات'), icon: 'device-desktop', url: 'users/sessions.html', resource: 'sessions', kind: 'list' },
+          { id: 'users-sessions', label: L('نشست‌ها', 'Sessions', 'الجلسات'), icon: 'pc-display', url: 'users/sessions.html', resource: 'sessions', kind: 'list' },
         ],
       },
       {
@@ -305,7 +305,7 @@ export const sidebar = [
           { id: 'profile-invoices', label: L('فاکتورها', 'Invoices', 'الفواتير'), icon: 'receipt', url: 'profile/invoices.html', resource: 'invoices', kind: 'list' },
           { id: 'profile-documents', label: L('اسناد', 'Documents', 'المستندات'), icon: 'folder2', url: 'profile/documents.html', kind: 'app' },
           { id: 'profile-security', label: L('امنیت', 'Security', 'الأمان'), icon: 'shield-lock', url: 'profile/security.html', kind: 'app' },
-          { id: 'profile-sessions', label: L('نشست‌های فعال', 'Active Sessions', 'الجلسات النشطة'), icon: 'device-desktop', url: 'profile/sessions.html', resource: 'sessions', kind: 'list' },
+          { id: 'profile-sessions', label: L('نشست‌های فعال', 'Active Sessions', 'الجلسات النشطة'), icon: 'pc-display', url: 'profile/sessions.html', resource: 'sessions', kind: 'list' },
           { id: 'profile-keys', label: L('کلیدهای API', 'API Keys', 'مفاتيح API'), icon: 'key', url: 'profile/api-keys.html', kind: 'app' },
           { id: 'profile-notifications', label: L('اعلان‌ها', 'Notifications', 'الإشعارات'), icon: 'bell', url: 'profile/notifications.html', kind: 'app' },
         ],

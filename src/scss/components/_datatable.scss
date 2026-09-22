@@ -142,6 +142,10 @@
 }
 .page-item {
   display: inline-flex;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
 }
 .page-link {
   display: inline-grid;
@@ -168,9 +172,37 @@
   color: var(--nv-primary-contrast);
   font-weight: var(--nv-fw-semibold);
 }
-.page-item.is-disabled .page-link {
-  opacity: 0.45;
+.page-item.is-disabled .page-link,
+.page-item:disabled .page-link,
+.page-item[disabled] .page-link {
+  opacity: 0.42;
   pointer-events: none;
+}
+.page-item:focus-visible {
+  outline: none;
+}
+.page-item:focus-visible .page-link {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+}
+.page-item:not(.is-active):not(.is-disabled):active .page-link {
+  transform: translateY(1px);
+}
+
+/* Chevrons follow the writing direction: `first/prev` point to the start of
+   the reading order, `next/last` to its end. */
+[dir='ltr'] .pagination [data-nav='first'] .page-link i,
+[dir='ltr'] .pagination [data-nav='prev'] .page-link i,
+[dir='rtl'] .pagination [data-nav='next'] .page-link i,
+[dir='rtl'] .pagination [data-nav='last'] .page-link i {
+  transform: scaleX(-1);
+}
+
+/* Compact pagination for cards and side panels */
+.pagination--compact .page-link {
+  min-width: 1.85rem;
+  height: 1.85rem;
+  font-size: var(--nv-text-micro);
 }
 .page-item--ellipsis .page-link {
   cursor: default;

@@ -13,6 +13,7 @@ import { storage } from './storage.js';
 import { initCharts } from './charts.js';
 import * as jdate from './jalali.js';
 import { formatNumber, toDigits } from './numbers.js';
+import { createSortable } from './dragdrop.js';
 
 /* ---------------------------------------------------------------------- tabs */
 function initTabs(root = document) {
@@ -84,6 +85,26 @@ function initFilterBars(root = document) {
   });
 }
 
+/* -------------------------------------------------------- dismissible alerts */
+/**
+ * `<div class="alert" data-alert>` with a `[data-alert-close]` button fades out
+ * and is removed from the flow. Used by the alert component page and by any
+ * notification-style message a page injects.
+ */
+function initAlerts(root = document) {
+  on(root, 'click', (event) => {
+    const close = event.target.closest('[data-alert-close]');
+    if (!close) return;
+    const alertNode = close.closest('.alert');
+    if (!alertNode) return;
+    alertNode.classList.add('is-hiding');
+    const remove = () => alertNode.remove();
+    alertNode.addEventListener('transitionend', remove, { once: true });
+    window.setTimeout(remove, 320); // fallback for reduced-motion users
+    bus.emit('alert:dismissed', { text: alertNode.textContent.trim().slice(0, 80) });
+  });
+}
+
 /* -------------------------------------------------------------- copy buttons */
 function initCopyButtons(root = document) {
   on(root, 'click', async (event) => {
@@ -146,11 +167,10 @@ function initViewSwitches(root = document) {
 async function initSortables(root = document) {
   const lists = $$('[data-sortable]', root);
   if (!lists.length) return;
-  const { default: Sortable } = await import('sortablejs');
-  lists.forEach((list) => {
+  lists.forEach(async (list) => {
     if (list.dataset.sortableReady === '1') return;
     list.dataset.sortableReady = '1';
-    Sortable.create(list, {
+    const sortable = await createSortable(list, {
       animation: 160,
       handle: '[data-drag-handle]',
       ghostClass: 'is-ghost',
@@ -161,6 +181,7 @@ async function initSortables(root = document) {
         bus.emit('sortable:change', { list: list.dataset.sortable, order });
       },
     });
+    if (!sortable) list.dataset.sortableReady = '0';
   });
 }
 
@@ -302,6 +323,7 @@ export function initUi(root = document) {
   initTabs(root);
   initAccordion(root);
   initFilterBars(root);
+  initAlerts(root);
   initCopyButtons(root);
   initTooltips(root);
   initViewSwitches(root);

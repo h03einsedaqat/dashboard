@@ -30,7 +30,16 @@ const merged = Object.fromEntries(
     code,
     {
       ...dict,
-      nav: navLabels[code] ?? {},
+      // The generator writes nav labels as a flat map with dotted keys
+      // (`'nav.dash-analytics'`), so they are spread at the root *and* kept
+      // under `nav` for direct lookups.
+      ...(navLabels[code] ?? {}),
+      // Shell-owned nav keys (`nav.home` …) from chrome.js, prefixed so they
+      // resolve through both the flat and the nested lookup.
+      ...Object.fromEntries(
+        Object.entries(chromeStrings[code]?.nav ?? {}).map(([key, value]) => [`nav.${key}`, value]),
+      ),
+      nav: { ...(chromeStrings[code]?.nav ?? {}), ...(navLabels[code] ?? {}) },
       pages: pageTitles[code] ?? {},
       ui: { ...(chromeStrings[code]?.ui ?? {}), ...(dict.ui ?? {}) },
       section: { ...(chromeStrings[code]?.section ?? {}), ...(dict.section ?? {}) },

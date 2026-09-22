@@ -23,7 +23,6 @@
     "dev": "npm run gen:all && vite --host 0.0.0.0",
     "build": "npm run gen:all && vite build && node tools/flatten-dist.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "gen:all": "npm run gen:docs && npm run gen:pages && npm run gen:assets && npm run gen:nav",
     "gen:docs": "node tools/gen-docs.mjs",
     "gen:pages": "node tools/build-pages.mjs --mode build",
     "gen:assets": "node tools/gen-assets.mjs",
@@ -32,7 +31,9 @@
     "qa:links": "node tools/qa-links.mjs",
     "qa:smoke": "node tools/gen-docs.mjs && node tools/build-pages.mjs --mode build && node tools/smoke.mjs",
     "qa:responsive": "node tools/qa-responsive.mjs",
-    "package": "node tools/package.mjs"
+    "qa:i18n": "node tools/qa-i18n.mjs",
+    "package": "node tools/package.mjs",
+    "gen:all": "npm run gen:docs && npm run gen:pages && npm run gen:assets && npm run gen:nav"
   },
   "dependencies": {
     "apexcharts": "^3.54.1",

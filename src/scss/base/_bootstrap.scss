@@ -168,7 +168,10 @@ $utilities: map-merge(
 @import 'bootstrap/scss/images';
 @import 'bootstrap/scss/containers';
 @import 'bootstrap/scss/grid';
-@import 'bootstrap/scss/tables';
+/* NOTE: Bootstrap's table partial is intentionally *not* imported — the
+   template ships its own table system (see components/_tables.scss) and mixing
+   the two made cells inherit Bootstrap's quieter padding and transparent
+   background. `.table-responsive` is re-implemented there. */
 @import 'bootstrap/scss/transitions';
 
 /* JS components */

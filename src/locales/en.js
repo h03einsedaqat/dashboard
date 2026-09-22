@@ -219,7 +219,7 @@ export default {
     calendars: { jalali: 'Jalali', gregorian: 'Gregorian' },
   },
 
-  palette: { title: 'Colour palette', indigo: 'Indigo', blue: 'Blue', emerald: 'Emerald', violet: 'Violet', orange: 'Orange', rose: 'Rose' },
+  palette: { recent: 'Recent searches', pages: 'All pages', title: 'Colour palette', indigo: 'Indigo', blue: 'Blue', emerald: 'Emerald', violet: 'Violet', orange: 'Orange', rose: 'Rose' },
   language: { fa: 'فارسی', en: 'English', ar: 'العربية', switched: 'Language changed' },
 
   table: {
@@ -641,6 +641,29 @@ export default {
   },
 
   landing: {
+    home: 'Home',
+    badge: 'Version 1.0.0 — 206 pages ready to ship',
+    livePreview: 'Open the live preview',
+    signIn: 'Sign in',
+    navFeatures: 'Features',
+    navDemos: 'Demos',
+    navAi: 'AI workspace',
+    navPricing: 'Pricing',
+    navDocs: 'Docs',
+    featuresTitle: 'Everything you need to build an admin panel',
+    featuresText: 'A token-driven design system, six layouts, 39 components, realistic demo data and a service layer that is one flag away from your real API.',
+    demosTitle: 'Ten specialised dashboards, each with its own data and charts',
+    demosText: 'Analytics, eCommerce, CRM, SaaS, finance, projects, HR, support, AI and logistics — all filled with demo data.',
+    aiBadge: 'Flagship feature',
+    aiTitle: 'An AI workspace with twelve screens',
+    aiText: 'Assistant chat, writing studio, summariser, repurposer, prompt library, image studio, scheduler, usage and spend, models, API keys and history — a production-like UI with no backend required.',
+    testimonialsTitle: 'Teams that ship faster with NOVA',
+    techTitle: 'Built with today’s standards',
+    pricingTitle: 'Pick the plan that fits you',
+    faqTitle: 'Frequently asked questions',
+    ctaTitle: 'Ready to build your next dashboard faster?',
+    ctaText: 'Open the live preview, switch the layout and palette, and click through every module.',
+    footerText: 'A multi-purpose admin template with first-class Persian, RTL and Jalali calendar support.',
     demo: 'View demo',
     buy: 'Buy template',
     docs: 'Documentation',

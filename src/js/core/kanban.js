@@ -20,12 +20,17 @@ import { $$, on, debounce } from './dom.js';
 import { bus, EVENTS } from './bus.js';
 import { toast } from './toast.js';
 import { formatNumber } from './numbers.js';
+import { createSortable } from './dragdrop.js';
 
 const boards = new WeakMap();
 
 export async function initKanban(root) {
   if (!root || boards.has(root)) return boards.get(root);
-  const Sortable = (await import('sortablejs')).default;
+  /**
+   * Drag & drop is progressive enhancement: if the library cannot attach (an
+   * exotic environment, an element the library refuses), the board still shows
+   * and edits its data through the cards.
+   */
   const options = {
     resource: root.dataset.kanbanResource ?? 'tasks',
     onMove: root.dataset.kanbanOnMove ? window[String(root.dataset.kanbanOnMove).replace(/^window\./, '')] : null,
@@ -35,10 +40,10 @@ export async function initKanban(root) {
   boards.set(root, options);
 
   const columns = $$('[data-kanban-column]', root);
-  columns.forEach((column) => {
+  columns.forEach(async (column) => {
     const body = column.querySelector('[data-kanban-body]');
     if (!body) return;
-    const sortable = Sortable.create(body, {
+    const sortable = await createSortable(column, {
       group: options.resource,
       animation: 160,
       easing: 'cubic-bezier(.2,.7,.3,1)',
@@ -64,8 +69,8 @@ export async function initKanban(root) {
         if (typeof options.onMove === 'function') options.onMove(payload);
         else persist(root, payload);
       },
-    });
-    options.sortables.push(sortable);
+      });
+    if (sortable) options.sortables.push(sortable);
     options.columns.push({ id: column.dataset.kanbanColumn, node: column, sortable });
   });
 

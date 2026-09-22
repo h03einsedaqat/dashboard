@@ -23,6 +23,7 @@ import { t, setLanguage, applyTranslations, dict } from './i18n.js';
 import { toDigits, toLatinDigits } from './numbers.js';
 import { searchService, commandService, settingsService, notificationService, demoService } from '../../services/index.js';
 import { config } from '../../config/config.js';
+import { createSortable } from './dragdrop.js';
 
 const state = {
   paletteOpen: false,
@@ -479,8 +480,7 @@ function initWidgetEditor() {
       footer: '<button type="button" class="btn btn-light" data-modal-close>بستن</button><button type="button" class="btn btn-primary" data-widget-save>ذخیره چیدمان</button>',
       onMount: async (panel) => {
         const list = $('[data-widget-list]', panel);
-        const { default: Sortable } = await import('sortablejs');
-        Sortable.create(list, { handle: '[data-drag-handle]', animation: 160, ghostClass: 'is-ghost' });
+        await createSortable(list, { handle: '[data-drag-handle]', animation: 160, ghostClass: 'is-ghost' });
         on($('[data-widget-save]', panel), 'click', () => {
           const order = $$('[data-id]', list).map((node) => node.dataset.id);
           const hidden = $$('[data-widget-visible]', list)

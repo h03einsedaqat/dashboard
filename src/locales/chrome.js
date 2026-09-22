@@ -7,6 +7,7 @@
  */
 export const chromeStrings = {
   fa: {
+    nav: { home: 'خانه' },
     ui: {
       skipToContent: 'پرش به محتوای اصلی',
       toggleSidebar: 'نمایش/پنهان کردن منو',
@@ -97,6 +98,7 @@ export const chromeStrings = {
     },
   },
   en: {
+    nav: { home: 'Home' },
     ui: {
       skipToContent: 'Skip to main content',
       toggleSidebar: 'Toggle sidebar',
@@ -180,6 +182,7 @@ export const chromeStrings = {
     role: { superAdmin: 'Super admin', admin: 'Admin', editor: 'Editor', support: 'Support', finance: 'Finance', viewer: 'Viewer' },
   },
   ar: {
+    nav: { home: 'الرئيسية' },
     ui: {
       skipToContent: 'الانتقال إلى المحتوى الرئيسي',
       toggleSidebar: 'إظهار/إخفاء القائمة',

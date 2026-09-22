@@ -20,6 +20,35 @@ const PAGE_DIR = path.join(ROOT, 'src/pages');
 
 /* ------------------------------------------------------------- DOM shim ---- */
 
+/** Diagnostics collected while a scenario runs (missing shim APIs, null nodes). */
+const shimIssues = [];
+
+/**
+ * Minimal DocumentFragment. `<template>` elements expose one on `.content`,
+ * which is how `core/dom.js` builds markup (`fragment()`), so the shim needs it
+ * for any `render()` call to actually land in the DOM.
+ */
+class Fragment {
+  constructor() {
+    this.children = [];
+    this.isFragment = true;
+  }
+  append(...nodes) {
+    nodes.forEach((node) => {
+      const child = typeof node === 'string' ? new Text(node) : node;
+      if (!child) return;
+      child.parentElement = this;
+      this.children.push(child);
+    });
+  }
+  get firstElementChild() {
+    return this.children.find((child) => child instanceof Element) ?? null;
+  }
+  get innerHTML() {
+    return '';
+  }
+}
+
 class ClassList {
   constructor(node) {
     this.node = node;
@@ -45,9 +74,27 @@ class ClassList {
   }
 }
 
+/**
+ * Rebuilds markup from a live shim node (used by the `innerHTML` getter).
+ * Reuses the parser's `VOID_TAGS` list, declared further down.
+ */
+function serializeNode(node) {
+  if (!node) return '';
+  if (node.isFragment) return (node.children ?? []).map((child) => serializeNode(child)).join('');
+  if (node.nodeType === 3) return String(node.textContent ?? '');
+  const attrs = Object.entries(node.attributes ?? {})
+    .map(([key, value]) => ` ${key}="${String(value).replace(/"/g, '&quot;')}"`)
+    .join('');
+  const tag = String(node.tagName ?? 'div').toLowerCase();
+  if (VOID_TAGS.has(tag)) return `<${tag}${attrs}>`;
+  return `<${tag}${attrs}>${(node.children ?? []).map((child) => serializeNode(child)).join('')}</${tag}>`;
+}
+
 class Element {
   constructor(tag) {
     this.tagName = String(tag).toUpperCase();
+    this.nodeType = 1;
+    this.namespaceURI = 'http://www.w3.org/1999/xhtml';
     this.children = [];
     this.attributes = {};
     this.dataset = {};
@@ -56,10 +103,11 @@ class Element {
     this.listeners = new Map();
     this.parentElement = null;
     this.value = '';
-    this.textContent = '';
     this.hidden = false;
     this.isConnected = true;
     this.files = [];
+    /** `<template>` keeps its markup in a fragment, like the real DOM. */
+    this.content = this.tagName === 'TEMPLATE' ? new Fragment() : null;
   }
   set className(value) {
     this.classList.set = new Set(String(value).split(/\s+/).filter(Boolean));
@@ -69,10 +117,43 @@ class Element {
   }
   set innerHTML(html) {
     this._html = String(html);
-    this.children = parse(this._html, this);
+    if (this.content) {
+      this.content.children = [];
+      this.content.append(...parse(this._html));
+      return;
+    }
+    /**
+     * Careful: the parser appends nested nodes to the *parent* it is given, so
+     * passing `this` and then assigning the returned array would throw the
+     * parsed tree away. Parsing standalone and appending keeps both cases
+     * correct (root nodes and nested children).
+     */
+    this.children = [];
+    this.append(...parse(this._html));
   }
+  /**
+   * Serialises the live tree. `render()` paints with `replaceChildren()`, which
+   * never touches the original markup string, so the getter has to walk the
+   * children to stay truthful — this is what `--all` dumps and any page code
+   * that reads `innerHTML` back gets.
+   */
   get innerHTML() {
-    return this._html ?? '';
+    if (this.children?.length) return this.children.map((child) => serializeNode(child)).join('');
+    return this.content ? this.content.children.map((child) => serializeNode(child)).join('') : this._html ?? '';
+  }
+  /**
+   * Text content behaves like the DOM: setting it replaces every child with a
+   * single text node, reading it concatenates the subtree. Several core modules
+   * read labels and search text through it (`datatable` column titles, `ui`
+   * list filters, `kanban` search), so a stub value would silently disable
+   * those features inside the harness instead of testing them.
+   */
+  set textContent(value) {
+    this.children = [];
+    if (value !== '' && value !== null && value !== undefined) this.append(new Text(String(value)));
+  }
+  get textContent() {
+    return (this.children ?? []).map((child) => child?.textContent ?? '').join('');
   }
   get outerHTML() {
     return this._html ?? `<${this.tagName.toLowerCase()}>`;
@@ -101,10 +182,98 @@ class Element {
   }
   append(...nodes) {
     nodes.forEach((node) => {
+      // The browser stringifies null/undefined here; flag it instead of
+      // silently rendering "undefined" so the smoke run can report the source.
+      if (node === null || node === undefined) {
+        shimIssues.push(`append(${String(node)}) at ${new Error().stack?.split('\n')[2]?.trim() ?? 'unknown'}`);
+        return;
+      }
       const child = typeof node === 'string' ? new Text(node) : node;
+      // Appending a fragment moves its children (DOM spec) — this is how every
+      // `render()` call hands its markup over.
+      if (child?.isFragment) {
+        child.children.forEach((grandChild) => {
+          grandChild.parentElement = this;
+          this.children.push(grandChild);
+        });
+        child.children = [];
+        return;
+      }
       child.parentElement = this;
       this.children.push(child);
     });
+  }
+  /** Replaces every child — the primary paint path in `core/dom.js`. */
+  replaceChildren(...nodes) {
+    this.children.forEach((child) => {
+      child.parentElement = null;
+    });
+    this.children = [];
+    this.append(...nodes);
+  }
+  prepend(...nodes) {
+    nodes.reverse().forEach((node) => {
+      const child = typeof node === 'string' ? new Text(node) : node;
+      if (!child) return;
+      child.parentElement = this;
+      this.children.unshift(child);
+    });
+  }
+  before(node) {
+    const siblings = this.parentElement?.children;
+    if (!siblings) return;
+    const index = siblings.indexOf(this);
+    const child = typeof node === 'string' ? new Text(node) : node;
+    child.parentElement = this.parentElement;
+    siblings.splice(index === -1 ? siblings.length : index, 0, child);
+  }
+  after(node) {
+    const siblings = this.parentElement?.children;
+    if (!siblings) return;
+    const index = siblings.indexOf(this);
+    const child = typeof node === 'string' ? new Text(node) : node;
+    child.parentElement = this.parentElement;
+    siblings.splice(index === -1 ? siblings.length : index + 1, 0, child);
+  }
+  replaceWith(node) {
+    const siblings = this.parentElement?.children;
+    if (!siblings) return;
+    const index = siblings.indexOf(this);
+    const child = typeof node === 'string' ? new Text(node) : node;
+    child.parentElement = this.parentElement;
+    if (index !== -1) siblings.splice(index, 1, child);
+  }
+  setSelectionRange() {}
+  scrollTo() {}
+  insertBefore(node, reference) {
+    const index = reference ? this.children.indexOf(reference) : -1;
+    const child = typeof node === 'string' ? new Text(node) : node;
+    if (child?.isFragment) {
+      const moved = [...child.children];
+      moved.forEach((grandChild) => {
+        grandChild.parentElement = this;
+      });
+      child.children = [];
+      if (index === -1) this.children.push(...moved);
+      else this.children.splice(index, 0, ...moved);
+      return moved[0] ?? null;
+    }
+    child.parentElement = this;
+    if (index === -1) this.children.push(child);
+    else this.children.splice(index, 0, child);
+    return child;
+  }
+  contains(node) {
+    return descendants(this).includes(node);
+  }
+  matches(selector) {
+    return matches(this, selector);
+  }
+  cloneNode() {
+    const copy = new Element(this.tagName.toLowerCase());
+    Object.entries(this.attributes).forEach(([name, value]) => copy.setAttribute(name, value));
+    copy.innerHTML = this.innerHTML;
+    return copy;
   }
   appendChild(node) {
     this.append(node);
@@ -196,6 +365,7 @@ class Element {
 
 class Text {
   constructor(value) {
+    this.nodeType = 3;
     this.textContent = String(value);
     this.value = this.textContent;
   }
@@ -203,30 +373,57 @@ class Text {
 
 /* -------------------------------------------------------- tiny CSS matcher -- */
 
+/** Matches one *simple* selector part (`div.a[data-x="1"]`, `#id`…). */
+function matchesSimple(node, part) {
+  if (!(node instanceof Element)) return false;
+  if (part === '*') return true;
+  const tag = part.match(/^[a-zA-Z][a-zA-Z0-9-]*/);
+  let rest = part;
+  if (tag) {
+    if (node.tagName !== tag[0].toUpperCase()) return false;
+    rest = part.slice(tag[0].length);
+  }
+  const classes = [...rest.matchAll(/\.([A-Za-z0-9_-]+)/g)].map((m) => m[1]);
+  if (classes.some((name) => !node.classList.contains(name))) return false;
+  const attrs = [...rest.matchAll(/\[([a-zA-Z0-9_-]+)(?:[~*^$]?=(?:"([^"]*)"|'([^']*)'|([^\]]+)))?\]/g)];
+  for (const [, name, dq, sq, bare] of attrs) {
+    if (!node.hasAttribute(name)) return false;
+    const expected = dq ?? sq ?? bare;
+    if (expected !== undefined && node.getAttribute(name) !== expected) return false;
+  }
+  const id = rest.match(/#([A-Za-z0-9_-]+)/);
+  if (id && node.getAttribute('id') !== id[1]) return false;
+  return true;
+}
+
+/**
+ * Matches a (comma separated) selector, including descendant combinators
+ * (`tbody tr`, `.card .stat-card`). The shim only needs this small subset — the
+ * template never uses child/sibling combinators in `querySelector*`.
+ */
 function matches(node, selector) {
   if (!(node instanceof Element)) return false;
   return selector
     .split(',')
     .map((part) => part.trim())
+    .filter(Boolean)
     .some((part) => {
-      if (!part) return false;
-      if (part === '*') return true;
-      const tag = part.match(/^[a-zA-Z][a-zA-Z0-9-]*/);
-      let rest = part;
-      if (tag) {
-        if (node.tagName !== tag[0].toUpperCase()) return false;
-        rest = part.slice(tag[0].length);
+      const chain = part.split(/\s+/).filter(Boolean);
+      if (!chain.length) return false;
+      if (!matchesSimple(node, chain[chain.length - 1])) return false;
+      let ancestor = node.parentElement;
+      for (let index = chain.length - 2; index >= 0; index -= 1) {
+        let found = false;
+        while (ancestor) {
+          if (matchesSimple(ancestor, chain[index])) {
+            found = true;
+            ancestor = ancestor.parentElement;
+            break;
+          }
+          ancestor = ancestor.parentElement;
+        }
+        if (!found) return false;
       }
-      const classes = [...rest.matchAll(/\.([A-Za-z0-9_-]+)/g)].map((m) => m[1]);
-      if (classes.some((name) => !node.classList.contains(name))) return false;
-      const attrs = [...rest.matchAll(/\[([a-zA-Z0-9_-]+)(?:[~*^$]?=(?:"([^"]*)"|'([^']*)'|([^\]]+)))?\]/g)];
-      for (const [, name, dq, sq, bare] of attrs) {
-        if (!node.hasAttribute(name)) return false;
-        const expected = dq ?? sq ?? bare;
-        if (expected !== undefined && node.getAttribute(name) !== expected) return false;
-      }
-      const id = rest.match(/#([A-Za-z0-9_-]+)/);
-      if (id && node.getAttribute('id') !== id[1]) return false;
       return true;
     });
 }
@@ -292,6 +489,18 @@ function parse(html, parent = null) {
 
 /* --------------------------------------------------------------- environment */
 
+/**
+ * Splits a full page document into its `<body>` attributes and inner markup, so
+ * the shim mirrors what the browser puts on `document.body` (including
+ * `data-page` / `data-section`, which drive the page controllers).
+ */
+function splitBody(html) {
+  const match = html.match(/<body([^>]*)>([\s\S]*?)<\/body>/i);
+  if (match) return { attrString: match[1] ?? '', inner: match[2] ?? '' };
+  const withoutHead = html.replace(/<head[\s\S]*?<\/head>/i, '').replace(/<!doctype[^>]*>/i, '');
+  return { attrString: '', inner: withoutHead };
+}
+
 function buildDocument(html) {
   const documentElement = new Element('html');
   const body = new Element('body');
@@ -303,6 +512,17 @@ function buildDocument(html) {
     fullscreenElement: null,
     readyState: 'complete',
     createElement: (tag) => new Element(tag),
+    /**
+     * Charting and icon libraries build their SVG with `createElementNS`. The
+     * harness has no SVG engine, so this returns the same element shape and
+     * only records the namespace — enough for the mount path to run.
+     */
+    createElementNS: (namespaceURI, tag) => {
+      const node = new Element(tag);
+      node.namespaceURI = namespaceURI;
+      return node;
+    },
+    createDocumentFragment: () => new Fragment(),
     createTextNode: (text) => new Text(text),
     getElementById: (id) => descendants(documentElement).find((node) => node.getAttribute('id') === id) ?? null,
     querySelector: (selector) => documentElement.querySelector(selector),
@@ -315,11 +535,24 @@ function buildDocument(html) {
     documentElement2: null,
   };
   documentElement.append(body);
-  if (html) body.innerHTML = html;
+  if (html) {
+    const { attrString, inner } = splitBody(html);
+    const attrRe = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+    let attr;
+    while ((attr = attrRe.exec(attrString))) {
+      const [, name, dq, sq, bare] = attr;
+      if (!name || name === '/') continue;
+      body.setAttribute(name, dq ?? sq ?? bare ?? '');
+    }
+    body.innerHTML = inner;
+    const title = html.match(/<title>([^<]*)<\/title>/i);
+    if (title) document.title = title[1].trim();
+  }
   return { document, documentElement, body };
 }
 
-async function bootScenario(pageHtml, label) {
+async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
+  shimIssues.length = 0;
   const { document, documentElement, body } = buildDocument(pageHtml);
   const warnings = [];
   const errors = [];
@@ -386,6 +619,10 @@ async function bootScenario(pageHtml, label) {
     FormData: class {},
     Blob: class {},
   };
+  win.Element = Element;
+  win.HTMLElement = Element;
+  win.Node = Element;
+  win.Text = Text;
   win.window = win;
   win.self = win;
   win.globalThis = win;
@@ -407,11 +644,22 @@ async function bootScenario(pageHtml, label) {
     console: globalThis.console,
   };
 
+  // DOM constructors the template touches (`instanceof Element`, `new CustomEvent`…)
+  globalThis.Element = Element;
+  globalThis.HTMLElement = Element;
+  globalThis.HTMLInputElement = Element;
+  globalThis.HTMLFormElement = Element;
+  globalThis.Node = Element;
+  globalThis.Text = Text;
+  globalThis.CustomEvent = win.CustomEvent;
+  globalThis.Event = win.Event;
   globalThis.window = win;
   globalThis.document = document;
   Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true, writable: true });
   globalThis.localStorage = localStorage;
   globalThis.console = consoleProxy;
+  globalThis.getComputedStyle = win.getComputedStyle;
+  globalThis.matchMedia = win.matchMedia;
   globalThis.requestAnimationFrame = win.requestAnimationFrame;
   globalThis.IntersectionObserver = win.IntersectionObserver;
   globalThis.ResizeObserver = win.ResizeObserver;
@@ -419,36 +667,47 @@ async function bootScenario(pageHtml, label) {
   const loaded = [];
   const result = { label, warnings, errors, loaded };
 
-  try {
-    // `?t=` busts the module cache so each scenario boots cleanly.
-    const tag = `?smoke=${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const { renderGenericApps } = await import(`../src/js/pages/generic.js${tag}`);
-    await import(`../src/js/core/i18n.js${tag}`).then((m) => m.initI18n());
-    loaded.push('i18n');
-    await import(`../src/js/core/theme.js${tag}`).then((m) => m.initThemeControls());
-    loaded.push('theme');
-    await import(`../src/js/core/layout.js${tag}`).then((m) => m.layout.init());
-    loaded.push('layout');
-    await import(`../src/js/core/dropdown.js${tag}`).then((m) => m.initDropdowns());
-    loaded.push('dropdowns');
-    await import(`../src/js/core/chrome.js${tag}`).then((m) => m.initChrome());
-    loaded.push('chrome');
-    await import(`../src/js/core/ui.js${tag}`).then((m) => m.initUi());
-    loaded.push('ui');
-    await renderGenericApps(document);
-    loaded.push('generic');
-    await import(`../src/js/core/datatable.js${tag}`).then((m) => m.initDataTables());
-    loaded.push('datatables');
-    await import(`../src/js/core/charts.js${tag}`).then((m) => m.initCharts());
-    loaded.push('charts');
+  /**
+   * The shim never dispatches `unhandledrejection`, so a background failure
+   * (a chart, a drag library, a late render) would otherwise abort the whole
+   * audit. Collect them per scenario instead.
+   */
+  const onUnhandled = (reason) => {
+    const message = reason instanceof Error ? `${reason.message}` : String(reason);
+    if (!errors.includes(message)) errors.push(message);
+  };
+  process.on('unhandledRejection', onUnhandled);
 
-    // small settle window for async services
-    await new Promise((resolve) => setTimeout(resolve, 260));
+  try {
+    /**
+     * Boot the *real* application entry point. `src/main.js` owns the full
+     * start-up order (i18n → theme → layout → chrome → forms → ui → page
+     * controller → generic renderer → tables → charts → kanban → calendar), so
+     * exercising it here is the closest thing to opening the page in a browser.
+     * The cache-busting query re-imports the entry per scenario; `ready(boot)`
+     * runs immediately because the shim reports `readyState === 'complete'`.
+     */
+    const tag = `?smoke=${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    await import(`../src/main.js${tag}`);
+    loaded.push('main');
+
+    // settle window for the mock services (latency is 180–420 ms)
+    await new Promise((resolve) => setTimeout(resolve, settle));
+
+    if (inspect) result.metrics = inspect(document);
+    result.shimIssues = [...shimIssues];
   } catch (error) {
     result.error = error;
   } finally {
+    process.off('unhandledRejection', onUnhandled);
     globalThis.window = previous.window;
     globalThis.document = previous.document;
+    delete globalThis.Element;
+    delete globalThis.HTMLElement;
+    delete globalThis.HTMLInputElement;
+    delete globalThis.HTMLFormElement;
+    delete globalThis.Node;
+    delete globalThis.Text;
     if (previous.navigator) Object.defineProperty(globalThis, 'navigator', { value: previous.navigator, configurable: true, writable: true });
     globalThis.localStorage = previous.localStorage;
     globalThis.console = previous.console;
@@ -457,6 +716,17 @@ async function bootScenario(pageHtml, label) {
 }
 
 /* ------------------------------------------------------------------- runner */
+
+const VERBOSE = process.argv.includes('--verbose');
+
+/** Every generated page, relative to `src/pages`. */
+function walkPages(dir, prefix = '', acc = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) walkPages(path.join(dir, entry.name), `${prefix}${entry.name}/`, acc);
+    else if (entry.name.endsWith('.html')) acc.push(`${prefix}${entry.name}`);
+  }
+  return acc.sort();
+}
 
 function pageHtml(url) {
   const file = path.join(PAGE_DIR, url);
@@ -618,8 +888,117 @@ const SCENARIOS = [
   'preview.html',
 ];
 
-const selected = process.argv[2] ? SCENARIOS.filter((url) => url.includes(process.argv[2])) : SCENARIOS;
+/* --------------------------------------------------------- content metrics -- */
+
+/**
+ * Counts the "data blocks" a visitor expects to see once a page has booted:
+ * KPI cards, chart containers, table rows, timeline entries and list items.
+ * Used by `--all` to catch pages that render empty without throwing.
+ */
+function measure(document) {
+  const count = (selector) => document.querySelectorAll(selector).length;
+  if (process.env.NOVA_DEBUG_DOM) {
+    const kids = descendants(document.body);
+    const apps = document.querySelectorAll('[data-app]');
+    const win = globalThis.window;
+    process.stdout.write(`    [debug] apps=${apps.length} appKids=${apps[0]?.children?.length ?? -1} nova=${typeof win?.NOVA} ready=${document.documentElement.classList.contains('app-ready')} page=${document.body?.dataset?.page}\n`);
+    if (process.env.NOVA_DEBUG_HTML) {
+      const selector = process.env.NOVA_DEBUG_SELECTOR;
+      const target = selector ? document.querySelector(selector) : process.env.NOVA_DEBUG_BODY ? document.body : apps[0] ?? document.body;
+      process.stdout.write(`    [html] ${String(target.innerHTML).replace(/\s+/g, ' ').slice(0, Number(process.env.NOVA_DEBUG_HTML) || 900)}\n`);
+    }
+  }
+  /**
+   * Content length is measured inside `#main-content`, so the sidebar and
+   * header chrome (present on every page) cannot make an empty page look full.
+   */
+  const main = document.querySelector('#main-content') ?? document.body;
+  const text = main?.textContent ?? '';
+  /**
+   * One "record" is one repeated unit of real content: a table row, a chat
+   * message, a mail thread, a card in a grid, a demo specimen. Counting them
+   * lets the runner tell a full application screen from an empty shell without
+   * caring which module rendered it.
+   */
+  const items = count(
+    '.msg, .chat-contact, .mail-item, .file-card, .file-row, .media-item, .kanban-card, .calendar-event, .list-item, .timeline__item, ' +
+      '.changelog-item, .accordion-item, .demo-item, .demo-icon, .demo-swatch, .demo-type-row, .form-field, .stat-card, ' +
+      '.builder-block, .builder-section, .gantt__row, .status-service, .price-card, .help-article, .doc-nav__link, tbody tr',
+  );
+  return {
+    items,
+    textLength: text.replace(/\s+/g, ' ').trim().length,
+    kpi: count('.stat-card'),
+    charts: count('[data-chart]'),
+    rows: count('tbody tr'),
+    cards: count('.card'),
+    timeline: count('.timeline__item'),
+    listItems: count('.list-item'),
+    fields: count('input, select, textarea'),
+    kanban: count('.kanban-card'),
+    errorState: /خطا در آماده‌سازی|Something went wrong|state-error__title/.test(text),
+  };
+}
+
+/**
+ * Not every page is a data page: documentation is prose, auth screens are
+ * forms, error pages carry a single message. This table states what a *filled*
+ * page looks like per area, so `--all` gates on the right signal instead of
+ * counting table rows on a login screen.
+ */
+const PAGE_EXPECTATIONS = [
+  { match: /^(docs\/|preview\.html|system\/(privacy|terms))/, kind: 'prose', floor: 600 },
+  { match: /^ui\//, kind: 'specimen', floor: 200 },
+  { match: /^auth\//, kind: 'form', floor: 1 },
+  { match: /^system\/(403|404|500|blank|error|maintenance|coming-soon|offline|no-access)/, kind: 'message', floor: 110 },
+];
+
+/**
+ * Decides whether a page has real content on screen.
+ * @returns {{ok: boolean, label: string, value: number}}
+ */
+function judgePage(url, m) {
+  const blocks = (m.kpi ?? 0) + (m.charts ?? 0) + (m.rows ?? 0) + (m.cards ?? 0) + (m.timeline ?? 0) + (m.kanban ?? 0) + (m.listItems ?? 0) + (m.items ?? 0);
+  const expectation = PAGE_EXPECTATIONS.find((entry) => entry.match.test(url));
+  if (expectation?.kind === 'prose') {
+    return { ok: blocks >= 4 || m.textLength >= expectation.floor, label: 'prose blocks', value: blocks };
+  }
+  if (expectation?.kind === 'specimen') {
+    // A specimen sheet is mostly markup, so it needs a rendered stage plus
+    // readable copy — not the six data blocks a dashboard must show.
+    return { ok: blocks >= 3 && m.textLength >= expectation.floor, label: 'specimen blocks', value: blocks };
+  }
+  if (expectation?.kind === 'form') {
+    return { ok: blocks >= 4 || m.fields >= expectation.floor, label: 'form controls', value: m.fields ?? 0 };
+  }
+  if (expectation?.kind === 'message') {
+    return { ok: blocks >= 4 || m.textLength >= expectation.floor, label: 'message length', value: m.textLength ?? 0 };
+  }
+  /**
+   * Tool screens (`ai/writer`, `ai/repurposer`, `cms/post-create`…) are mostly
+   * an editor: several cards plus the form controls of the actual tool. A
+   * screen like that is complete without six data blocks, but it must still
+   * carry a real form.
+   */
+  if (blocks >= 6) return { ok: true, label: 'data blocks', value: blocks };
+  const toolSurface = (m.fields ?? 0) >= 5 && (m.cards ?? 0) + (m.items ?? 0) >= 3;
+  return toolSurface
+    ? { ok: true, label: 'tool surface', value: m.fields ?? 0 }
+    : { ok: false, label: 'data blocks', value: blocks };
+}
+
+const ALL_PAGES = walkPages(PAGE_DIR);
+const allMode = process.argv.includes('--all');
+const filterTerm = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
+const selected = allMode
+  ? ALL_PAGES.filter((url) => !filterTerm || url.includes(filterTerm))
+  : filterTerm
+    ? SCENARIOS.filter((url) => url.includes(filterTerm))
+    : SCENARIOS;
 let failures = 0;
+const thin = [];
+const errored = [];
+const totals = { kpi: 0, charts: 0, rows: 0 };
 
 for (const url of selected) {
   const html = pageHtml(url);
@@ -627,13 +1006,52 @@ for (const url of selected) {
     console.log(`• ${url}: SKIPPED (page not generated yet)`);
     continue;
   }
-  const result = await bootScenario(html, url);
+  const result = await bootScenario(html, url, allMode ? measure : null, allMode ? 1500 : 1200);
   const status = result.error ? '✖' : '✔';
   if (result.error) failures += 1;
+
+  if (allMode) {
+    const m = result.metrics ?? {};
+    totals.kpi += m.kpi ?? 0;
+    totals.charts += m.charts ?? 0;
+    totals.rows += m.rows ?? 0;
+    const verdict = judgePage(url, m);
+    if (result.error) errored.push({ url, message: String(result.error.message).slice(0, 120) });
+    else if (m.errorState) errored.push({ url, message: 'rendered the page error state' });
+    else if (result.errors.length) errored.push({ url, message: result.errors[0].slice(0, 120) });
+    else if (!verdict.ok) thin.push({ url, blocks: verdict.value, label: verdict.label, m });
+    if (VERBOSE) {
+      console.log(`${status} ${url}  kpi:${m.kpi} charts:${m.charts} rows:${m.rows} cards:${m.cards} list:${m.listItems} timeline:${m.timeline} items:${m.items} text:${m.textLength}`);
+    }
+    continue;
+  }
+
   console.log(`${status} ${url}`);
   if (result.error) console.log(`    error: ${result.error.message}\n${String(result.error.stack).split('\n').slice(1, 4).join('\n')}`);
+  (result.shimIssues ?? []).slice(0, 2).forEach((line) => console.log(`    dom: ${line.slice(0, 170)}`));
   result.errors.slice(0, 3).forEach((line) => console.log(`    console.error: ${line.slice(0, 160)}`));
   result.warnings.slice(0, 3).forEach((line) => console.log(`    warn: ${line.slice(0, 160)}`));
+}
+
+if (allMode) {
+  console.log('');
+  console.log(`  pages booted   ${selected.length - failures}/${selected.length}`);
+  console.log(`  data rendered  ${totals.kpi} KPI cards · ${totals.charts} charts · ${totals.rows} table rows`);
+  if (errored.length) {
+    console.log('');
+    console.log(`  ✖ ${errored.length} pages reported a problem:`);
+    for (const item of errored) console.log(`    · ${item.url} — ${item.message}`);
+  }
+  if (thin.length) {
+    console.log('');
+    console.log(`  ⚠ ${thin.length} pages look empty for their area:`);
+    for (const item of thin.slice(0, 60)) {
+      console.log(`    · ${item.url} (${item.label}: ${item.blocks}) — kpi:${item.m.kpi} charts:${item.m.charts} rows:${item.m.rows} items:${item.m.items} fields:${item.m.fields} text:${item.m.textLength}`);
+    }
+    if (thin.length > 60) console.log(`    … ${thin.length - 60} more`);
+  }
+  if (!errored.length && !thin.length) console.log('\n✔ every page booted with data on screen.');
+  process.exit(failures || errored.length ? 1 : 0);
 }
 
 console.log(`\n${selected.length - failures}/${selected.length} scenarios booted cleanly`);

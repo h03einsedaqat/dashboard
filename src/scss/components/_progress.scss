@@ -64,6 +64,26 @@
   }
 }
 
+/* Indeterminate bar: used while the duration is unknown (never a fake %). */
+.progress-bar--indeterminate {
+  width: 40% !important;
+  animation: nv-progress-indeterminate 1.4s var(--nv-ease) infinite;
+}
+@keyframes nv-progress-indeterminate {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+[dir='rtl'] .progress-bar--indeterminate {
+  animation-direction: reverse;
+}
+
 .progress-labelled {
   display: flex;
   flex-direction: column;
@@ -103,7 +123,8 @@
   stroke: var(--nv-surface-3);
 }
 .gauge__value {
-  stroke: var(--nv-primary);
+  /* Colour can be overridden per instance: `style="--nv-gauge-color:var(--nv-success)"`. */
+  stroke: var(--nv-gauge-color, var(--nv-primary));
   transition: stroke-dashoffset var(--nv-dur-slow) var(--nv-ease-out);
 }
 .gauge__label {

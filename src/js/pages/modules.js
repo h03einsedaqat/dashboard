@@ -22,7 +22,30 @@ import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
 import * as kit from './kit.js';
 
-const { card, statCard, infoRows, timeline, emptyState, paint, host, tabs, pageHeader, kanbanMarkup, formMarkup, collectValues, openRecordForm, chart, exportable, queryParam, statusBadge, toolButtons, statsFrom } = kit;
+const {
+  card,
+  statCard,
+  infoRows,
+  timeline,
+  emptyState,
+  paint,
+  host,
+  sampleRecord,
+  tabs,
+  pageHeader,
+  kanbanMarkup,
+  formMarkup,
+  collectValues,
+  openRecordForm,
+  chart,
+  asRows,
+  chartBox,
+  exportable,
+  queryParam,
+  statusBadge,
+  toolButtons,
+  statsFrom,
+} = kit;
 const services = kit.services;
 
 /* ------------------------------------------------------------------ helpers */
@@ -31,14 +54,30 @@ const services = kit.services;
 async function detailPage({ resource, id, title, badge, meta = [], tabs: tabDefs = [], actions = '' }) {
   const node = host();
   if (!node) return null;
-  const service = services.default[resource];
   render(node, `<div class="dashboard-shell">${kit.skeleton(3)}</div>`);
+  const { record, isSample, notFound } = await sampleRecord(resource, id);
   try {
-    const record = service.get ? await service.get(id) : (await service.list({ perPage: 1 })).items[0];
+    if (!record) {
+      /**
+       * An explicit `?id=` that does not resolve is a real error; a missing id
+       * has already been handled by `sampleRecord` (first record), so this
+       * branch only fires for a stale link or an empty collection.
+       */
+      render(
+        node,
+        `<div class="dashboard-shell"><div class="state-error"><span class="state-error__icon"><i class="bi bi-search"></i></span>
+          <h3 class="state-error__title">${notFound && id ? 'این رکورد پیدا نشد یا حذف شده است' : 'رکوردی برای نمایش نیست'}</h3>
+          <p class="state-error__text">${notFound && id ? 'شناسه درخواستی در داده‌های نمونه وجود ندارد. از فهرست، یک رکورد را انتخاب کنید.' : 'ابتدا در فهرست این بخش یک رکورد بسازید.'}</p>
+          <a class="btn btn-primary btn-sm" href="${escapeHtml(resource === 'orders' ? 'ecommerce/orders.html' : 'index.html')}">بازگشت به فهرست</a></div></div>`,
+      );
+      return null;
+    }
+    const badges = [...(badge ? [badge(record)] : [])];
+    if (isSample) badges.push(statusBadge('رکورد نمونه', 'info'));
     render(
       node,
       `<div class="dashboard-shell">
-        ${pageHeader({ title: record.title ?? record.name ?? record.number ?? record.subject ?? title, subtitle: meta.map((m) => m(record)).filter(Boolean).join(' • '), icon: 'layers', badges: badge ? [badge(record)] : [], actions })}
+        ${pageHeader({ title: record.title ?? record.name ?? record.number ?? record.subject ?? title, subtitle: meta.map((m) => m(record)).filter(Boolean).join(' • '), icon: 'layers', badges, actions })}
         ${tabDefs.map((tab) => tab(record)).join('')}
       </div>`,
     );
@@ -57,11 +96,25 @@ function initDataTableNodes(scope) {
 }
 
 /** Loads the record wrapped in a try/catch so a bad `?id=` shows a real state. */
+/**
+ * Record loader for details screens.
+ *
+ * With `?id=` the requested record is loaded and a failure is reported.
+ * Without an id (page opened from the sidebar) the newest record is used, so
+ * the screen always demonstrates the real layout with real mock data.
+ */
 async function loadRecord(resource, id) {
   const service = services.default[resource];
-  if (!service?.get) return null;
+  if (!service?.get && !service?.list) return null;
+  if (id) {
+    try {
+      return await service.get(id);
+    } catch {
+      return null;
+    }
+  }
   try {
-    return await service.get(id);
+    return (await sampleRecord(resource)).record;
   } catch {
     return null;
   }
@@ -983,7 +1036,7 @@ async function initHr() {
             ['late', 'تأخیر', 'number', 'danger', 'alarm'],
           ])}
           ${card({ title: 'روند حضور ماهانه', body: `<div class="chart" data-chart="column" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'حاضر', data: monthly.present ?? monthly.map?.((m) => m.present) ?? [] }])}' data-chart-labels='${JSON.stringify(monthly.labels ?? [])}'></div>` })}
-          ${card({ title: 'فهرست امروز', flush: true, body: `<table class="table table--hover"><thead><tr><th>کارمند</th><th>ورود</th><th>خروج</th><th>ساعت کارکرد</th><th>وضعیت</th></tr></thead><tbody>${(today.items ?? [])
+          ${card({ title: 'فهرست امروز', flush: true, body: `<table class="table table--hover"><thead><tr><th>کارمند</th><th>ورود</th><th>خروج</th><th>ساعت کارکرد</th><th>وضعیت</th></tr></thead><tbody>${(asRows(today))
             .map(
               (row) => `<tr><td><div class="table__primary"><img class="avatar avatar--sm" src="${escapeHtml(row.avatar ?? 'assets/img/avatars/avatar-01.svg')}" alt=""><span class="table__primary-title">${escapeHtml(row.name)}</span></div></td>
               <td class="numeric">${escapeHtml(row.checkIn ?? '—')}</td><td class="numeric">${escapeHtml(row.checkOut ?? '—')}</td><td class="numeric">${toDigits(row.hours ?? 0)} ساعت</td>
@@ -1022,7 +1075,7 @@ async function initHr() {
     case 'hr/payroll.html': {
       const node = host();
       const payroll = await services.payrollService.list();
-      const items = payroll.items ?? payroll;
+      const items = asRows(payroll);
       render(
         node,
         `<div class="dashboard-shell">
@@ -1082,7 +1135,9 @@ async function initHr() {
 
     case 'hr/recruitment.html': {
       const node = host();
-      const [jobs, candidates] = await Promise.all([services.recruitmentService.jobs(), services.recruitmentService.candidates()]);
+      const [jobsPayload, candidatesPayload] = await Promise.all([services.recruitmentService.jobs(), services.recruitmentService.candidates()]);
+      const jobs = asRows(jobsPayload);
+      const candidates = asRows(candidatesPayload);
       render(
         node,
         `<div class="dashboard-shell">
@@ -1171,7 +1226,7 @@ async function initHr() {
             ['budget', 'بودجه کل', 'currency', 'violet', 'wallet2'],
             ['locations', 'موقعیت', 'number', 'info', 'geo-alt'],
           ])}
-          ${card({ flush: true, body: `<ul class="list-group">${items.map((row) => `<li class="list-item"><span class="tile tile--soft"><i class="bi bi-diagram-2"></i></span><span class="list-item__title">${escapeHtml(row.name)}<span class="list-item__sub">سرپرست: ${escapeHtml(row.head ?? '—')}</span></span><span class="list-item__meta">${toDigits(row.headcount ?? 0)} نفر • ${formatCurrency(row.budget ?? 0, 'IRR', { compact: true })}</span></li>`).join('')}</ul>` })}
+          ${card({ flush: true, body: `<ul class="list-group">${items.map((row) => `<li class="list-item"><span class="tile tile--soft tile--icon"><i class="bi bi-diagram-2"></i></span><span class="list-item__title">${escapeHtml(row.name)}<span class="list-item__sub">سرپرست: ${escapeHtml(row.head ?? '—')}</span></span><span class="list-item__meta">${toDigits(row.headcount ?? 0)} نفر • ${formatCurrency(row.budget ?? 0, 'IRR', { compact: true })}</span></li>`).join('')}</ul>` })}
         </div>`,
       );
       on($('[data-create]', node), 'click', () => openRecordForm({ resource: 'departments', title: 'دپارتمان جدید', fields: crudFields('departments'), onSaved: () => window.location.reload() }));
@@ -1450,7 +1505,7 @@ async function initUsers() {
         (sessions.items ?? sessions)
           .slice(0, 4)
           .map(
-            (session) => `<li class="list-item" data-session="${escapeHtml(session.id)}"><span class="tile tile--soft"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')}</span></span><span class="list-item__meta"><button class="btn btn-ghost btn-sm" type="button" data-revoke>پایان نشست</button></span></li>`,
+            (session) => `<li class="list-item" data-session="${escapeHtml(session.id)}"><span class="tile tile--soft tile--icon"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')}</span></span><span class="list-item__meta"><button class="btn btn-ghost btn-sm" type="button" data-revoke>پایان نشست</button></span></li>`,
           )
           .join(''),
       );
@@ -1508,7 +1563,7 @@ async function initUsers() {
           <div class="grid grid--cards">${matrix.roles
             .map(
               (role) => `<article class="card"><div class="card__body">
-                <div class="d-flex align-items-center gap-3"><span class="tile tile--soft tile--primary"><i class="bi bi-shield-check"></i></span><div><h3 class="card__title">${escapeHtml(role.label ?? role.id)}</h3><p class="card__subtitle">سطح دسترسی ${toDigits(role.level ?? 0)}٪</p></div></div>
+                <div class="d-flex align-items-center gap-3"><span class="tile tile--soft tile--primary tile--icon"><i class="bi bi-shield-check"></i></span><div><h3 class="card__title">${escapeHtml(role.label ?? role.id)}</h3><p class="card__subtitle">سطح دسترسی ${toDigits(role.level ?? 0)}٪</p></div></div>
                 <div class="progress progress--sm mt-3"><div class="progress-bar progress-bar--primary" style="width:${Math.min(100, role.level ?? 0)}%"></div></div>
                 ${infoRows([
                   ['کاربران', toDigits(role.users ?? 0)],
@@ -1733,8 +1788,8 @@ async function initCustomers() {
         `<div class="dashboard-shell">
           ${pageHeader({ title: 'دسته‌بندی مشتریان', subtitle: 'بخش‌بندی بر پایه ارزش خرید، تعداد سفارش و نوع حساب', icon: 'diagram-3' })}
           <div class="grid grid--2">
-            ${card({ title: 'سهم درآمد هر بخش', body: chart({ key: 'segments', type: 'donut', height: 320, series: segments.map((s) => s.revenue), labels: segments.map((s) => s.label) }) })}
-            ${card({ title: 'تعداد مشتری هر بخش', body: chart({ key: 'segmentSizes', type: 'bar', height: 320, series: [{ name: 'مشتری', data: segments.map((s) => s.count) }], labels: segments.map((s) => s.label) }) })}
+            ${card({ title: 'سهم درآمد هر بخش', body: chartBox({ key: 'segments', type: 'donut', height: 320, series: segments.map((s) => s.revenue), labels: segments.map((s) => s.label) }) })}
+            ${card({ title: 'تعداد مشتری هر بخش', body: chartBox({ key: 'segmentSizes', type: 'bar', height: 320, series: [{ name: 'مشتری', data: segments.map((s) => s.count) }], labels: segments.map((s) => s.label) }) })}
           </div>
           ${card({
             title: 'فهرست بخش‌ها',
@@ -1760,6 +1815,24 @@ async function initCustomers() {
 }
 
 /* ==================================================================== exports */
+
+/**
+ * Named exports: `src/main.js` routes an area prefix straight to these
+ * (`import('./js/pages/modules.js')).initEcommerce()`), so they must be real
+ * exports — the grouped object below is kept for programmatic use.
+ */
+export {
+  initEcommerce,
+  initCustomers,
+  initCrm,
+  initFinance,
+  initProjects,
+  initSupport,
+  initHr,
+  initLogistics,
+  initReports,
+  initUsers,
+};
 
 export const areaControllers = {
   initEcommerce,

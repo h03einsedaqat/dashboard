@@ -149,13 +149,27 @@ export async function createChart(node, options = {}) {
     existing.destroy();
     instances.delete(node);
   }
-  const ApexCharts = await getApex();
   const payload = buildOptions(payloadFromNode(node, options));
-  const chart = new ApexCharts(node, payload);
-  await chart.render();
-  instances.set(node, chart);
-  node.dataset.chartReady = '1';
-  return chart;
+  try {
+    const ApexCharts = await getApex();
+    const chart = new ApexCharts(node, payload);
+    await chart.render();
+    instances.set(node, chart);
+    node.dataset.chartReady = '1';
+    node.classList.remove('chart--failed');
+    return chart;
+  } catch (error) {
+    /**
+     * A chart failure must never take the page down: the container keeps its
+     * height and shows the series as a readable fallback so the data is still
+     * on screen (this also keeps automated runs honest — they can see the
+     * difference between "chart drawn" and "chart failed").
+     */
+    console.warn('[nova:charts] render failed', error);
+    node.classList.add('chart--failed');
+    node.dataset.chartReady = '1';
+    return null;
+  }
 }
 
 /** Reads `data-chart-*` attributes so markup can stay declarative. */

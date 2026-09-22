@@ -591,8 +591,19 @@ export async function renderGenericApps(root = document) {
     const title = node.dataset.title ?? 'داشبورد';
     try {
       if (kind === 'dashboard') {
-        const slug = (node.dataset.page ?? '').split('/').pop()?.replace('.html', '') ?? 'analytics';
+        const slug =
+          node.dataset.slug ??
+          (node.dataset.page ?? '').split('/').pop()?.replace('.html', '') ??
+          'analytics';
         render(node, dashboardHarness(slug));
+        /**
+         * The dashboard controller ran before this harness existed (the page
+         * controller order is: `route()` → generic renderer), so it is started
+         * here — it is idempotent per node, which keeps a manual re-render safe.
+         */
+        const { initDashboard, initDashboardTables } = await import('./dashboards.js');
+        await initDashboard(node);
+        initDashboardTables(node);
         initCharts(node);
         paintDashboardActivity(node);
       } else if (kind === 'overview') await renderOverview(node, { resource, title });

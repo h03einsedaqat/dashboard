@@ -205,3 +205,24 @@
 .map-marker-item:hover {
   border-color: var(--nv-primary);
 }
+
+/* A chart that could not be drawn still shows its numbers (see
+   `core/charts.js` → `createChart`), so a data page never renders blank. */
+.chart--failed {
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-caption);
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--nv-surface-2) 60%, transparent) 0 10px,
+    transparent 10px 20px
+  );
+  border-radius: var(--nv-radius-md);
+}
+
+.chart--failed::after {
+  content: attr(data-chart-fallback);
+}
