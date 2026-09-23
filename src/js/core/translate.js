@@ -172,9 +172,15 @@ function translateTitle() {
   }
   if (!titleOriginal) titleOriginal = document.title;
   document.title = String(titleOriginal)
-    .split('|')
-    .map((segment) => phrase(segment.trim()))
-    .join(' | ');
+    /* Page titles are written either `صفحه | برند` or `برند — توضیح`. */
+    .split(/([|—–])/)
+    .map((segment, index) => {
+      if (index % 2 === 1) return ` ${segment.trim()} `;
+      return phrase(segment.trim());
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function apply(root = document.body) {

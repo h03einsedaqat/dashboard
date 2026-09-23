@@ -581,6 +581,8 @@ const PHRASES = [
   ['پشتیبانی و به‌روزرسانی چگونه است؟', 'How do support and updates work?', 'كيف يعمل الدعم والتحديث؟'],
   ['خریداران نسخه کامل به به‌روزرسانی‌های نسخه ۱.x دسترسی دارند و می‌توانند پرسش‌های فنی خود را از طریق ایمیل پشتیبانی مطرح کنند.', 'Full-version buyers get all 1.x updates and can raise technical questions through the support email.', 'يحصل مشترو النسخة الكاملة على تحديثات ١.x ويمكنهم طرح أسئلتهم الفنية عبر بريد الدعم.'],
   ['نصب و راه‌اندازی', 'Installation', 'التثبيت والإعداد'],
+  ['قالب مدیریت حرفه‌ای فارسی‌محور', 'A Persian-first professional admin template', 'قالب إدارة احترافي فارسي أولًا'],
+  ['صفحه محصول', 'Product page', 'صفحة المنتج'],
   ['عضویت در خبرنامه', 'Subscribe to the newsletter', 'الاشتراك في النشرة'],
   ['عضویت انجام شد', 'You are subscribed', 'تم الاشتراك'],
   ['خبرنامه ماهانه برای شما ارسال می‌شود.', 'The monthly newsletter is on its way.', 'ستصلك النشرة الشهرية.'],
