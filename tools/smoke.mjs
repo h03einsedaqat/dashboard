@@ -1049,7 +1049,8 @@ function measure(document) {
   const items = count(
     '.msg, .chat-contact, .mail-item, .file-card, .file-row, .media-item, .kanban-card, .calendar-event, .list-item, .timeline__item, ' +
       '.changelog-item, .accordion-item, .demo-item, .demo-icon, .demo-swatch, .demo-type-row, .form-field, .stat-card, ' +
-      '.builder-block, .builder-section, .gantt__row, .status-service, .price-card, .help-article, .doc-nav__link, tbody tr',
+      '.builder-block, .builder-section, .gantt__row, .status-service, .price-card, .help-article, .doc-nav__link, ' +
+      '.landing-demo, .landing-layout, .landing-kit, .layout-option, .swatch, .landing-counter, .integration-card, tbody tr',
   );
   return {
     items,

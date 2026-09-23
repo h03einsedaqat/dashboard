@@ -81,9 +81,26 @@ const pages = [...pageMap.values()];
 /* --------------------------------------------------------------- helpers */
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/**
+ * Reads the authored body for a page.
+ *
+ * Authored partials are *fragments*: the shell (`shell()`, `authShell()`,
+ * `noLayout`) supplies `<html>`, `<head>` and `<body>`. A partial that still
+ * carries its own document wrapper would be nested inside the generated one and
+ * break both the parser and the page structure, so it is unwrapped here and the
+ * author is warned.
+ */
 function readBody(page) {
   const file = path.join(BODY_DIR, page.url);
-  if (fs.existsSync(file)) return { html: fs.readFileSync(file, 'utf8').trim(), authored: true };
+  if (fs.existsSync(file)) {
+    let html = fs.readFileSync(file, 'utf8').trim();
+    if (/<!doctype|<html[\s>]/i.test(html)) {
+      console.warn(`  ⚠ ${page.url}: authored partial contains a full document — unwrapped to a body fragment.`);
+      const match = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      html = (match ? match[1] : html).trim();
+    }
+    return { html, authored: true };
+  }
   return { html: defaultBody(page), authored: false };
 }
 
@@ -461,14 +478,16 @@ function main() {
     const file = path.join(PAGES_DIR, page.url);
     if (page.noLayout) {
       write(file, `<!doctype html>
-<html lang="{{DEFAULT_LANG}}" dir="{{DEFAULT_DIR}}">
+<html lang="{{DEFAULT_LANG}}" dir="{{DEFAULT_DIR}}" data-theme="{{DEFAULT_THEME}}" data-theme-mode="{{DEFAULT_THEME}}" data-primary="{{DEFAULT_PRIMARY}}" data-layout="{{DEFAULT_LAYOUT}}" data-direction="{{DEFAULT_DIR}}" data-density="comfortable" data-font-size="md" data-sidebar-style="fixed" data-calendar="{{DEFAULT_CALENDAR}}">
 <head>
   <!-- @include head.html -->
   <title>${esc(page.label.fa)} | {{APP_NAME}}</title>
 </head>
-<body class="landing-body" data-page="${page.url}">
+<body class="landing-body" data-page="${page.url}" data-section="${page.section ?? 'landing'}" data-kind="${page.kind}">
+  <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
 ${body}
   <!-- @include overlays.html -->
+  <!-- @include customizer.html -->
   <!-- @include scripts.html -->
 </body>
 </html>

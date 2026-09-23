@@ -415,10 +415,26 @@ export function host() {
 }
 
 /** Claims the placeholder and paints authored markup into it. */
-export function paint(markup) {
-  const node = host();
-  if (node) render(node, markup);
-  return node;
+/**
+ * Renders markup into a host node.
+ *
+ * Two call styles are supported on purpose:
+ *
+ *   paint(markup)            → the page host (`[data-app]`)
+ *   paint(target, markup)    → an explicit node
+ *
+ * The preview and search pages pass a target (a gallery grid, a result list);
+ * dropping the second argument silently painted into the host instead, which is
+ * why those sections came out empty.
+ */
+export function paint(target, markup) {
+  if (target == null || typeof target === 'string') {
+    const node = host();
+    if (node) render(node, target ?? '');
+    return node;
+  }
+  if (markup !== undefined) render(target, markup);
+  return target;
 }
 
 /** Tab strip + panels wired by core/ui.js (`[data-tabs]`, `[data-tab]`). */

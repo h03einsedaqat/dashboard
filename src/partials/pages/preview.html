@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="{{DEFAULT_LANG}}" dir="{{DEFAULT_DIR}}" data-theme="{{DEFAULT_THEME}}" data-theme-mode="{{DEFAULT_THEME}}" data-primary="{{DEFAULT_PRIMARY}}" data-layout="{{DEFAULT_LAYOUT}}" data-direction="{{DEFAULT_DIR}}" data-density="comfortable" data-font-size="md" data-sidebar-style="fixed" data-calendar="jalali">
-<head>
-  <!-- @include head.html -->
-  <title>پیش‌نمایش محصول | {{APP_NAME}}</title>
-</head>
-<body class="landing-body" data-page="preview.html">
-  <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
+<a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
 
   <header class="landing-header" data-landing-header>
     <div class="landing-container landing-header__inner">
@@ -306,7 +299,5 @@
     </div>
   </div>
 
-  <!-- @include customizer.html -->
-  <!-- overlays.html + scripts.html are appended by tools/build-pages.mjs -->
-</body>
-</html>
+  <!-- the customizer, overlays and scripts are appended by the shell in
+       `tools/build-pages.mjs` (`noLayout` branch) — do not include them here. -->
