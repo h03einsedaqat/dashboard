@@ -176,6 +176,17 @@
   max-height: 22rem;
   overflow-y: auto;
   padding: var(--nv-space-1) var(--nv-space-2) var(--nv-space-2);
+  /* The panel is a fixed surface: scroll it without dragging the page. */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.notification-list:empty::after {
+  content: 'اعلان تازه‌ای وجود ندارد';
+  display: block;
+  padding: var(--nv-space-6) var(--nv-space-4);
+  text-align: center;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
 }
 .notification-item {
   display: flex;
@@ -189,6 +200,16 @@
 }
 .notification-item.is-unread {
   background: var(--nv-primary-soft);
+}
+.notification-item.is-unread .notification-item__title::after {
+  content: '';
+  display: inline-block;
+  inline-size: 0.4rem;
+  block-size: 0.4rem;
+  margin-inline-start: var(--nv-space-2);
+  border-radius: 50%;
+  background: var(--nv-primary);
+  vertical-align: middle;
 }
 .notification-item__icon {
   flex: 0 0 auto;

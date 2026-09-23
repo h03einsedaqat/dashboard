@@ -21,6 +21,7 @@ import { storage, KEYS } from './storage.js';
 import { theme } from './theme.js';
 import { t, setLanguage, applyTranslations, dict } from './i18n.js';
 import { toDigits, toLatinDigits } from './numbers.js';
+import { relativeTime } from './jalali.js';
 import { searchService, commandService, settingsService, notificationService, demoService } from '../../services/index.js';
 import { config } from '../../config/config.js';
 import { createSortable } from './dragdrop.js';
@@ -302,6 +303,7 @@ async function renderNotifications() {
           <span class="notification-item__body">
             <span class="notification-item__title">${escapeHtml(item.title)}</span>
             <span class="notification-item__text">${escapeHtml(item.text)}</span>
+            ${item.at ? `<span class="notification-item__time">${escapeHtml(relativeTime(item.at))}</span>` : ''}
           </span>
         </button>`,
       )

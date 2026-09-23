@@ -30,11 +30,19 @@ export function makeHelpers(seed = 20260922) {
     return out;
   };
   const bool = (chance = 0.5) => rng() < chance;
-  /** ISO date `daysAgo` in the past (timezone-safe, no external deps). */
+  /**
+   * ISO date `daysAgo` in the past (timezone-safe, no external deps).
+   *
+   * `daysAgo: 0` with a later hour would land in the future when the page is
+   * opened in the morning — mock data must never read “in 3 hours”, so a result
+   * that is still ahead of `now` is pushed back a day.
+   */
   const date = (daysAgo = 0, hour = 9, minute = 30) => {
+    const now = new Date();
     const d = new Date();
     d.setHours(hour, minute, 0, 0);
     d.setDate(d.getDate() - daysAgo);
+    if (d.getTime() > now.getTime()) d.setDate(d.getDate() - 1);
     return d.toISOString();
   };
   const series = (length, min, max) => Array.from({ length }, () => int(min, max));
