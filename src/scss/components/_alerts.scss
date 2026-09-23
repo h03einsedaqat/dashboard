@@ -1,0 +1,264 @@
+/* ==========================================================================
+   NOVAADMIN — Alerts, banners, callouts & notification blocks
+   ========================================================================== */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-4) var(--nv-space-5);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  color: var(--nv-text);
+  font-size: var(--nv-text-body-sm);
+  line-height: 1.7;
+}
+.alert i.alert__icon {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  flex: 0 0 auto;
+}
+.alert__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.alert__title {
+  display: block;
+  margin-block-end: 0.15rem;
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.alert__body p:last-child {
+  margin-block-end: 0;
+}
+.alert .btn-close {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.alert--primary {
+  background: var(--nv-primary-soft);
+  border-color: transparent;
+  color: var(--nv-primary-soft-fg);
+}
+.alert--primary i {
+  color: var(--nv-primary);
+}
+.alert--success {
+  background: var(--nv-success-soft);
+  border-color: transparent;
+  color: var(--nv-success-soft-fg);
+}
+.alert--success i {
+  color: var(--nv-success);
+}
+.alert--warning {
+  background: var(--nv-warning-soft);
+  border-color: transparent;
+  color: var(--nv-warning-soft-fg);
+}
+.alert--warning i {
+  color: var(--nv-warning);
+}
+.alert--danger {
+  background: var(--nv-danger-soft);
+  border-color: transparent;
+  color: var(--nv-danger-soft-fg);
+}
+.alert--danger i {
+  color: var(--nv-danger);
+}
+.alert--info {
+  background: var(--nv-info-soft);
+  border-color: transparent;
+  color: var(--nv-info-soft-fg);
+}
+.alert--info i {
+  color: var(--nv-info);
+}
+.alert--neutral {
+  background: var(--nv-neutral-soft);
+  border-color: transparent;
+  color: var(--nv-neutral-soft-fg);
+}
+
+.alert--outline {
+  background: transparent;
+  border-color: var(--nv-border-strong);
+  border-inline-start-width: 3px;
+}
+.alert--outline.alert--primary {
+  border-inline-start-color: var(--nv-primary);
+}
+.alert--outline.alert--success {
+  border-inline-start-color: var(--nv-success);
+}
+.alert--outline.alert--warning {
+  border-inline-start-color: var(--nv-warning);
+}
+.alert--outline.alert--danger {
+  border-inline-start-color: var(--nv-danger);
+}
+
+.alert--solid {
+  border-color: transparent;
+  color: #fff;
+}
+.alert--solid.alert--primary {
+  background: var(--nv-primary);
+}
+.alert--solid.alert--success {
+  background: var(--nv-success);
+}
+.alert--solid.alert--warning {
+  background: var(--nv-warning);
+}
+.alert--solid.alert--danger {
+  background: var(--nv-danger);
+}
+.alert--solid i,
+.alert--solid .alert__title {
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- banner */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-4) var(--nv-space-5);
+  border-radius: var(--nv-radius-lg);
+  background: linear-gradient(120deg, rgba(var(--nv-primary-rgb), 0.14), transparent 65%), var(--nv-surface);
+  border: 1px solid var(--nv-border);
+}
+.banner__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  font-size: 1.2rem;
+  flex: 0 0 auto;
+}
+.banner__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.banner__title {
+  margin: 0;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+}
+.banner__text {
+  margin: 0.15rem 0 0;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------ empty states */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-10) var(--nv-space-5);
+  text-align: center;
+}
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: var(--nv-radius-xl);
+  background: var(--nv-surface-3);
+  color: var(--nv-text-muted);
+  font-size: 2rem;
+  margin-block-end: var(--nv-space-2);
+}
+.empty-state__title {
+  margin: 0;
+  font-size: var(--nv-text-h5);
+  color: var(--nv-heading);
+}
+.empty-state__text {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+  line-height: 1.8;
+}
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-3);
+  justify-content: center;
+  margin-block-start: var(--nv-space-2);
+}
+.empty-state--sm {
+  padding: var(--nv-space-6) var(--nv-space-4);
+}
+.empty-state--sm .empty-state__icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.35rem;
+}
+
+.state-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+  align-items: center;
+  text-align: center;
+  padding: var(--nv-space-9) var(--nv-space-5);
+  border: 1px dashed var(--nv-danger);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-danger-soft);
+}
+.state-error i {
+  font-size: 2rem;
+  color: var(--nv-danger);
+}
+
+/* Closable alert. `.alert__close` is the in-alert action; `[data-alert-close]`
+   is wired by the delegated handler in `core/ui.js`. */
+.alert--dismissible,
+.alert[data-alert] {
+  position: relative;
+  padding-inline-end: var(--nv-space-10);
+}
+
+.alert__close {
+  position: absolute;
+  inset-block-start: var(--nv-space-3);
+  inset-inline-end: var(--nv-space-3);
+  display: inline-grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-radius: var(--nv-radius-sm);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: var(--nv-transition);
+}
+
+.alert__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  opacity: 1;
+}
+
+[data-theme='dark'] .alert__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.alert.is-hiding {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease);
+}

@@ -1,0 +1,136 @@
+/* ==========================================================================
+   NOVAADMIN — Page header
+   --------------------------------------------------------------------------
+   Every page opens with the same rhythm: breadcrumb → title → subtitle →
+   contextual actions. Subtitle and action slot are filled by the page module.
+   ========================================================================== */
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  padding-block-end: var(--nv-space-2);
+}
+
+.page-head__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+}
+
+.page-head__title {
+  margin: 0;
+  font-size: var(--nv-text-h1);
+  font-weight: var(--nv-fw-black);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--nv-heading);
+}
+
+.page-head__sub {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+  line-height: 1.7;
+}
+.page-head__sub:empty {
+  display: none;
+}
+
+.page-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+@media (max-width: 767.98px) {
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page-head__title {
+    font-size: var(--nv-text-h2);
+  }
+  .page-head__actions {
+    width: 100%;
+  }
+  .page-head__actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ------------------------------------------------------------ demo strip */
+.demo-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-2);
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.demo-strip::-webkit-scrollbar {
+  display: none;
+}
+.demo-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--nv-radius-pill);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+  white-space: nowrap;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.demo-strip__item:hover {
+  background: var(--nv-surface-3);
+  color: var(--nv-heading);
+}
+.demo-strip__item.is-active {
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+}
+.demo-strip__item i {
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------ widget editor list */
+.widget-editor__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface);
+  margin-block-end: var(--nv-space-2);
+  cursor: grab;
+}
+.widget-editor__item.is-hidden {
+  opacity: 0.55;
+}
+.widget-editor__handle {
+  color: var(--nv-text-muted);
+  cursor: grab;
+}
+.widget-editor__name {
+  flex: 1 1 auto;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+}
+.sortable-ghost {
+  opacity: 0.4;
+  border-style: dashed !important;
+}
+.sortable-chosen {
+  box-shadow: var(--nv-shadow-md);
+}

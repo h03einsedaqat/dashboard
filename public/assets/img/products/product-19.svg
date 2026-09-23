@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 108" width="120" height="108" role="img" aria-label="محصول 19">
+  <defs><linearGradient id="p18" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6ee7b7"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+  <rect width="120" height="108" rx="14" fill="url(#p18)"/>
+  <rect x="26" y="30" width="68" height="48" rx="6" fill="#fff" fill-opacity=".92"/><rect x="32" y="38" width="56" height="32" rx="3" fill="#059669" fill-opacity=".25"/>
+  <circle cx="100" cy="18" r="10" fill="#fff" fill-opacity=".5"/>
+</svg>

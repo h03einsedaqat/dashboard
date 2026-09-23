@@ -1,0 +1,81 @@
+/* ==========================================================================
+   NOVAADMIN — Pagination, view switchers and list controls
+   (pagination markup itself is defined in _datatable.scss and reused here)
+   ========================================================================== */
+
+.pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+}
+
+.pagination-simple {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+.pagination-simple__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface);
+  color: var(--nv-text-2);
+  font-family: inherit;
+  font-size: var(--nv-text-caption);
+  cursor: pointer;
+}
+.pagination-simple__btn:hover:not(:disabled) {
+  border-color: var(--nv-primary);
+  color: var(--nv-primary);
+}
+.pagination-simple__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------- view switcher */
+.view-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+}
+.view-switch__btn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--nv-radius-sm);
+  background: transparent;
+  color: var(--nv-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.view-switch__btn:hover {
+  color: var(--nv-heading);
+}
+.view-switch__btn.is-active {
+  background: var(--nv-surface);
+  color: var(--nv-primary);
+  box-shadow: var(--nv-shadow-xs);
+}
+
+/* ------------------------------------------------------------- load more */
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--nv-space-5);
+}
+.load-more .btn {
+  min-width: 12rem;
+}

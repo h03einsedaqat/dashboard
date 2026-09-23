@@ -1,0 +1,186 @@
+/* ==========================================================================
+   NOVAADMIN — Bootstrap 5.3 integration
+   --------------------------------------------------------------------------
+   We consume Bootstrap *selectively*: the grid, spacing/display utilities and
+   the four JavaScript-driven components (dropdown, modal, offcanvas,
+   tooltip/popover). Everything else in the product is NOVAADMIN's own design
+   system, which is why the template does not look like "stock Bootstrap".
+
+   Sass variables are set to real colours (so Bootstrap's internal colour
+   functions keep working) while the rendered values are remapped to
+   `--nv-*` tokens at runtime in `base/_themes.scss`.
+   ========================================================================== */
+
+@import 'bootstrap/scss/functions';
+
+/* ------------------------------------------------------------ brand colours */
+$primary: #4f46e5;
+$secondary: #64748b;
+$success: #16a34a;
+$warning: #d97706;
+$danger: #dc2626;
+$info: #0891b2;
+$light: #f8fafc;
+$dark: #0f172a;
+
+$theme-colors: (
+  'primary': $primary,
+  'secondary': $secondary,
+  'success': $success,
+  'warning': $warning,
+  'danger': $danger,
+  'info': $info,
+  'light': $light,
+  'dark': $dark,
+);
+
+/* --------------------------------------------------------------- behaviour */
+$enable-caret: true;
+$enable-rounded: true;
+$enable-shadows: false;
+$enable-gradients: false;
+$enable-transitions: true;
+$enable-negative-margins: true;
+$enable-smooth-scroll: true;
+$enable-validation-icons: false;
+$enable-button-pointers: true;
+$enable-rfs: false;
+
+/* ---------------------------------------------------------------- geometry */
+$border-radius: 0.625rem;
+$border-radius-sm: 0.5rem;
+$border-radius-lg: 0.875rem;
+$border-radius-xl: 1.25rem;
+$border-width: 1px;
+
+$font-family-sans-serif: var(--nv-font-sans);
+$font-family-monospace: var(--nv-font-mono);
+$font-size-base: 0.9375rem;
+$line-height-base: 1.75;
+$headings-font-weight: 700;
+
+/* NOTE: Bootstrap's Sass layer needs *real* colours here (its colour
+   functions run at compile time). The rendered values are remapped to tokens
+   in `base/_themes.scss` via the `--bs-*` CSS variables. */
+$body-bg: #ffffff;
+$body-color: #1e293b;
+$border-color: #e6e9f0;
+$link-decoration: none;
+$link-hover-decoration: none;
+
+$spacer: 1rem;
+$spacers: (
+  0: 0,
+  1: 0.25rem,
+  2: 0.5rem,
+  3: 0.75rem,
+  4: 1rem,
+  5: 1.25rem,
+  6: 1.5rem,
+  7: 1.75rem,
+  8: 2rem,
+  9: 2.5rem,
+  10: 3rem,
+  11: 3.5rem,
+  12: 4rem,
+  13: 5rem,
+  14: 6rem,
+);
+
+$grid-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+  xxl: 1440px,
+  xxxl: 1680px,
+);
+
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1180px,
+  xxl: 1400px,
+  xxxl: 1600px,
+);
+
+$grid-gutter-width: 1.5rem;
+
+/* --------------------------------------------------------- component vars */
+$dropdown-padding-y: 0.5rem;
+$dropdown-padding-x: 0.35rem;
+$dropdown-item-padding-y: 0.5rem;
+$dropdown-item-padding-x: 0.75rem;
+$dropdown-border-radius: 0.875rem;
+$dropdown-border-width: 1px;
+$dropdown-font-size: 0.9375rem;
+$dropdown-min-width: 13rem;
+$dropdown-link-active-bg: #eef2ff;
+
+$modal-inner-padding: 1.5rem;
+$modal-content-border-width: 1px;
+$modal-content-border-radius: 1.25rem;
+$modal-backdrop-opacity: 0.55;
+$modal-fade-transform: translateY(-1.25rem);
+
+$offcanvas-horizontal-width: 22rem;
+
+$tooltip-bg: #0f172a;
+$tooltip-border-radius: 0.5rem;
+$tooltip-opacity: 1;
+$tooltip-padding-y: 0.35rem;
+$tooltip-padding-x: 0.6rem;
+$tooltip-font-size: 0.8125rem;
+
+$popover-border-radius: 0.875rem;
+$popover-header-bg: #f8fafc;
+$popover-body-padding-x: 1rem;
+
+/* -------------------------------------------------------------- the imports */
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+
+/* Extra utilities merged on top of Bootstrap's defaults (which are loaded
+   above, so nothing is lost). */
+$utilities: map-merge(
+  $utilities,
+  (
+    'opacity': (
+      property: opacity,
+      values: (0: 0, 5: 0.05, 10: 0.1, 25: 0.25, 50: 0.5, 75: 0.75, 90: 0.9, 100: 1),
+    ),
+    'cursor': (
+      property: cursor,
+      class: cursor,
+      values: (pointer: pointer, grab: grab, default: default, text: text, not-allowed: not-allowed),
+    ),
+  )
+);
+
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/type';
+@import 'bootstrap/scss/images';
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/grid';
+/* NOTE: Bootstrap's table partial is intentionally *not* imported — the
+   template ships its own table system (see components/_tables.scss) and mixing
+   the two made cells inherit Bootstrap's quieter padding and transparent
+   background. `.table-responsive` is re-implemented there. */
+@import 'bootstrap/scss/transitions';
+
+/* JS components */
+@import 'bootstrap/scss/dropdown';
+@import 'bootstrap/scss/close';
+@import 'bootstrap/scss/modal';
+@import 'bootstrap/scss/offcanvas';
+@import 'bootstrap/scss/tooltip';
+@import 'bootstrap/scss/popover';
+
+@import 'bootstrap/scss/helpers';
+@import 'bootstrap/scss/utilities/api';

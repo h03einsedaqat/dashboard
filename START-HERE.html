@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>شروع کار با NOVAADMIN — راهنمای بسته</title>
+  <meta name="description" content="راهنمای شروع سریع بسته قالب مدیریتی NOVAADMIN: نصب، ساختار پوشه‌ها، اجرای پروژه و مسیر انتشار.">
+  <style>
+    /* Self-contained on purpose: this page must work from a file:// path,
+       without a server, without Node.js and without the template's assets. */
+    :root {
+      --bg: #f5f6fb;
+      --surface: #ffffff;
+      --surface-2: #f1f3f9;
+      --border: #e2e6ef;
+      --text: #0f172a;
+      --text-2: #475069;
+      --muted: #7b8399;
+      --primary: #4f46e5;
+      --primary-soft: #eef0ff;
+      --success: #059669;
+      --warning: #b45309;
+      --radius: 1rem;
+      --shadow: 0 18px 40px rgb(15 23 42 / 8%);
+      font-synthesis: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --surface: #131c31;
+        --surface-2: #1a2440;
+        --border: #263252;
+        --text: #e6ebf5;
+        --text-2: #b9c2d6;
+        --muted: #8b95a9;
+        --primary: #8b8ef8;
+        --primary-soft: #1e2350;
+        --shadow: 0 18px 40px rgb(0 0 0 / 35%);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem);
+      background: radial-gradient(circle at 85% -10%, rgb(79 70 229 / 12%), transparent 45%), var(--bg);
+      color: var(--text);
+      font-family: Vazirmatn, "Segoe UI", Tahoma, system-ui, sans-serif;
+      line-height: 1.9;
+    }
+    main { max-width: 74rem; margin-inline: auto; display: flex; flex-direction: column; gap: 1.75rem; }
+    header.hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) * 1.4);
+      box-shadow: var(--shadow);
+      padding: clamp(1.5rem, 3vw, 2.75rem);
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--primary-soft); color: var(--primary);
+      border-radius: 999px; padding: .25rem .85rem;
+      font-size: .8rem; font-weight: 700;
+    }
+    .dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--success); }
+    h1 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); margin: 1rem 0 .5rem; line-height: 1.35; }
+    h2 { font-size: 1.15rem; margin: 0 0 .75rem; }
+    h3 { font-size: 1rem; margin: 1.25rem 0 .35rem; }
+    p { margin: 0 0 .75rem; color: var(--text-2); }
+    .lead { font-size: 1.05rem; max-width: 68ch; }
+    .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: 0 6px 18px rgb(15 23 42 / 5%);
+    }
+    .card--soft { background: var(--surface-2); }
+    ul { margin: 0; padding-inline-start: 1.2rem; color: var(--text-2); }
+    li + li { margin-top: .35rem; }
+    code, kbd {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: .45rem;
+      padding: .1rem .45rem;
+      font-size: .86em;
+      direction: ltr;
+      display: inline-block;
+    }
+    pre {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      direction: ltr;
+      text-align: left;
+      font-size: .85rem;
+      line-height: 1.8;
+      margin: 0 0 .75rem;
+    }
+    pre code { background: none; border: 0; padding: 0; }
+    a { color: var(--primary); text-decoration: none; font-weight: 600; }
+    a:hover { text-decoration: underline; }
+    .tree { direction: ltr; text-align: left; font-size: .82rem; }
+    .pill {
+      display: inline-block; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 999px; padding: .15rem .7rem; font-size: .78rem; color: var(--text-2); margin: 0 .25rem .35rem 0;
+    }
+    ol.steps { padding-inline-start: 1.3rem; color: var(--text-2); }
+    ol.steps li { margin-bottom: .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { text-align: start; padding: .6rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: .82rem; }
+    .note { border-inline-start: 3px solid var(--primary); background: var(--primary-soft); border-radius: .6rem; padding: .85rem 1rem; color: var(--text-2); }
+    .warn { border-inline-start: 3px solid var(--warning); }
+    footer { color: var(--muted); font-size: .85rem; text-align: center; padding-block: 1rem 2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <span class="badge"><span class="dot"></span> بسته تحویل — نسخه ۱٫۰٫۰</span>
+    <h1>از این‌جا شروع کنید</h1>
+    <p class="lead">
+      این بسته شامل خروجی آماده انتشار (<strong>html/</strong>)، سورس کامل (<strong>source/</strong>)، مستندات
+      (<strong>documentation/</strong>)، دارایی‌ها (<strong>assets/</strong>) و پیش‌نمایش‌ها
+      (<strong>screenshots/</strong>) است. اگر فقط می‌خواهید قالب را ببینید، همین حالا
+      <a href="html/index.html">صفحه محصول</a> را باز کنید؛ بدون نصب، بدون ابزار.
+    </p>
+    <p>
+      <span class="pill">۲۰۶ صفحه مستقل</span>
+      <span class="pill">۱۰ داشبورد</span>
+      <span class="pill">۶ چیدمان</span>
+      <span class="pill">۳ زبان</span>
+      <span class="pill">تقویم شمسی</span>
+      <span class="pill">RTL و LTR</span>
+      <span class="pill">بدون jQuery</span>
+    </p>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <h2>۱) سریع‌ترین راه: تماشا</h2>
+      <p>خروجی آماده بدون هیچ ابزاری کار می‌کند:</p>
+      <pre><code>html/index.html                              ← صفحه محصول
+html/dashboards/analytics.html               ← داشبورد آنالیتیکس
+html/preview.html                            ← پیش‌نمایش زنده (تغییر تم و چیدمان)
+html/ai/chat.html                            ← کارگاه هوش مصنوعی
+html/docs/introduction.html                  ← مستندات داخل قالب</code></pre>
+      <p class="note">همه لینک‌ها نسبی هستند؛ اگر کل پوشه را در زیرپوشه‌ای روی هاست بگذارید، بدون تغییر کار می‌کند.</p>
+      <p>انتشار روی هاست: تمام محتوای <code>html/</code> را در ریشه دامنه یا زیرپوشه آپلود کنید. تمام — بدون مرحله دیگر.</p>
+    </article>
+
+    <article class="card">
+      <h2>۲) کار روی سورس</h2>
+      <p>برای تغییر رنگ، صفحه یا منطق، از پوشه <code>source/</code> استفاده کنید:</p>
+      <pre><code>cd source
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # خروجی در dist/
+npm run qa:all     # ساخت + کنترل لینک‌ها + تست اجرای صفحه‌ها</code></pre>
+      <p class="note warn">
+        پوشه <code>source/</code> شامل <code>node_modules</code> نیست؛ اجرای <code>npm install</code> الزامی است.
+        Node.js نسخه ۱۸ یا بالاتر لازم است.
+      </p>
+    </article>
+
+    <article class="card">
+      <h2>۳) نقشه بسته</h2>
+      <pre class="tree"><code>novaadmin-1.0.0/
+├── START-HERE.html      ← همین فایل
+├── README.md            ← معرفی کامل قالب
+├── CHANGELOG.md         ← تاریخچه تغییرات
+├── LICENSE.txt          ← شرایط مجوز
+├── html/                ← سایت آماده انتشار
+├── source/              ← سورس، ابزارها و تنظیمات
+├── documentation/       ← ۲۳ موضوع مستند (مارک‌داون)
+├── assets/              ← فونت، تصویر و فایل‌های برداری
+└── screenshots/         ← پیش‌نمایش‌های برداری</code></pre>
+      <p>فایل‌های توسعه‌ای (<code>node_modules</code>، <code>.git</code>، ابزارهای تست) عمداً در بسته نیستند.</p>
+    </article>
+
+    <article class="card card--soft">
+      <h2>۴) اولین تغییرات پیشنهادی</h2>
+      <table>
+        <thead><tr><th>می‌خواهم…</th><th>فایل</th></tr></thead>
+        <tbody>
+          <tr><td>نام و شعار محصول را عوض کنم</td><td><code>source/src/config/config.js</code></td></tr>
+          <tr><td>لوگو و آیکن را عوض کنم</td><td><code>source/public/assets/logo*.svg</code></td></tr>
+          <tr><td>رنگ سازمانی اضافه کنم</td><td><code>source/src/scss/base/_palettes.scss</code></td></tr>
+          <tr><td>صفحه جدید بسازم</td><td><code>source/tools/manifest.mjs</code> → <code>npm run gen:pages</code></td></tr>
+          <tr><td>داده نمونه را واقعی کنم</td><td><code>source/src/data/*.js</code></td></tr>
+          <tr><td>به API خودم وصل شوم</td><td><code>source/src/config/config.js</code> → <code>api.useMocks = false</code></td></tr>
+          <tr><td>متن‌های رابط را ترجمه کنم</td><td><code>source/src/locales/{fa,en,ar}.js</code></td></tr>
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>۵) مسیر یادگیری</h2>
+    <ol class="steps">
+      <li><a href="documentation/docs/installation.md">نصب و راه‌اندازی</a> — پوشه‌ها، اسکریپت‌ها و اجرای پروژه</li>
+      <li><a href="documentation/docs/folder-structure.md">ساختار پروژه</a> — چه چیزی کجاست و چه چیزی تولیدشده است</li>
+      <li><a href="documentation/docs/configuration.md">تنظیمات</a> — برند، زبان، ارز، تقویم و اتصال API</li>
+      <li><a href="documentation/docs/theme-customization.md">شخصی‌سازی تم</a> — توکن‌ها، پالت‌ها و حالت تاریک</li>
+      <li><a href="documentation/docs/adding-pages.md">افزودن صفحه جدید</a> — منیفست، کنترل‌کننده، بدنه اختصاصی</li>
+      <li><a href="documentation/docs/api-integration.md">اتصال به API</a> — قرارداد REST و سرویس‌های آماده</li>
+      <li><a href="documentation/docs/deployment.md">استقرار</a> — هاست، زیرپوشه، کش و هدرها</li>
+      <li><a href="documentation/docs/troubleshooting.md">رفع اشکال</a> — پاسخ مشکلات رایج پیش از تماس با پشتیبانی</li>
+    </ol>
+    <p>
+      نسخه قابل مرور همین مستندات با جستجو، فهرست کنار صفحه و بلوک‌های کد در قالب هم موجود است:
+      <a href="html/docs/introduction.html">مستندات درون قالب</a>.
+    </p>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2>پشتیبانی</h2>
+      <p>پیش از تماس، لطفاً این‌ها را آماده داشته باشید:</p>
+      <ul>
+        <li>نسخه قالب (۱٫۰٫۰) و مرورگر</li>
+        <li>مسیر صفحه‌ای که مشکل دارد</li>
+        <li>متن دقیق خطای کنسول (اگر وجود دارد)</li>
+        <li>خروجی <code>npm run qa:all</code> در صورت امکان</li>
+      </ul>
+      <p>ایمیل پشتیبانی: <code>support@novaadmin.dev</code></p>
+    </article>
+    <article class="card">
+      <h2>مجوز</h2>
+      <p>
+        استفاده در پروژه‌های شخصی و تجاری شما مجاز است؛ فروش مجدد، توزیع عمومی یا انتشار فایل‌های منبع مجاز نیست.
+        متن کامل در <a href="LICENSE.txt">LICENSE.txt</a> و فهرست کتابخانه‌ها با مجوزشان در
+        <a href="documentation/docs/credits.md">اعتبارها</a>.
+      </p>
+      <p class="note">فونت وزیرمتن (SIL OFL) و آیکن‌های Bootstrap Icons (MIT) با مجوز آزاد عرضه می‌شوند.</p>
+    </article>
+  </section>
+
+  <footer>NOVAADMIN v1.0.0 — ساخته‌شده با HTML5، SCSS و ES2022 · ۲۰۶ صفحه مستقل</footer>
+</main>
+</body>
+</html>

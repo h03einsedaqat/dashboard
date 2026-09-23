@@ -1,0 +1,147 @@
+/* ==========================================================================
+   NOVAADMIN — Design tokens
+   --------------------------------------------------------------------------
+   Every visual decision in the product resolves to a token defined here.
+   Tokens are exposed as `--nv-*` CSS custom properties, which is what makes
+   the runtime theme engine (colour, density, direction, font size) possible
+   without recompiling a single line of component CSS.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------- typography */
+  --nv-font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', 'Noto Kufi Arabic', system-ui, sans-serif;
+  --nv-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  --nv-font-numeric: 'Vazirmatn', ui-monospace, 'Segoe UI', sans-serif;
+
+  --nv-fw-regular: 400;
+  --nv-fw-medium: 500;
+  --nv-fw-semibold: 600;
+  --nv-fw-bold: 700;
+  --nv-fw-black: 800;
+
+  --nv-text-display: 2.5rem; /* 40px */
+  --nv-text-h1: 1.9rem; /* 30px */
+  --nv-text-h2: 1.5rem; /* 24px */
+  --nv-text-h3: 1.25rem; /* 20px */
+  --nv-text-h4: 1.0625rem; /* 17px */
+  --nv-text-h5: 1rem; /* 16px */
+  --nv-text-h6: 0.9375rem; /* 15px */
+  --nv-text-body: 0.9375rem; /* 15px */
+  --nv-text-body-sm: 0.875rem; /* 14px */
+  --nv-text-caption: 0.8125rem; /* 13px */
+  --nv-text-micro: 0.75rem; /* 12px */
+
+  --nv-lh-tight: 1.25;
+  --nv-lh-snug: 1.45;
+  --nv-lh-base: 1.75;
+  --nv-lh-relaxed: 1.9;
+
+  --nv-tracking-tight: -0.015em;
+  --nv-tracking-wide: 0.02em;
+
+  /* ------------------------------------------------------------- spacing */
+  --nv-space-1: 0.25rem;
+  --nv-space-2: 0.5rem;
+  --nv-space-3: 0.75rem;
+  --nv-space-4: 1rem;
+  --nv-space-5: 1.25rem;
+  --nv-space-6: 1.5rem;
+  --nv-space-7: 1.75rem;
+  --nv-space-8: 2rem;
+  --nv-space-9: 2.5rem;
+  --nv-space-10: 3rem;
+  --nv-space-11: 3.5rem;
+  --nv-space-12: 4rem;
+
+  /* -------------------------------------------------------------- radius */
+  --nv-radius-xs: 0.25rem;
+  --nv-radius-sm: 0.5rem;
+  --nv-radius-md: 0.625rem;
+  --nv-radius-lg: 0.875rem;
+  --nv-radius-xl: 1.25rem;
+  --nv-radius-2xl: 1.75rem;
+  --nv-radius-pill: 999px;
+  --nv-radius-circle: 50%;
+
+  /* ------------------------------------------------------------- shadows */
+  --nv-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --nv-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --nv-shadow-md: 0 6px 16px -6px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+  --nv-shadow-lg: 0 22px 48px -16px rgba(15, 23, 42, 0.2), 0 8px 18px -12px rgba(15, 23, 42, 0.12);
+  --nv-shadow-focus: 0 0 0 3px var(--nv-primary-ring);
+
+  /* ------------------------------------------------------------ motion */
+  --nv-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --nv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --nv-dur-fast: 120ms;
+  --nv-dur: 200ms;
+  --nv-dur-slow: 320ms;
+  --nv-transition: background-color var(--nv-dur) var(--nv-ease), color var(--nv-dur) var(--nv-ease),
+    border-color var(--nv-dur) var(--nv-ease), box-shadow var(--nv-dur) var(--nv-ease);
+
+  /* ------------------------------------------------------------ z-index */
+  --nv-z-sidebar: 1040;
+  --nv-z-header: 1030;
+  --nv-z-backdrop: 1055;
+  --nv-z-drawer: 1060;
+  --nv-z-command: 1080;
+  --nv-z-toast: 1090;
+  --nv-z-tooltip: 1095;
+
+  /* --------------------------------------------------------- dimensions */
+  --nv-sidebar-w: 17.25rem; /* 276px */
+  --nv-sidebar-mini-w: 5.25rem; /* 84px */
+  --nv-sidebar-compact-w: 4.75rem; /* 76px */
+  --nv-header-h: 4.5rem; /* 72px */
+  --nv-topnav-h: 3.25rem; /* 52px */
+  --nv-content-max: 100rem; /* 1600px */
+  --nv-content-pad: var(--nv-space-6);
+
+  /* --------------------------------------------- component metrics (density) */
+  --nv-control-h: 2.5rem; /* 40px */
+  --nv-control-h-sm: 2rem;
+  --nv-control-h-lg: 2.875rem;
+  --nv-control-pad-x: 0.875rem;
+  --nv-card-pad: 1.375rem;
+  --nv-card-gap: 1.5rem;
+  --nv-cell-pad-y: 0.8125rem;
+  --nv-cell-pad-x: 1rem;
+  --nv-nav-item-h: 2.5rem;
+  --nv-nav-pad-y: 0.5625rem;
+
+  /* -------------------------------------------------------- chart series */
+  --nv-chart-1: var(--nv-primary);
+  --nv-chart-2: #06b6d4;
+  --nv-chart-3: #f59e0b;
+  --nv-chart-4: #8b5cf6;
+  --nv-chart-5: #ec4899;
+  --nv-chart-6: #14b8a6;
+  --nv-chart-7: #f97316;
+  --nv-chart-8: #64748b;
+}
+
+/* ---------------------------------------------------------------- density */
+[data-density='compact'] {
+  --nv-control-h: 2.25rem;
+  --nv-control-h-lg: 2.625rem;
+  --nv-card-pad: 1.125rem;
+  --nv-card-gap: 1.125rem;
+  --nv-cell-pad-y: 0.5rem;
+  --nv-cell-pad-x: 0.75rem;
+  --nv-nav-item-h: 2.25rem;
+  --nv-nav-pad-y: 0.4375rem;
+  --nv-content-pad: var(--nv-space-5);
+}
+
+/* ------------------------------------------------------------- font sizes */
+html[data-font-size='sm'] {
+  font-size: 15px;
+}
+html[data-font-size='lg'] {
+  font-size: 17.5px;
+}
+html[data-font-size='md'] {
+  font-size: 16px;
+}

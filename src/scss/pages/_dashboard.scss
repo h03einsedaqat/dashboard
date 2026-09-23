@@ -1,0 +1,129 @@
+/* ==========================================================================
+   NOVAADMIN — dashboard shell
+   --------------------------------------------------------------------------
+   The layout that wraps every one of the ten dashboards: page header with the
+   range switcher, the KPI strip, the responsive chart grid and the bottom row
+   (data table + live activity feed).
+   ========================================================================== */
+
+.dash-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  flex-wrap: wrap;
+}
+
+.dash-head__title {
+  margin: 0;
+  font-size: var(--nv-text-h3);
+  line-height: 1.35;
+}
+
+.dash-head__text {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.dash-head__hint {
+  margin-inline-start: var(--nv-space-3);
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+}
+
+.dash-head__sub {
+  margin: 0.25rem 0 0;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+  max-width: 52ch;
+}
+
+.dash-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  flex-wrap: wrap;
+}
+
+/* The KPI strip keeps its own loading state so the header never jumps. */
+.kpi-row__loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--nv-card-gap);
+  inline-size: 100%;
+}
+
+.kpi-row__loading .skeleton {
+  block-size: 8.5rem;
+  border-radius: var(--nv-radius-lg);
+}
+
+/* Chart grid: charts keep a readable minimum width on every breakpoint. */
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--nv-card-gap);
+  align-items: start;
+}
+
+.widget-grid > .card {
+  min-inline-size: 0;
+  block-size: 100%;
+}
+
+.widget-grid > .card:nth-child(3n + 1) {
+  /* the first chart of every row gets more room on wide screens */
+  grid-column: span 2;
+}
+
+@media (max-width: 1200px) {
+  .widget-grid > .card:nth-child(3n + 1) {
+    grid-column: span 1;
+  }
+}
+
+.dash-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: var(--nv-card-gap);
+  align-items: start;
+}
+
+@media (max-width: 1199.98px) {
+  .dash-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dash-bottom .card {
+  min-inline-size: 0;
+}
+
+/* Chart-type switch appears in every chart card header. */
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+/* Diagnostics strip — a nice touch on any dashboard: shows the active
+   appearance state and proves the theme engine is wired up. */
+.dash-status {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  flex-wrap: wrap;
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border: 1px dashed var(--nv-divider);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-micro);
+}
+
+.dash-status kbd {
+  font-size: 0.7rem;
+}

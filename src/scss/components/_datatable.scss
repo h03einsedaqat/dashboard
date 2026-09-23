@@ -1,0 +1,346 @@
+/* ==========================================================================
+   NOVAADMIN — DataTable shell
+   --------------------------------------------------------------------------
+   Toolbar (search / filters / column picker), selection bar, pagination and
+   the loading / empty / error states that every data view must ship.
+   ========================================================================== */
+
+.datatable {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  box-shadow: var(--nv-shadow-xs);
+  overflow: hidden;
+}
+
+.datatable__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-4) var(--nv-card-pad);
+  border-block-end: 1px solid var(--nv-divider);
+  background: var(--nv-surface);
+}
+
+.datatable__search {
+  flex: 1 1 16rem;
+  max-width: 22rem;
+}
+
+.datatable__toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.datatable__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+.datatable__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-4) var(--nv-card-pad);
+  border-block-end: 1px solid var(--nv-divider);
+  background: var(--nv-surface-2);
+}
+.datatable__filters .form-label {
+  font-size: var(--nv-text-micro);
+  margin-block-end: 0.35rem;
+}
+
+.datatable__selection {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-3) var(--nv-card-pad);
+  background: var(--nv-primary-soft);
+  border-block-end: 1px solid rgba(var(--nv-primary-rgb), 0.2);
+  color: var(--nv-primary-soft-fg);
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+  animation: nv-fade-in var(--nv-dur) var(--nv-ease-out);
+}
+.datatable__selection .btn {
+  margin-inline-start: auto;
+}
+
+.datatable__body {
+  position: relative;
+  min-height: 8rem;
+}
+
+.datatable__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-4) var(--nv-card-pad);
+  border-block-start: 1px solid var(--nv-divider);
+  background: var(--nv-surface-2);
+}
+
+.datatable__info {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+.datatable__info strong {
+  color: var(--nv-text-2);
+}
+
+/* The footer row pairs the “showing x of y” text with the page size select and
+   the numbered pager. Without this the numbers and the select collide. */
+.datatable__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+  margin-inline-start: auto;
+}
+.datatable__pager .page-size {
+  inline-size: auto;
+  min-inline-size: 6.5rem;
+  min-height: 2.15rem;
+  padding-block: 0;
+  font-size: var(--nv-text-caption);
+}
+
+/* Single overlay host for the loading / empty / error states: it replaces the
+   row area instead of pushing the footer down. */
+.datatable__state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--nv-space-6);
+  background: color-mix(in srgb, var(--nv-surface) 78%, transparent);
+  backdrop-filter: blur(2px);
+  z-index: 3;
+}
+.datatable__state[hidden] {
+  display: none;
+}
+.datatable__state .empty-state {
+  margin: 0;
+}
+
+@media (max-width: 575.98px) {
+  .datatable__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .datatable__pager {
+    margin-inline-start: 0;
+    justify-content: space-between;
+  }
+  .pagination {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .page-link {
+    min-width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
+.datatable__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--nv-surface) 72%, transparent);
+  backdrop-filter: blur(1px);
+  z-index: 3;
+}
+
+/* ------------------------------------------------------------- column picker */
+.column-picker {
+  min-width: 15rem;
+  padding: var(--nv-space-3);
+}
+.column-picker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--nv-radius-sm);
+  font-size: var(--nv-text-body-sm);
+  color: var(--nv-text-2);
+  cursor: pointer;
+}
+.column-picker__item:hover {
+  background: var(--nv-surface-hover);
+}
+
+/* --------------------------------------------------------------- bulk bar */
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+/* --------------------------------------------------------------- pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-item {
+  display: inline-flex;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.page-link {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.15rem;
+  height: 2.15rem;
+  padding-inline: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--nv-radius-sm);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.page-link:hover {
+  background: var(--nv-surface-3);
+  color: var(--nv-heading);
+}
+.page-item.is-active .page-link {
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  font-weight: var(--nv-fw-semibold);
+}
+.page-item.is-disabled .page-link,
+.page-item:disabled .page-link,
+.page-item[disabled] .page-link {
+  opacity: 0.42;
+  pointer-events: none;
+}
+.page-item:focus-visible {
+  outline: none;
+}
+.page-item:focus-visible .page-link {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+}
+.page-item:not(.is-active):not(.is-disabled):active .page-link {
+  transform: translateY(1px);
+}
+
+/* Chevrons follow the writing direction: `first/prev` point to the start of
+   the reading order, `next/last` to its end. */
+[dir='ltr'] .pagination [data-nav='first'] .page-link i,
+[dir='ltr'] .pagination [data-nav='prev'] .page-link i,
+[dir='rtl'] .pagination [data-nav='next'] .page-link i,
+[dir='rtl'] .pagination [data-nav='last'] .page-link i {
+  transform: scaleX(-1);
+}
+
+/* Compact pagination for cards and side panels */
+.pagination--compact .page-link {
+  min-width: 1.85rem;
+  height: 1.85rem;
+  font-size: var(--nv-text-micro);
+}
+.page-item--ellipsis .page-link {
+  cursor: default;
+  background: transparent;
+}
+.page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+.page-size .form-select {
+  min-height: var(--nv-control-h-sm);
+  width: auto;
+  font-size: var(--nv-text-caption);
+  padding-inline-end: var(--nv-space-7);
+}
+
+/* ------------------------------------------------------------ inline table loading */
+.skeleton-row td {
+  padding-block: calc(var(--nv-cell-pad-y) + 0.15rem);
+}
+.skeleton {
+  position: relative;
+  display: block;
+  height: 0.75rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3);
+  overflow: hidden;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.28), transparent);
+  animation: nv-shimmer 1.4s infinite;
+}
+[dir='rtl'] .skeleton::after {
+  animation-direction: reverse;
+}
+@keyframes nv-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton--text {
+  width: 8rem;
+}
+.skeleton--w-25 {
+  width: 25%;
+}
+.skeleton--w-50 {
+  width: 50%;
+}
+.skeleton--w-75 {
+  width: 75%;
+}
+.skeleton--circle {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+}
+.skeleton--card {
+  height: 8rem;
+  border-radius: var(--nv-radius-lg);
+}
+.skeleton--title {
+  height: 1.1rem;
+  width: 40%;
+}
+.skeleton--chart {
+  height: 14rem;
+  border-radius: var(--nv-radius-md);
+}
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+}
+.skeleton-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+}

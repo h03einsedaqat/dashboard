@@ -1,0 +1,59 @@
+/* ==========================================================================
+   NOVAADMIN — Colour palettes
+   --------------------------------------------------------------------------
+   Six interchangeable primary palettes. Switching `data-primary` on <html>
+   re-maps every brand token, which is what keeps the "change your brand
+   colour without touching a component" promise honest.
+   ========================================================================== */
+
+@mixin palette($base, $hover, $active, $soft, $soft-fg, $rgb) {
+  --nv-primary: #{$base};
+  --nv-primary-hover: #{$hover};
+  --nv-primary-active: #{$active};
+  --nv-primary-soft: #{$soft};
+  --nv-primary-soft-fg: #{$soft-fg};
+  --nv-primary-rgb: #{$rgb};
+  --nv-primary-contrast: #ffffff;
+  --nv-primary-ring: rgba(#{$rgb}, 0.28);
+  --nv-primary-sheen: rgba(#{$rgb}, 0.12);
+}
+
+:root,
+[data-primary='indigo'] {
+  @include palette(#4f46e5, #4338ca, #3730a3, #eef2ff, #4338ca, '79, 70, 229');
+}
+[data-primary='blue'] {
+  @include palette(#2563eb, #1d4ed8, #1e40af, #eff6ff, #1d4ed8, '37, 99, 235');
+}
+[data-primary='emerald'] {
+  @include palette(#059669, #047857, #065f46, #ecfdf5, #047857, '5, 150, 105');
+}
+[data-primary='violet'] {
+  @include palette(#7c3aed, #6d28d9, #5b21b6, #f5f3ff, #6d28d9, '124, 58, 237');
+}
+[data-primary='rose'] {
+  @include palette(#e11d48, #be123c, #9f1239, #fff1f2, #be123c, '225, 29, 72');
+}
+[data-primary='orange'] {
+  @include palette(#ea580c, #c2410c, #9a3412, #fff7ed, #c2410c, '234, 88, 12');
+}
+
+/* Dark mode wants a slightly lifted brand colour and a translucent soft tint */
+[data-theme='dark'][data-primary='indigo'] {
+  @include palette(#818cf8, #a5b4fc, #6366f1, rgba(99, 102, 241, 0.16), #c7d2fe, '129, 140, 248');
+}
+[data-theme='dark'][data-primary='blue'] {
+  @include palette(#60a5fa, #93c5fd, #3b82f6, rgba(59, 130, 246, 0.16), #bfdbfe, '96, 165, 250');
+}
+[data-theme='dark'][data-primary='emerald'] {
+  @include palette(#34d399, #6ee7b7, #10b981, rgba(16, 185, 129, 0.16), #a7f3d0, '52, 211, 153');
+}
+[data-theme='dark'][data-primary='violet'] {
+  @include palette(#a78bfa, #c4b5fd, #8b5cf6, rgba(139, 92, 246, 0.16), #ddd6fe, '167, 139, 250');
+}
+[data-theme='dark'][data-primary='rose'] {
+  @include palette(#fb7185, #fda4af, #f43f5e, rgba(244, 63, 94, 0.16), #fecdd3, '251, 113, 133');
+}
+[data-theme='dark'][data-primary='orange'] {
+  @include palette(#fb923c, #fdba74, #f97316, rgba(249, 115, 22, 0.16), #fed7aa, '251, 146, 60');
+}

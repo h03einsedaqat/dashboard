@@ -1,0 +1,106 @@
+<header class="app-header" data-app-header>
+  <div class="app-header__left">
+    <button class="icon-btn" type="button" data-sidebar-toggle aria-label="نمایش/پنهان کردن منو" aria-controls="app-sidebar" aria-expanded="true" data-i18n-title="ui.toggleSidebar">
+      <i class="bi bi-list" aria-hidden="true"></i>
+    </button>
+    <button class="icon-btn d-none d-md-inline-flex" type="button" data-sidebar-collapse aria-label="جمع کردن منو" data-i18n-title="ui.collapseSidebar">
+      <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+    </button>
+
+    <a class="app-header__brand d-lg-none" href="{{ROOT}}index.html" aria-label="{{APP_NAME}}">
+      <img src="{{ROOT}}assets/logo-mark.svg" alt="" width="28" height="28">
+    </a>
+
+    <button class="search-trigger" type="button" data-command-open aria-label="جستجوی سراسری" data-i18n-title="ui.search">
+      <i class="bi bi-search" aria-hidden="true"></i>
+      <span class="search-trigger__text" data-i18n="ui.searchPlaceholder">جستجو در همه‌جا…</span>
+      <kbd class="search-trigger__kbd" data-kbd="cmd-k">Ctrl K</kbd>
+    </button>
+  </div>
+
+  <div class="app-header__right">
+    <div class="dropdown">
+      <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر دمو" data-i18n-title="ui.demoSwitcher">
+        <i class="bi bi-grid" aria-hidden="true"></i>
+      </button>
+      <div class="dropdown-menu dropdown-menu--demos" data-dropdown-menu data-demo-switcher>
+        <div class="dropdown-menu__head">
+          <span data-i18n="ui.demos">دموهای آماده</span>
+          <span class="badge badge--soft-primary">10</span>
+        </div>
+        <div class="dropdown-menu__grid" data-demo-list></div>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان" data-i18n-title="ui.language">
+        <i class="bi bi-translate" aria-hidden="true"></i>
+      </button>
+      <ul class="dropdown-menu" data-dropdown-menu data-language-switch>
+        <li><button class="dropdown-item" type="button" data-lang="fa"><span class="lang-flag">فا</span> فارسی <small>Persian</small></button></li>
+        <li><button class="dropdown-item" type="button" data-lang="en"><span class="lang-flag">EN</span> English <small>انگلیسی</small></button></li>
+        <li><button class="dropdown-item" type="button" data-lang="ar"><span class="lang-flag">ع</span> العربية <small>Arabic</small></button></li>
+      </ul>
+    </div>
+
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="تغییر حالت روشن/تاریک" data-i18n-title="ui.theme">
+      <i class="bi bi-moon-stars" data-theme-icon aria-hidden="true"></i>
+    </button>
+
+    <div class="dropdown">
+      <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="اعلان‌ها" data-i18n-title="ui.notifications">
+        <i class="bi bi-bell" aria-hidden="true"></i>
+        <span class="icon-btn__dot" data-notif-count hidden>0</span>
+      </button>
+      <div class="dropdown-menu dropdown-menu--notifications" data-dropdown-menu>
+        <div class="dropdown-menu__head">
+          <span data-i18n="ui.notifications">اعلان‌ها</span>
+          <button class="btn btn-link btn-sm" type="button" data-notif-read-all data-i18n="ui.markAllRead">همه خوانده شد</button>
+        </div>
+        <div class="notification-list" data-notification-list role="list"></div>
+        <div class="dropdown-menu__foot">
+          <a class="btn btn-ghost btn-sm w-100" href="{{ROOT}}apps/notifications.html" data-i18n="ui.viewAll">مشاهده همه اعلان‌ها</a>
+        </div>
+      </div>
+    </div>
+
+    <button class="icon-btn d-none d-md-inline-flex" type="button" data-fullscreen aria-label="تمام صفحه" data-i18n-title="ui.fullscreen">
+      <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
+    </button>
+
+    <button class="icon-btn d-none d-xl-inline-flex" type="button" data-customizer-open aria-label="شخصی‌سازی تم" data-i18n-title="ui.customizer">
+      <i class="bi bi-palette" aria-hidden="true"></i>
+    </button>
+
+    <div class="dropdown">
+      <button class="user-chip" type="button" data-dropdown-toggle="true" aria-expanded="false">
+        <img class="avatar avatar--sm" src="{{ROOT}}assets/img/avatars/avatar-08.svg" alt="" width="32" height="32">
+        <span class="user-chip__meta d-none d-sm-flex">
+          <span class="user-chip__name">سارا محمدی</span>
+          <span class="user-chip__role" data-i18n="role.superAdmin">مدیر ارشد</span>
+        </span>
+        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" data-dropdown-menu>
+        <li class="dropdown-menu__head"><span>سارا محمدی</span><small class="text-muted">sara@novaadmin.dev</small></li>
+        <li><a class="dropdown-item" href="{{ROOT}}profile/overview.html"><i class="bi bi-person"></i><span data-i18n="nav.profile">پروفایل</span></a></li>
+        <li><a class="dropdown-item" href="{{ROOT}}profile/security.html"><i class="bi bi-shield-lock"></i><span data-i18n="ui.security">امنیت</span></a></li>
+        <li><a class="dropdown-item" href="{{ROOT}}settings/general.html"><i class="bi bi-gear"></i><span data-i18n="nav.settings">تنظیمات</span></a></li>
+        <li><a class="dropdown-item" href="{{ROOT}}finance/invoices.html"><i class="bi bi-receipt"></i><span data-i18n="nav.fin-invoices">فاکتورها</span></a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><button class="dropdown-item" type="button" data-shortcuts-open><i class="bi bi-keyboard"></i><span data-i18n="ui.shortcuts">کلیدهای میانبر</span></button></li>
+        <li><button class="dropdown-item" type="button" data-customizer-open><i class="bi bi-palette"></i><span data-i18n="ui.customizer">شخصی‌سازی تم</span></button></li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <button class="dropdown-item dropdown-item--danger" type="button" data-logout>
+            <i class="bi bi-box-arrow-right"></i><span data-i18n="ui.logout">خروج از حساب</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="topnav" data-topnav-group hidden>
+    <div class="topnav__inner" data-nav-mount></div>
+  </div>
+</header>

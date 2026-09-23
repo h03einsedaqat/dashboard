@@ -1,0 +1,26 @@
+{
+  "name": "NOVAADMIN — Modern. Persian-First. Enterprise Ready.",
+  "short_name": "NOVA",
+  "description": "Premium Persian-first multi-purpose admin dashboard template with RTL/LTR, Jalali calendar and dark mode.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#4f46e5",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "./assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

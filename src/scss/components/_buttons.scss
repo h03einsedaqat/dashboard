@@ -1,0 +1,424 @@
+/* ==========================================================================
+   NOVAADMIN — Buttons
+   --------------------------------------------------------------------------
+   Solid, soft, outline, ghost and link buttons in five semantic tones plus
+   brand tones. Height/padding follow the density tokens.
+   ========================================================================== */
+
+.btn {
+  --btn-bg: var(--nv-surface-3);
+  --btn-fg: var(--nv-text);
+  --btn-border: transparent;
+  --btn-shadow: none;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nv-space-2);
+  min-height: var(--nv-control-h);
+  padding-inline: var(--nv-space-5);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--nv-radius-md);
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: var(--btn-shadow);
+  font-family: inherit;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), border-color var(--nv-dur-fast) var(--nv-ease),
+    color var(--nv-dur-fast) var(--nv-ease), box-shadow var(--nv-dur-fast) var(--nv-ease),
+    transform var(--nv-dur-fast) var(--nv-ease);
+}
+
+.btn i {
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--nv-shadow-focus);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn[disabled],
+.btn.disabled,
+.btn:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ solid */
+.btn-primary {
+  --btn-bg: var(--nv-primary);
+  --btn-fg: var(--nv-primary-contrast);
+  --btn-shadow: 0 10px 22px -14px rgba(var(--nv-primary-rgb), 0.95);
+}
+.btn-primary:hover {
+  --btn-bg: var(--nv-primary-hover);
+  color: var(--nv-primary-contrast);
+}
+.btn-primary:active {
+  --btn-bg: var(--nv-primary-active);
+}
+
+.btn-secondary {
+  --btn-bg: var(--nv-heading);
+  --btn-fg: var(--nv-surface);
+}
+.btn-secondary:hover {
+  filter: brightness(1.15);
+  color: var(--nv-surface);
+}
+
+.btn-success {
+  --btn-bg: var(--nv-success);
+  --btn-fg: #fff;
+}
+.btn-danger {
+  --btn-bg: var(--nv-danger);
+  --btn-fg: #fff;
+}
+.btn-warning {
+  --btn-bg: var(--nv-warning);
+  --btn-fg: #fff;
+}
+.btn-info {
+  --btn-bg: var(--nv-info);
+  --btn-fg: #fff;
+}
+.btn-success:hover,
+.btn-danger:hover,
+.btn-warning:hover,
+.btn-info:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------- light */
+.btn-light {
+  --btn-bg: var(--nv-surface);
+  --btn-fg: var(--nv-text);
+  --btn-border: var(--nv-border);
+}
+.btn-light:hover {
+  --btn-bg: var(--nv-surface-2);
+  border-color: var(--nv-border-strong);
+  color: var(--nv-heading);
+}
+
+.btn-dark {
+  --btn-bg: var(--nv-heading);
+  --btn-fg: var(--nv-surface);
+}
+.btn-dark:hover {
+  --btn-fg: var(--nv-surface);
+  opacity: 0.92;
+}
+
+/* ------------------------------------------------------------------ ghost */
+.btn-ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--nv-text-2);
+  --btn-border: transparent;
+}
+.btn-ghost:hover {
+  --btn-bg: var(--nv-surface-3);
+  --btn-fg: var(--nv-heading);
+}
+
+.btn-link {
+  --btn-bg: transparent;
+  --btn-fg: var(--nv-primary);
+  min-height: auto;
+  padding: 0;
+  text-decoration: none;
+}
+.btn-link:hover {
+  --btn-fg: var(--nv-primary-hover);
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- outline */
+.btn-outline-primary {
+  --btn-bg: transparent;
+  --btn-fg: var(--nv-primary);
+  --btn-border: rgba(var(--nv-primary-rgb), 0.4);
+}
+.btn-outline-primary:hover {
+  --btn-bg: var(--nv-primary-soft);
+  --btn-border: var(--nv-primary);
+}
+.btn-outline-secondary {
+  --btn-bg: transparent;
+  --btn-fg: var(--nv-text-2);
+  --btn-border: var(--nv-border-strong);
+}
+.btn-outline-secondary:hover {
+  --btn-bg: var(--nv-surface-3);
+  --btn-fg: var(--nv-heading);
+}
+
+/* ------------------------------------------------------------------- soft */
+@mixin soft-button($soft, $fg) {
+  --btn-bg: var(--nv-#{$soft}-soft);
+  --btn-fg: var(--nv-#{$soft}-soft-fg);
+  --btn-border: transparent;
+}
+.btn-soft-primary {
+  --btn-bg: var(--nv-primary-soft);
+  --btn-fg: var(--nv-primary-soft-fg);
+}
+.btn-soft-success {
+  @include soft-button(success, success-soft-fg);
+}
+.btn-soft-warning {
+  @include soft-button(warning, warning-soft-fg);
+}
+.btn-soft-danger {
+  @include soft-button(danger, danger-soft-fg);
+}
+.btn-soft-info {
+  @include soft-button(info, info-soft-fg);
+}
+.btn-soft-neutral {
+  @include soft-button(neutral, neutral-soft-fg);
+}
+.btn-soft-primary:hover,
+.btn-soft-success:hover,
+.btn-soft-warning:hover,
+.btn-soft-danger:hover,
+.btn-soft-info:hover,
+.btn-soft-neutral:hover {
+  filter: brightness(0.97);
+  color: var(--btn-fg);
+}
+[data-theme='dark'] .btn-soft-primary:hover,
+[data-theme='dark'] .btn-soft-success:hover,
+[data-theme='dark'] .btn-soft-warning:hover,
+[data-theme='dark'] .btn-soft-danger:hover,
+[data-theme='dark'] .btn-soft-info:hover,
+[data-theme='dark'] .btn-soft-neutral:hover {
+  filter: brightness(1.5);
+}
+
+/* ------------------------------------------------------------------ sizes */
+.btn-sm {
+  min-height: var(--nv-control-h-sm);
+  padding-inline: var(--nv-space-4);
+  font-size: var(--nv-text-caption);
+  border-radius: var(--nv-radius-sm);
+}
+.btn-lg {
+  min-height: var(--nv-control-h-lg);
+  padding-inline: var(--nv-space-7);
+  font-size: 1rem;
+  border-radius: var(--nv-radius-lg);
+}
+.btn-block,
+.btn.w-100 {
+  width: 100%;
+}
+
+.btn-icon {
+  padding-inline: 0;
+  width: var(--nv-control-h);
+  min-width: var(--nv-control-h);
+}
+
+/* -------------------------------------------------------------- icon button */
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nv-control-h);
+  height: var(--nv-control-h);
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--nv-radius-md);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease),
+    border-color var(--nv-dur-fast) var(--nv-ease);
+}
+.icon-btn:hover {
+  background: var(--nv-surface-3);
+  color: var(--nv-heading);
+}
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--nv-shadow-focus);
+}
+.icon-btn--sm {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.95rem;
+}
+.icon-btn--outline {
+  border-color: var(--nv-border);
+  background: var(--nv-surface);
+}
+.icon-btn__dot {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-end: 0.35rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding-inline: 0.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-danger);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: var(--nv-fw-bold);
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--nv-surface);
+}
+
+/* -------------------------------------------------------------- button group */
+.btn-group {
+  display: inline-flex;
+  gap: 0;
+}
+.btn-group .btn {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.btn-group .btn:first-child {
+  border-start-start-radius: var(--nv-radius-md);
+  border-end-start-radius: var(--nv-radius-md);
+}
+.btn-group .btn:last-child {
+  border-start-end-radius: var(--nv-radius-md);
+  border-end-end-radius: var(--nv-radius-md);
+}
+
+/* --------------------------------------------------------- segmented control */
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--nv-surface-3);
+  border-radius: var(--nv-radius-md);
+  border: 1px solid var(--nv-border);
+}
+.segmented__item {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nv-space-2);
+  min-height: 2rem;
+  padding-inline: var(--nv-space-3);
+  border: 0;
+  border-radius: calc(var(--nv-radius-md) - 3px);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-family: inherit;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease),
+    box-shadow var(--nv-dur-fast) var(--nv-ease);
+}
+.segmented__item:hover {
+  color: var(--nv-heading);
+}
+.segmented__item.is-active {
+  background: var(--nv-surface);
+  color: var(--nv-primary);
+  font-weight: var(--nv-fw-semibold);
+  box-shadow: var(--nv-shadow-xs);
+}
+.segmented--sm .segmented__item {
+  min-height: 1.75rem;
+  font-size: var(--nv-text-micro);
+}
+
+/* ------------------------------------------------------------------ fab */
+.fab {
+  position: fixed;
+  inset-block-end: var(--nv-space-6);
+  inset-inline-end: var(--nv-space-6);
+  z-index: var(--nv-z-header);
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  box-shadow: var(--nv-shadow-lg);
+}
+@media (max-width: 767.98px) {
+  .fab {
+    inset-block-end: var(--nv-space-4);
+    inset-inline-end: var(--nv-space-4);
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
+/* ----------------------------------------------------------------- loading --
+   `.is-loading` is the shared busy state (`core/form.js` sets it on submit
+   buttons while a request is in flight, `calendar.js` on save actions). The
+   label stays readable and the action is locked, so a double click can never
+   fire the same request twice. */
+.btn.is-loading,
+.icon-btn.is-loading {
+  pointer-events: none;
+  cursor: progress;
+}
+
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: var(--nv-space-3);
+  inset-block-start: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-block-start: -0.42rem;
+  border: 2px solid currentColor;
+  border-block-start-color: transparent;
+  border-radius: 50%;
+  opacity: 0.75;
+  animation: nv-spin 0.7s linear infinite;
+}
+
+.btn.is-loading {
+  position: relative;
+  padding-inline-end: calc(var(--nv-space-3) * 2 + 0.85rem);
+  opacity: 0.85;
+}
+
+.btn.is-loading:has(.spinner)::after {
+  content: none;
+}
+
+.icon-btn.is-loading i {
+  animation: nv-spin 0.7s linear infinite;
+}
+
+@keyframes nv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-loading::after,
+  .icon-btn.is-loading i {
+    animation-duration: 2s;
+  }
+}

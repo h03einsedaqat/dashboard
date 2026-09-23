@@ -1,0 +1,257 @@
+/* ==========================================================================
+   NOVAADMIN — Cards & panels
+   --------------------------------------------------------------------------
+   The workhorse surface of the product: quiet border, generous padding,
+   header/body/footer rhythm and a set of composition helpers used by every
+   dashboard and application page.
+   ========================================================================== */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  box-shadow: var(--nv-shadow-xs);
+  transition: box-shadow var(--nv-dur) var(--nv-ease), border-color var(--nv-dur) var(--nv-ease),
+    transform var(--nv-dur) var(--nv-ease);
+}
+
+.card--interactive:hover {
+  box-shadow: var(--nv-shadow-md);
+  border-color: var(--nv-border-strong);
+  transform: translateY(-2px);
+}
+
+.card--flush {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.card--glass {
+  background: var(--nv-glass);
+  backdrop-filter: blur(14px);
+}
+
+.card--primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--nv-primary), var(--nv-primary-active));
+  color: var(--nv-primary-contrast);
+}
+.card--primary .card__title,
+.card--primary h1,
+.card--primary h2,
+.card--primary h3,
+.card--primary strong {
+  color: var(--nv-primary-contrast);
+}
+.card--primary .text-muted {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  padding: var(--nv-card-pad) var(--nv-card-pad) 0;
+}
+.card__head--bordered {
+  padding-block-end: var(--nv-card-pad);
+  border-block-end: 1px solid var(--nv-divider);
+}
+.card__title {
+  margin: 0;
+  font-size: var(--nv-text-h5);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+.card__subtitle {
+  margin: var(--nv-space-1) 0 0;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+  line-height: 1.6;
+}
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-1);
+  flex: 0 0 auto;
+}
+.card__body {
+  padding: var(--nv-card-pad);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.card__head + .card__body {
+  padding-block-start: var(--nv-space-4);
+}
+.card__foot {
+  padding: var(--nv-space-4) var(--nv-card-pad);
+  border-block-start: 1px solid var(--nv-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+  background: var(--nv-surface-2);
+  border-end-start-radius: var(--nv-radius-lg);
+  border-end-end-radius: var(--nv-radius-lg);
+}
+.card__body--flush {
+  padding: 0;
+}
+.card__body--scroll {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.card__ribbon {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  padding: 0.2rem 0.75rem;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  border-start-end-radius: var(--nv-radius-lg);
+  border-end-start-radius: var(--nv-radius-md);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+
+/* ---------------------------------------------------------- icon tile card */
+.card--icon .card__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-size: 1.2rem;
+  margin-block-end: var(--nv-space-4);
+}
+
+/* ------------------------------------------------------------- media card */
+.card-media {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--nv-radius-lg) var(--nv-radius-lg) 0 0;
+  aspect-ratio: 16 / 10;
+  background: var(--nv-surface-3);
+}
+.card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card-media__tag {
+  position: absolute;
+  inset-block-start: var(--nv-space-3);
+  inset-inline-start: var(--nv-space-3);
+}
+
+/* ------------------------------------------------------------ quick stats */
+.quick-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-4);
+  border-radius: var(--nv-radius-lg);
+  border: 1px solid var(--nv-border);
+  background: var(--nv-surface);
+}
+.quick-stat__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--nv-radius-md);
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+.quick-stat__meta {
+  min-width: 0;
+}
+.quick-stat__value {
+  font-size: var(--nv-text-h3);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.quick-stat__label {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------ soft tiles */
+.tile {
+  padding: var(--nv-space-4);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  border: 1px solid var(--nv-border);
+  min-width: 0;
+}
+.tile--soft {
+  border-color: transparent;
+  background: var(--nv-surface-3);
+}
+/* Icon tile: a compact square used for module/role icons in lists and cards. */
+.tile--icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  flex: 0 0 auto;
+  border-radius: var(--nv-radius-md);
+  font-size: 1.05rem;
+}
+.tile--primary {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.tile--success {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.tile--warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.tile--danger {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.tile--info {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.tile--violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme='dark'] .tile--violet {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+
+.tile__label {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  margin-block-end: var(--nv-space-1);
+}
+.tile__value {
+  font-size: var(--nv-text-h4);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  font-variant-numeric: tabular-nums;
+}

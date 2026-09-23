@@ -1,0 +1,231 @@
+/* ==========================================================================
+   NOVAADMIN — Modals, drawers, confirm dialogs
+   ========================================================================== */
+
+.modal-content {
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-xl);
+  background: var(--nv-surface);
+  color: var(--nv-text);
+  box-shadow: var(--nv-shadow-lg);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-5) var(--nv-space-6);
+  border-block-end: 1px solid var(--nv-divider);
+  background: var(--nv-surface-2);
+}
+.modal-title {
+  margin: 0;
+  font-size: var(--nv-text-h5);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+.modal-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  font-weight: var(--nv-fw-regular);
+}
+.modal-body {
+  padding: var(--nv-space-6);
+}
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-4) var(--nv-space-6);
+  border-block-start: 1px solid var(--nv-divider);
+  background: var(--nv-surface-2);
+}
+.modal-footer--between {
+  justify-content: space-between;
+}
+
+.btn-close {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: var(--nv-radius-sm);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%238b95a9'%3E%3Cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3E%3C/svg%3E")
+    center / 0.9rem no-repeat;
+  opacity: 0.75;
+  transition: opacity var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.btn-close:hover {
+  opacity: 1;
+  background-color: var(--nv-surface-3);
+}
+.btn-close:focus {
+  box-shadow: none;
+  opacity: 1;
+}
+
+.modal-backdrop {
+  background-color: var(--nv-overlay);
+  backdrop-filter: blur(2px);
+}
+.modal-backdrop.show {
+  opacity: 1;
+}
+
+.modal-dialog-scrollable .modal-body {
+  scrollbar-gutter: stable;
+}
+
+/* --------------------------------------------------------------- drawer */
+.drawer {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: var(--nv-z-drawer);
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, 92vw);
+  background: var(--nv-surface);
+  border-inline-start: 1px solid var(--nv-border);
+  box-shadow: var(--nv-shadow-lg);
+  transform: translateX(var(--nv-drawer-offset, 100%));
+  transition: transform var(--nv-dur-slow) var(--nv-ease-out);
+}
+[dir='rtl'] .drawer {
+  --nv-drawer-offset: -100%;
+}
+.drawer--start {
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+  border-inline-start: 0;
+  border-inline-end: 1px solid var(--nv-border);
+}
+[dir='rtl'] .drawer--start {
+  --nv-drawer-offset: 100%;
+}
+[dir='ltr'] .drawer--start {
+  --nv-drawer-offset: -100%;
+}
+.drawer.is-open {
+  transform: translateX(0);
+}
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-5);
+  border-block-end: 1px solid var(--nv-divider);
+}
+.drawer__title {
+  margin: 0;
+  font-size: var(--nv-text-h5);
+}
+.drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--nv-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-5);
+}
+.drawer__foot {
+  padding: var(--nv-space-5);
+  border-block-start: 1px solid var(--nv-divider);
+  display: flex;
+  gap: var(--nv-space-3);
+}
+.drawer__foot .btn {
+  flex: 1 1 auto;
+}
+
+/* -------------------------------------------------------- confirm dialog */
+.confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-inline: auto;
+  border-radius: 50%;
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger);
+  font-size: 1.5rem;
+}
+.confirm-icon--warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning);
+}
+.confirm-icon--primary {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary);
+}
+
+/* SweetAlert2 theming (used for confirmations) */
+.swal2-popup {
+  border-radius: var(--nv-radius-xl) !important;
+  background: var(--nv-surface) !important;
+  color: var(--nv-text) !important;
+  border: 1px solid var(--nv-border) !important;
+  font-family: var(--nv-font-sans) !important;
+  padding: var(--nv-space-8) !important;
+}
+.swal2-title {
+  color: var(--nv-heading) !important;
+  font-size: var(--nv-text-h4) !important;
+  font-weight: var(--nv-fw-bold) !important;
+}
+.swal2-html-container {
+  color: var(--nv-text-muted) !important;
+  font-size: var(--nv-text-body-sm) !important;
+}
+.swal2-styled.swal2-confirm {
+  background-color: var(--nv-danger) !important;
+  border-radius: var(--nv-radius-md) !important;
+  font-weight: var(--nv-fw-semibold) !important;
+  box-shadow: none !important;
+}
+.swal2-styled.swal2-cancel {
+  background-color: var(--nv-surface-3) !important;
+  color: var(--nv-text) !important;
+  border-radius: var(--nv-radius-md) !important;
+}
+.swal2-icon.swal2-warning {
+  border-color: var(--nv-warning) !important;
+  color: var(--nv-warning) !important;
+}
+.swal2-icon.swal2-question {
+  border-color: var(--nv-primary) !important;
+  color: var(--nv-primary) !important;
+}
+.swal2-actions {
+  gap: var(--nv-space-3) !important;
+  margin-block-start: var(--nv-space-6) !important;
+}
+.swal2-timer-progress-bar {
+  background: var(--nv-primary) !important;
+}
+
+/* --------------------------------------------------------- quick view modal */
+.quick-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: var(--nv-space-6);
+}
+@media (max-width: 767.98px) {
+  .quick-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .modal-body {
+    padding: var(--nv-space-5);
+  }
+  .modal-header,
+  .modal-footer {
+    padding: var(--nv-space-4) var(--nv-space-5);
+  }
+}

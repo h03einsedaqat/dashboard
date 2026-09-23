@@ -1,0 +1,53 @@
+{
+  "name": "novaadmin",
+  "productName": "NOVAADMIN",
+  "version": "1.0.0",
+  "description": "NOVAADMIN — Premium Persian-First Multi-Purpose HTML Admin Dashboard Template (RTL/LTR, Jalali, Dark Mode, AI Workspace, 130+ pages).",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "private": true,
+  "keywords": [
+    "admin-template",
+    "dashboard",
+    "rtl",
+    "persian",
+    "bootstrap",
+    "jalali",
+    "html-template",
+    "dark-mode"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "npm run gen:all && vite --host 0.0.0.0",
+    "build": "npm run gen:all && vite build && node tools/flatten-dist.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "gen:docs": "node tools/gen-docs.mjs",
+    "gen:pages": "node tools/build-pages.mjs --mode build",
+    "gen:assets": "node tools/gen-assets.mjs",
+    "gen:nav": "node tools/gen-nav.mjs",
+    "qa:all": "npm run build && npm run qa:links && npm run qa:smoke && npm run qa:toggles && npm run qa:responsive",
+    "qa:links": "node tools/qa-links.mjs",
+    "qa:smoke": "node tools/gen-docs.mjs && node tools/build-pages.mjs --mode build && node tools/smoke.mjs",
+    "qa:responsive": "node tools/qa-responsive.mjs",
+    "qa:i18n": "node tools/qa-i18n.mjs",
+    "package": "node tools/package.mjs",
+    "gen:all": "npm run gen:docs && npm run gen:pages && npm run gen:assets && npm run gen:nav",
+    "qa:toggles": "node tools/qa-toggles.mjs --jobs 5"
+  },
+  "dependencies": {
+    "apexcharts": "^3.54.1",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "dayjs": "^1.11.23",
+    "jalaali-js": "^2.0.1",
+    "sortablejs": "^1.15.7",
+    "sweetalert2": "^11.26.25",
+    "vazirmatn": "^33.0.3"
+  },
+  "devDependencies": {
+    "sass": "^1.83.4",
+    "vite": "^7.3.6"
+  }
+}

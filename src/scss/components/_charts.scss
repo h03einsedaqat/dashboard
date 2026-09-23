@@ -1,0 +1,228 @@
+/* ==========================================================================
+   NOVAADMIN — Chart containers, legends & ApexCharts theming
+   --------------------------------------------------------------------------
+   Charts inherit the theme through CSS variables read at render time by
+   `src/js/components/charts.js`, so switching dark mode or palette re-colours
+   every series without a page reload.
+   ========================================================================== */
+
+.chart {
+  position: relative;
+  min-width: 0;
+}
+.chart--sparkline {
+  min-height: 2.5rem;
+}
+.chart-box {
+  position: relative;
+  min-height: 4rem;
+}
+.chart-box__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--nv-surface) 70%, transparent);
+  border-radius: var(--nv-radius-md);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-4);
+  margin-block-start: var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+.chart-legend__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--nv-primary);
+}
+.chart-legend__value {
+  color: var(--nv-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+
+/* ApexCharts surface tweaks (tokens only, no hard coded colours) */
+.apexcharts-canvas {
+  font-family: var(--nv-font-sans) !important;
+}
+.apexcharts-tooltip {
+  background: var(--nv-surface) !important;
+  border: 1px solid var(--nv-border) !important;
+  border-radius: var(--nv-radius-md) !important;
+  box-shadow: var(--nv-shadow-lg) !important;
+  color: var(--nv-text) !important;
+  overflow: hidden;
+}
+.apexcharts-tooltip-title {
+  background: var(--nv-surface-2) !important;
+  border-block-end: 1px solid var(--nv-divider) !important;
+  font-weight: var(--nv-fw-semibold) !important;
+  padding: 0.4rem 0.75rem !important;
+}
+.apexcharts-tooltip-text-y-value,
+.apexcharts-tooltip-text-z-value {
+  font-weight: var(--nv-fw-semibold) !important;
+}
+.apexcharts-xaxistooltip,
+.apexcharts-yaxistooltip {
+  background: var(--nv-heading) !important;
+  border: 0 !important;
+  color: var(--nv-surface) !important;
+  font-size: var(--nv-text-micro) !important;
+}
+.apexcharts-xaxistooltip-bottom::before,
+.apexcharts-xaxistooltip-bottom::after {
+  border-block-end-color: var(--nv-heading) !important;
+}
+.apexcharts-menu {
+  background: var(--nv-surface) !important;
+  border: 1px solid var(--nv-border) !important;
+  border-radius: var(--nv-radius-md) !important;
+  box-shadow: var(--nv-shadow-lg) !important;
+  padding: 0.25rem !important;
+}
+.apexcharts-menu-item:hover {
+  background: var(--nv-surface-hover) !important;
+}
+.apexcharts-grid line,
+.apexcharts-xaxis line,
+.apexcharts-yaxis line {
+  stroke: var(--nv-divider);
+}
+.apexcharts-text tspan {
+  fill: var(--nv-text-muted);
+  font-size: 11px;
+}
+.apexcharts-legend-text {
+  color: var(--nv-text-2) !important;
+  font-size: var(--nv-text-caption) !important;
+}
+.apexcharts-datalabels-group {
+  font-weight: var(--nv-fw-semibold);
+}
+.apexcharts-radialbar-track path {
+  stroke: var(--nv-surface-3) !important;
+}
+
+/* ------------------------------------------------------------ mini legends */
+.stat-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+}
+.stat-legend__row {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+}
+.stat-legend__row .chart-legend__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+.stat-legend__label {
+  flex: 1 1 auto;
+  color: var(--nv-text-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-legend__value {
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- donut center */
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+.donut-center__value {
+  font-size: var(--nv-text-h2);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.donut-center__label {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------------- map */
+.map-canvas {
+  height: 24rem;
+  border-radius: var(--nv-radius-lg);
+  overflow: hidden;
+  background: var(--nv-surface-2);
+  border: 1px solid var(--nv-border);
+  position: relative;
+}
+.map-canvas--sm {
+  height: 16rem;
+}
+.map-marker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+.map-marker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface);
+  font-size: var(--nv-text-caption);
+}
+.map-marker-item:hover {
+  border-color: var(--nv-primary);
+}
+
+/* A chart that could not be drawn still shows its numbers (see
+   `core/charts.js` → `createChart`), so a data page never renders blank. */
+.chart--failed {
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-caption);
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--nv-surface-2) 60%, transparent) 0 10px,
+    transparent 10px 20px
+  );
+  border-radius: var(--nv-radius-md);
+}
+
+.chart--failed::after {
+  content: attr(data-chart-fallback);
+}

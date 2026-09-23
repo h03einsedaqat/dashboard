@@ -1,0 +1,300 @@
+/* ==========================================================================
+   NOVAADMIN — App shell
+   --------------------------------------------------------------------------
+   Layout is driven by `data-layout` on <html> plus three state classes:
+     .sidebar-collapsed → icon rail
+     .sidebar-hidden    → sidebar removed from the flow (desktop)
+     .sidebar-open      → mobile drawer open
+   Every rule below uses CSS logical properties, so the whole shell mirrors
+   itself when `dir` flips — no duplicated RTL sheet, no `!important` wars.
+   ========================================================================== */
+
+.app-body {
+  background-color: var(--nv-bg);
+  color: var(--nv-text);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--nv-sidebar-w) minmax(0, 1fr);
+  min-height: 100vh;
+  align-items: start;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.app-content {
+  flex: 1 1 auto;
+  padding-block: var(--nv-content-pad);
+  padding-inline: var(--nv-content-pad);
+}
+
+.app-content > .container-fluid,
+.app-footer__inner {
+  width: 100%;
+  max-width: var(--nv-content-max);
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+.page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-card-gap);
+  min-width: 0;
+}
+
+.app-footer {
+  border-block-start: 1px solid var(--nv-divider);
+  padding-block: var(--nv-space-5);
+  margin-block-start: var(--nv-space-6);
+  background: transparent;
+}
+
+.app-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+.app-footer__copy strong {
+  color: var(--nv-text-2);
+}
+
+.app-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-4);
+}
+.app-footer__links a {
+  color: var(--nv-text-muted);
+  font-weight: var(--nv-fw-medium);
+}
+.app-footer__links a:hover {
+  color: var(--nv-primary);
+}
+
+.app-footer__version {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- rail modes */
+[data-layout='mini'] .app-shell,
+[data-layout='collapse'] .app-shell,
+.sidebar-collapsed .app-shell {
+  grid-template-columns: var(--nv-sidebar-mini-w) minmax(0, 1fr);
+}
+
+.sidebar-hidden .app-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sidebar-hidden .app-sidebar {
+  display: none;
+}
+
+/* -------------------------------------------------------- two column nav */
+[data-layout='twocol'] .app-shell {
+  grid-template-columns: var(--nv-sidebar-compact-w) 15rem minmax(0, 1fr);
+}
+
+.app-secondary {
+  position: sticky;
+  inset-block-start: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: var(--nv-space-5) var(--nv-space-4);
+  background: var(--nv-sidebar-bg);
+  border-inline-end: 1px solid var(--nv-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+  z-index: calc(var(--nv-z-sidebar) - 1);
+}
+
+.app-secondary__title {
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nv-text-muted);
+  margin: 0;
+  padding-inline: var(--nv-space-3);
+}
+
+.app-secondary__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-secondary__link {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--nv-radius-md);
+  color: var(--nv-text-2);
+  font-weight: var(--nv-fw-medium);
+  font-size: var(--nv-text-body-sm);
+}
+.app-secondary__link:hover {
+  background: var(--nv-surface-hover);
+  color: var(--nv-heading);
+}
+.app-secondary__link.is-active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-weight: var(--nv-fw-semibold);
+}
+
+[data-layout='twocol'] .app-secondary {
+  display: flex !important;
+}
+[data-layout='twocol'] .app-sidebar .nav__label,
+[data-layout='twocol'] .app-sidebar .nav__sub,
+[data-layout='twocol'] .app-sidebar .nav__section,
+[data-layout='twocol'] .app-sidebar .app-sidebar__search,
+[data-layout='twocol'] .app-sidebar .app-sidebar__promo {
+  display: none;
+}
+[data-layout='twocol'] .app-sidebar .nav__link {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+/* ----------------------------------------------------------- boxed layout */
+[data-layout='boxed'] .app-content {
+  padding-inline: clamp(0.75rem, 2vw, 2rem);
+}
+[data-layout='boxed'] .app-content > .container-fluid {
+  max-width: 1400px;
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-xl);
+  padding: var(--nv-space-6);
+  box-shadow: var(--nv-shadow-sm);
+}
+[data-layout='boxed'] .app-footer__inner {
+  max-width: 1400px;
+}
+
+/* ------------------------------------------------------- horizontal layout */
+[data-layout='horizontal'] .app-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-layout='horizontal'] .app-sidebar {
+  display: none;
+}
+[data-layout='horizontal'] .app-header {
+  border-block-end: 0;
+}
+[data-layout='horizontal'] .app-header__brand {
+  display: flex !important;
+  align-items: center;
+  gap: var(--nv-space-2);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+}
+[data-layout='horizontal'] .topnav {
+  display: block;
+  border-block-start: 1px solid var(--nv-border);
+}
+[data-layout='horizontal'] .app-content {
+  padding-block-start: var(--nv-space-6);
+}
+
+.topnav {
+  grid-column: 1 / -1;
+  display: none;
+  background: transparent;
+}
+
+.topnav__inner {
+  max-width: var(--nv-content-max);
+  margin-inline: auto;
+  padding-inline: var(--nv-content-pad);
+}
+
+.topnav .nav__root {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-1);
+  flex-wrap: wrap;
+}
+
+.topnav .nav__item {
+  position: relative;
+}
+.topnav .nav__item--has-sub > .nav__sub {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  min-width: 15rem;
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  box-shadow: var(--nv-shadow-lg);
+  padding: var(--nv-space-2);
+  display: none;
+  z-index: var(--nv-z-header);
+}
+.topnav .nav__item--has-sub:hover > .nav__sub,
+.topnav .nav__item--has-sub:focus-within > .nav__sub,
+.topnav .nav__item--has-sub.is-open > .nav__sub {
+  display: block;
+  animation: nv-fade-in var(--nv-dur) var(--nv-ease-out);
+}
+.topnav .nav__caret {
+  display: none;
+}
+.topnav .nav__section {
+  display: none;
+}
+
+/* --------------------------------------------------------------- desktop */
+@media (min-width: 992px) {
+  .app-sidebar {
+    position: sticky;
+    inset-block-start: 0;
+    height: 100vh;
+  }
+  .sidebar-backdrop,
+  .app-sidebar__close {
+    display: none !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .app-secondary {
+    display: none !important;
+  }
+  .app-content {
+    padding-block: var(--nv-space-5);
+    padding-inline: var(--nv-space-4);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .app-content {
+    padding-inline: var(--nv-space-3);
+    padding-block: var(--nv-space-4);
+  }
+  .page-body {
+    gap: var(--nv-space-5);
+  }
+}

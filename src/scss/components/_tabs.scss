@@ -1,0 +1,209 @@
+/* ==========================================================================
+   NOVAADMIN — Tabs, pills, segmented nav & accordion
+   ========================================================================== */
+
+.nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-1);
+  border-block-end: 1px solid var(--nv-border);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.nav-tabs .nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border: 0;
+  background: transparent;
+  color: var(--nv-text-muted);
+  font-family: inherit;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+  cursor: pointer;
+  transition: color var(--nv-dur-fast) var(--nv-ease);
+}
+.nav-tabs .nav-link::after {
+  content: '';
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline: var(--nv-space-2);
+  height: 2px;
+  border-radius: var(--nv-radius-pill);
+  background: transparent;
+  transition: background-color var(--nv-dur) var(--nv-ease);
+}
+.nav-tabs .nav-link:hover {
+  color: var(--nv-heading);
+}
+.nav-tabs .nav-link.active {
+  color: var(--nv-primary);
+  font-weight: var(--nv-fw-semibold);
+}
+.nav-tabs .nav-link.active::after {
+  background: var(--nv-primary);
+}
+.nav-tabs .nav-link .badge {
+  margin-inline-start: 0.25rem;
+}
+
+/* ------------------------------------------------------------------- pills */
+.nav-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-3);
+  border: 1px solid var(--nv-border);
+  list-style: none;
+  margin: 0;
+}
+.nav-pills .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: var(--nv-radius-md);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-family: inherit;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.nav-pills .nav-link:hover {
+  color: var(--nv-heading);
+}
+.nav-pills .nav-link.active {
+  background: var(--nv-surface);
+  color: var(--nv-primary);
+  font-weight: var(--nv-fw-semibold);
+  box-shadow: var(--nv-shadow-xs);
+}
+
+.tab-content > .tab-pane {
+  display: none;
+}
+.tab-content > .active {
+  display: block;
+}
+
+/* -------------------------------------------------------------- vertical nav */
+.nav-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-vertical .nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--nv-radius-md);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-medium);
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+}
+.nav-vertical .nav-link:hover {
+  background: var(--nv-surface-hover);
+  color: var(--nv-heading);
+}
+.nav-vertical .nav-link.active {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-weight: var(--nv-fw-semibold);
+}
+
+/* ---------------------------------------------------------------- accordion */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+}
+.accordion-item {
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  overflow: hidden;
+}
+.accordion-item:has(.accordion-button:not(.collapsed)) {
+  border-color: rgba(var(--nv-primary-rgb), 0.35);
+  box-shadow: var(--nv-shadow-xs);
+}
+.accordion-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-4);
+  width: 100%;
+  padding: var(--nv-space-4) var(--nv-space-5);
+  border: 0;
+  background: transparent;
+  color: var(--nv-heading);
+  font-family: inherit;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  text-align: start;
+  cursor: pointer;
+}
+.accordion-button::after {
+  content: '\F282';
+  font-family: 'bootstrap-icons';
+  font-size: 0.85rem;
+  color: var(--nv-text-muted);
+  transition: transform var(--nv-dur) var(--nv-ease);
+}
+.accordion-button:not(.collapsed)::after {
+  transform: rotate(180deg);
+  color: var(--nv-primary);
+}
+.accordion-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--nv-primary-ring);
+}
+.accordion-body {
+  padding: 0 var(--nv-space-5) var(--nv-space-5);
+  font-size: var(--nv-text-body-sm);
+  color: var(--nv-text-2);
+  line-height: 1.9;
+}
+.accordion--flush .accordion-item {
+  border-inline: 0;
+  border-block-start: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.accordion--flush .accordion-body {
+  padding-inline: 0;
+}
+.accordion--flush .accordion-button {
+  padding-inline: 0;
+}
+
+/* ----------------------------------------------------------------- segmented */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+}
+.filter-bar__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--nv-divider);
+}

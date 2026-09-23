@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="برند 5">
+  <rect width="100" height="100" rx="22" fill="#fff"/>
+  <rect x="1" y="1" width="98" height="98" rx="21" fill="none" stroke="#eab308" stroke-opacity=".25"/>
+  <path d="M24 24h24v24H24z" fill="#ca8a04"/><path d="M52 24h24v24H52z" fill="#eab308" fill-opacity=".7"/><path d="M24 52h52v24H24z" fill="#fde047"/>
+</svg>
