@@ -145,10 +145,47 @@ function readColumns(root) {
   }));
 }
 
-/** Human-readable column header cell for the generated `<thead>`. */
+/**
+ * Header cell.
+ *
+ * A sortable column carries the indicator markup and `aria-sort` so the state
+ * is visible and announced, not just clickable.
+ */
 function headCell(column) {
   const classes = [column.sortable ? 'is-sortable' : '', column.align === 'end' ? 'text-end' : ''].filter(Boolean).join(' ');
-  return `<th data-column="${column.key}" data-type="${column.type}" ${column.sortable ? 'data-sortable' : ''} class="${classes}" ${column.hidden ? 'data-hidden' : ''}>${escapeHtml(column.label)}</th>`;
+  const icon = column.sortable
+    ? '<span class="table__sort-icon" aria-hidden="true"><i class="bi bi-caret-up-fill" data-sort-asc></i><i class="bi bi-caret-down-fill" data-sort-desc></i></span>'
+    : '';
+  return `<th data-column="${escapeHtml(column.key)}" data-type="${escapeHtml(column.type)}" ${column.sortable ? 'data-sortable aria-sort="none"' : ''} class="${classes}" ${column.hidden ? 'data-hidden' : ''}>${escapeHtml(column.label)}${icon}</th>`;
+}
+
+/**
+ * Reflects the current sort on every header: the active column gets
+ * `.is-sorted` and an `aria-sort` value, and the arrow that matches the
+ * direction is the only one shown.
+ */
+function paintSortState(instance) {
+  const { sort, order } = instance.state;
+  $$('thead th[data-sortable]', instance.root).forEach((th) => {
+    /*
+     * Most tables are authored by hand (`<th data-column data-sortable>`), so
+     * the indicator is injected here when it is missing instead of only being
+     * produced for generated headers.
+     */
+    if (!th.querySelector('.table__sort-icon')) {
+      th.insertAdjacentHTML(
+        'beforeend',
+        '<span class="table__sort-icon" aria-hidden="true"><i class="bi bi-caret-up-fill" data-sort-asc></i><i class="bi bi-caret-down-fill" data-sort-desc></i></span>',
+      );
+    }
+    const active = th.dataset.column === sort;
+    th.classList.toggle('is-sorted', active);
+    th.setAttribute('aria-sort', active ? (order === 'asc' ? 'ascending' : 'descending') : 'none');
+    const up = th.querySelector('[data-sort-asc]');
+    const down = th.querySelector('[data-sort-desc]');
+    if (up) up.style.visibility = active && order === 'asc' ? 'visible' : 'hidden';
+    if (down) down.style.visibility = active && order === 'desc' ? 'visible' : 'hidden';
+  });
 }
 
 export function createDataTable(root, options = {}) {
@@ -560,16 +597,17 @@ function renderRows(instance, rows) {
           const renderer = renderers[column.type] ?? renderers.text;
           const align = column.align === 'end' ? ' text-end' : '';
           const value = renderer(row, column);
-          return `<td class="cell--${column.type}${align}" data-cell="${escapeHtml(column.key)}" ${column.hidden ? 'hidden' : ''}>${value}</td>`;
+          return `<td class="cell--${escapeHtml(column.type)}${align}" data-cell="${escapeHtml(column.key)}" data-label="${escapeHtml(column.label)}" ${column.hidden ? 'hidden' : ''}>${value}</td>`;
         })
         .join('');
       return `<tr data-id="${escapeHtml(row.id)}" data-index="${index}">
-        ${selectable ? `<td class="cell--select"><input type="checkbox" class="form-check-input" data-row-select value="${escapeHtml(row.id)}" aria-label="انتخاب ردیف ${index + 1}" /></td>` : ''}
+        ${selectable ? `<td class="cell--select" data-label="انتخاب"><input type="checkbox" class="form-check-input" data-row-select value="${escapeHtml(row.id)}" aria-label="انتخاب ردیف ${index + 1}" /></td>` : ''}
         ${cells}
       </tr>`;
     })
     .join('');
   render(body, markup);
+  paintSortState(instance);
   $$('tr', body).forEach((tr) => {
     if (instance.root.dataset.clickable === 'false') return;
     on(tr, 'dblclick', () => bus.emit('datatable:open', { id: tr.dataset.id, resource: instance.resource }));

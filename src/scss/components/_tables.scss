@@ -187,10 +187,19 @@
   font-size: 0.6rem;
   line-height: 0.7;
   vertical-align: middle;
-  opacity: 0.7;
+  opacity: 0.55;
 }
 .table th.is-sorted .table__sort-icon {
   opacity: 1;
+  color: var(--nv-primary);
+}
+.table__sort-icon i {
+  visibility: hidden;
+}
+/* A sortable header always shows one arrow as a hint; the active direction is
+   the one `paintSortState()` makes visible. */
+.table th.is-sortable .table__sort-icon {
+  opacity: 0.75;
 }
 
 /* ------------------------------------------------------------- responsive */
