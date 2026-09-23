@@ -156,7 +156,7 @@ export const pricingPlans = [
     id: 'personal', name: 'شخصی', price: 2_450_000, period: 'یک‌بار برای همیشه', featured: false, badge: '',
     description: 'مناسب فریلنسرها و پروژه‌های شخصی',
     features: [
-      { text: 'همه ۲۰۰ صفحه قالب', included: true },
+      { text: 'همه ۲۰۶ صفحه قالب', included: true },
       { text: '۱۰ داشبورد تخصصی', included: true },
       { text: 'کارگاه هوش مصنوعی', included: true },
       { text: 'شش لایوت و شش رنگ اصلی', included: true },
@@ -281,7 +281,7 @@ export const techStack = [
 ];
 
 export const counters = [
-  { label: 'صفحه آماده', value: 200, suffix: '+' },
+  { label: 'صفحه آماده', value: 206, suffix: '+' },
   { label: 'داشبورد تخصصی', value: 10 },
   { label: 'کامپوننت رابط', value: 40, suffix: '+' },
   { label: 'لایوت و رنگ', value: 36 },

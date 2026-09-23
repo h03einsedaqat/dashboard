@@ -21,7 +21,9 @@ import { chrome, initChrome, openPalette, openShortcuts, openCustomizer, closeCu
 import { initForms } from './js/core/form.js';
 import { initUi } from './js/core/ui.js';
 import { initDropdowns } from './js/core/dropdown.js';
-import { initCharts } from './js/core/charts.js';
+import { initCharts, markControllerOwned, settlePendingCharts } from './js/core/charts.js';
+import { apply as applyPhrases, observe as observePhrases, registerPhrases, registerPatterns, setPhraseLanguage } from './js/core/translate.js';
+import { en as phrasesEn, ar as phrasesAr, PATTERNS } from './locales/phrases.js';
 import { initDataTables } from './js/core/datatable.js';
 import { initKanban } from './js/core/kanban.js';
 import { exportable } from './js/pages/kit.js';
@@ -261,7 +263,20 @@ function exposeApi() {
 /* ---------------------------------------------------------------- start up */
 
 async function boot() {
+  /**
+   * The phrase book is registered *before* i18n boots so a stored language is
+   * reflected on the very first paint (see `core/translate.js`).
+   */
+  registerPhrases('en', phrasesEn);
+  registerPhrases('ar', phrasesAr);
+  registerPatterns('en', PATTERNS.en);
+  registerPatterns('ar', PATTERNS.ar);
   initI18n();
+  /** The language this document was rendered in; a switch away from it reloads. */
+  const bootLanguage = i18n.lang;
+  setPhraseLanguage(i18n.lang);
+  applyPhrases(document.body);
+  observePhrases(document.body);
   initThemeControls();
   layout.init();
   initDropdowns();
@@ -290,12 +305,41 @@ async function boot() {
   // (table reloads, kanban, chat, toasts) working as well.
   fixLinks(document);
   observeLinks(document.body);
-  initCharts();
+  /**
+   * Controller-owned chart placeholders (`data-chart-key` without series) are
+   * drawn by their page controller; everything declarative is drawn here. Any
+   * placeholder left over gets a readable empty state instead of a blank box.
+   */
+  markControllerOwned(document);
+  await initCharts();
+  settlePendingCharts(document);
+  /** Late content (tables, footers, badges) gets the active language too. */
+  applyPhrases(document.body);
   $$('[data-kanban]').forEach((node) => initKanban(node));
   $$('[data-calendar]').forEach((node) => initCalendar(node));
 
   // Late panels (opened from the header) also need the small UI behaviours.
   bus.on(EVENTS.dataChanged, () => initUi());
+
+  /**
+   * Language change → re-render the page.
+   *
+   * The phrase book repaints every authored string instantly, but three layers
+   * cannot be patched in place: numbers/currency (rendered once by
+   * `core/numbers.js`), dates (`core/jalali.js`) and everything the page
+   * controllers and ApexCharts build from data. Re-running the controllers
+   * would stack duplicate delegated listeners, so the page re-renders the way
+   * every other admin template does it — one clean reload that still lands
+   * instantly because `theme-boot.js` applies the stored language before the
+   * first paint (no flash of Persian).
+   */
+  bus.on(EVENTS.language, ({ lang } = {}) => {
+    if (!lang || lang === bootLanguage) return;
+    if (window.__novaLanguageReload) return;
+    window.__novaLanguageReload = true;
+    document.documentElement.classList.add('is-switching-language');
+    window.setTimeout(() => window.location.reload(), 80);
+  });
   document.documentElement.classList.add('app-ready');
   bus.emit('app:ready', { page: document.body.dataset.page });
 }

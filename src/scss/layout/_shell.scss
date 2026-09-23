@@ -106,6 +106,7 @@
   grid-template-columns: var(--nv-sidebar-compact-w) 15rem minmax(0, 1fr);
 }
 
+/* The panel only exists in the two-column layout; `layout.js` mounts it. */
 .app-secondary {
   position: sticky;
   inset-block-start: 0;
@@ -114,10 +115,15 @@
   padding: var(--nv-space-5) var(--nv-space-4);
   background: var(--nv-sidebar-bg);
   border-inline-end: 1px solid var(--nv-border);
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: var(--nv-space-4);
   z-index: calc(var(--nv-z-sidebar) - 1);
+  scrollbar-width: thin;
+}
+
+.app-secondary__item {
+  list-style: none;
 }
 
 .app-secondary__title {
@@ -160,7 +166,26 @@
 }
 
 [data-layout='twocol'] .app-secondary {
-  display: flex !important;
+  display: flex;
+}
+
+/* The secondary panel carries the labels, so the rail shows icons only. */
+.app-secondary__link {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+}
+
+.app-secondary__icon {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.15rem;
+  color: currentColor;
+}
+
+.app-secondary__title i {
+  margin-inline-end: var(--nv-space-2);
+  color: var(--nv-primary);
 }
 [data-layout='twocol'] .app-sidebar .nav__label,
 [data-layout='twocol'] .app-sidebar .nav__sub,

@@ -25,6 +25,7 @@ body {
   font-size: var(--nv-text-body);
   font-weight: var(--nv-fw-regular);
   line-height: var(--nv-lh-base);
+  font-optical-sizing: auto;
   color: var(--nv-text);
   background-color: var(--nv-bg);
   font-feature-settings: 'ss01' on, 'cv01' on;
@@ -170,4 +171,47 @@ kbd {
 [lang='ar'] h2,
 [lang='ar'] h3 {
   line-height: calc(var(--nv-lh-base) + 0.08);
+}
+
+/* ==========================================================================
+   Reading experience
+   --------------------------------------------------------------------------
+   • `text-wrap: balance` stops two-word orphan lines in headlines.
+   • `text-wrap: pretty` avoids single-word last lines in body copy.
+   • Numbers always use tabular figures so KPI columns line up in every locale.
+   • `font-synthesis` off keeps the variable font honest at heavy weights.
+   ========================================================================== */
+:where(h1, h2, h3, h4, .h1, .h2, .h3, .h4, .landing-hero__title, .landing-section__title, .card__title, .stat-card__value) {
+  text-wrap: balance;
+}
+
+:where(p, li, blockquote, figcaption, .landing-section__text, .card__subtitle, .timeline__text) {
+  text-wrap: pretty;
+}
+
+:where(.stat-card__value, .numeric, .table td.numeric, .donut-center__value, .price-card__amount, .landing-counter dd) {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+html {
+  font-synthesis-weight: none;
+}
+
+/* Latin fragments inside a Persian page (URLs, code, product names) */
+:where(code, kbd, samp, pre, .font-mono) {
+  font-family: var(--nv-font-mono);
+  font-feature-settings: normal;
+}
+
+/* Language switch: a 120ms fade hides the single reload the switch performs so
+   the panel feels like a live toggle instead of a page navigation. */
+html.is-switching-language body {
+  opacity: 0.35;
+  transition: opacity 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.is-switching-language body {
+    opacity: 1;
+  }
 }

@@ -253,3 +253,157 @@
     background: #fff !important;
   }
 }
+
+/* ==========================================================================
+   Motion & component states
+   --------------------------------------------------------------------------
+   Rule sets for every state class the JavaScript controllers toggle. Each rule
+   is paired with the class the controller actually writes, so no interaction
+   silently does nothing.
+   ========================================================================== */
+
+/* ------------------------------------------------------- reveal on scroll */
+.has-reveal [data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 520ms var(--nv-ease-out), transform 520ms var(--nv-ease-out);
+  will-change: opacity, transform;
+}
+
+.has-reveal [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered children (feature grids, showcase cards, steps). */
+.has-reveal [data-reveal]:nth-child(2) {
+  transition-delay: 60ms;
+}
+.has-reveal [data-reveal]:nth-child(3) {
+  transition-delay: 120ms;
+}
+.has-reveal [data-reveal]:nth-child(4) {
+  transition-delay: 180ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .has-reveal [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------- header on scroll */
+.app-header.is-scrolled {
+  box-shadow: var(--nv-shadow-sm);
+  border-block-end-color: transparent;
+  backdrop-filter: saturate(140%) blur(8px);
+}
+
+/* ------------------------------------------------------------ back to top */
+[data-back-to-top] {
+  position: fixed;
+  inset-block-end: var(--nv-space-6);
+  inset-inline-end: var(--nv-space-6);
+  z-index: var(--nv-z-header);
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface);
+  color: var(--nv-text-2);
+  box-shadow: var(--nv-shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease), visibility var(--nv-dur);
+}
+
+[data-back-to-top].is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+[data-back-to-top]:hover {
+  color: var(--nv-primary);
+  border-color: var(--nv-primary);
+}
+
+@media print {
+  [data-back-to-top] {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------- form controller states */
+/* Drop zone: `core/form.js` writes `.is-dragover` while a file hovers. */
+.file-drop.is-dragover {
+  border-color: var(--nv-primary);
+  border-style: solid;
+  background: var(--nv-primary-soft);
+  box-shadow: inset 0 0 0 3px rgba(var(--nv-primary-rgb), 0.12);
+}
+
+/* Password strength meter built by the documented markup contract. */
+.password-meter {
+  flex-wrap: wrap;
+}
+
+.password-meter [data-password-bar] {
+  flex: 1 1 3rem;
+  block-size: 4px;
+  min-inline-size: 2rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3);
+  transition: background-color var(--nv-dur) var(--nv-ease);
+}
+
+.password-meter [data-password-bar].is-filled {
+  background: var(--nv-primary);
+}
+
+.password-meter[data-score='1'] [data-password-bar].is-filled {
+  background: var(--nv-danger);
+}
+.password-meter[data-score='2'] [data-password-bar].is-filled {
+  background: var(--nv-warning);
+}
+.password-meter[data-score='3'] [data-password-bar].is-filled {
+  background: var(--nv-info);
+}
+.password-meter[data-score='4'] [data-password-bar].is-filled {
+  background: var(--nv-success);
+}
+
+/* One-time-code boxes: filled state lifts the digit. */
+.otp-input.is-filled,
+.otp-row input.is-filled {
+  border-color: var(--nv-primary);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-weight: var(--nv-fw-semibold);
+}
+
+/* -------------------------------------------------------- datatable states */
+[data-datatable].is-empty [data-datatable-body],
+[data-datatable].is-error [data-datatable-body] {
+  display: none;
+}
+
+[data-datatable].is-error .datatable-toolbar {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+[data-datatable].is-loading {
+  cursor: progress;
+}
+
+/* ------------------------------------------------------------- toast pause */
+.nv-toast__progress.is-paused {
+  animation-play-state: paused;
+}

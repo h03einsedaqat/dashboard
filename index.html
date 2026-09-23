@@ -47,7 +47,7 @@
         <div>
           <span class="landing-badge"><span class="status-dot status-dot--success" aria-hidden="true"></span> <span data-i18n="landing.heroBadge">نسخه ۱.۰ منتشر شد</span></span>
           <h1 class="landing-hero__title" data-i18n="landing.heroTitle">پنل مدیریت فارسی، ساخته‌شده برای پروژه‌های جدی</h1>
-          <p class="landing-hero__text" data-i18n="landing.heroText">قالبی کامل با ۲۰۰ صفحه، ۱۰ داشبورد تخصصی، پشتیبانی واقعی RTL و تقویم شمسی — آماده اتصال به API شما.</p>
+          <p class="landing-hero__text" data-i18n="landing.heroText">قالبی کامل با ۲۰۶ صفحه، ۱۰ داشبورد تخصصی، پشتیبانی واقعی RTL و تقویم شمسی — آماده اتصال به API شما.</p>
 
           <div class="landing-hero__actions">
             <a class="btn btn-primary btn-lg" href="{{ROOT}}dashboards/analytics.html"><i class="bi bi-speedometer2" aria-hidden="true"></i> <span data-i18n="landing.startNow">شروع کنید</span></a>
@@ -103,7 +103,7 @@
         <header class="landing-section__head">
           <span class="landing-section__eyebrow">Design system</span>
           <h2 class="landing-section__title" data-i18n="landing.featuresTitle">هر چیزی که برای ساخت پنل مدیریت لازم دارید</h2>
-          <p class="landing-section__text" data-i18n="landing.featuresText">سیستم طراحی توکن‌محور، شش چیدمان، ۳۹ کامپوننت، داده نمونه واقعی و لایه سرویس آماده اتصال به API.</p>
+          <p class="landing-section__text" data-i18n="landing.featuresText">سیستم طراحی توکن‌محور، شش چیدمان، بیش از ۴۰ کامپوننت، داده نمونه واقعی و لایه سرویس آماده اتصال به API.</p>
         </header>
         <div class="landing-grid" data-landing-highlights></div>
         <div class="landing-section__foot">
@@ -194,7 +194,7 @@
     <section class="landing-section landing-section--soft">
       <div class="landing-container">
         <header class="landing-section__head">
-          <h2 class="landing-section__title">کیت رابط کاربری: ۳۹ کامپوننت در ۲۱ صفحه</h2>
+          <h2 class="landing-section__title">کیت رابط کاربری: ۴۰ کامپوننت در ۲۱ صفحه</h2>
           <p class="landing-section__text">هر کامپوننت با همه حالت‌ها — پیش‌فرض، هاور، فوکوس، غیرفعال، بارگذاری، خالی و خطا — و کد آماده کپی.</p>
         </header>
         <div class="landing-grid landing-grid--kit">
@@ -204,6 +204,8 @@
           <a class="landing-kit" href="{{ROOT}}ui/charts.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i><strong>نمودارها</strong><span>۱۴ نوع نمودار</span></a>
           <a class="landing-kit" href="{{ROOT}}ui/icons.html"><i class="bi bi-emoji-smile" aria-hidden="true"></i><strong>آیکون‌ها</strong><span>۴۰۲ آیکون دسته‌بندی‌شده</span></a>
           <a class="landing-kit" href="{{ROOT}}ui/alerts.html"><i class="bi bi-exclamation-diamond" aria-hidden="true"></i><strong>هشدارها</strong><span>هشدار، توست، مودال</span></a>
+          <a class="landing-kit" href="{{ROOT}}ui/tabs.html"><i class="bi bi-segmented-nav" aria-hidden="true"></i><strong>تب و آکاردئون</strong><span>ناوبری درون‌صفحه‌ای</span></a>
+          <a class="landing-kit" href="{{ROOT}}ui/cards.html"><i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i><strong>کارت‌ها و آواتار</strong><span>چیدمان‌های آماده</span></a>
         </div>
       </div>
     </section>
@@ -252,6 +254,49 @@
           <h2 class="landing-section__title" data-i18n="landing.faqTitle">پرسش‌های متداول</h2>
         </header>
         <div class="faq-wrap" data-landing-faq></div>
+      </div>
+    </section>
+
+    <!-- ===================================================== getting started -->
+    <section class="landing-section landing-section--soft" id="start">
+      <div class="landing-container">
+        <header class="landing-section__head">
+          <span class="landing-section__eyebrow">Quick start</span>
+          <h2 class="landing-section__title" data-i18n="landing.startTitle">از دانلود تا پنل اختصاصی، در سه قدم</h2>
+          <p class="landing-section__text" data-i18n="landing.startText">نصب، انتخاب چیدمان و اتصال به داده — همه چیز مستند و بدون وابستگی به سرویس بیرونی.</p>
+        </header>
+        <ol class="landing-steps">
+          <li class="landing-step">
+            <span class="landing-step__num">۱</span>
+            <h3 data-i18n="landing.step1Title">نصب و اجرا</h3>
+            <p data-i18n="landing.step1Text">فایل‌ها را در هاست خود آپلود کنید یا با <code>npm install &amp;&amp; npm run dev</code> محیط توسعه را بالا بیاورید.</p>
+            <pre class="landing-step__code"><code>npm install
+npm run dev</code></pre>
+          </li>
+          <li class="landing-step">
+            <span class="landing-step__num">۲</span>
+            <h3 data-i18n="landing.step2Title">چیدمان و رنگ را انتخاب کنید</h3>
+            <p data-i18n="landing.step2Text">از پنل «شخصی‌سازی تم» شش چیدمان، شش پالت، سه زبان و دو تراکم را زنده امتحان کنید؛ انتخاب شما ذخیره می‌شود.</p>
+            <button class="btn btn-light btn-sm" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span data-i18n="ui.customizer">شخصی‌سازی تم</span></button>
+          </li>
+          <li class="landing-step">
+            <span class="landing-step__num">۳</span>
+            <h3 data-i18n="landing.step3Title">به داده خودتان وصل کنید</h3>
+            <p data-i18n="landing.step3Text">لایه سرویس آماده است: <code>config.api.useMocks = false</code> و آدرس API خود را بدهید — همان قرارداد متدها و همان کامپوننت‌ها.</p>
+            <a class="btn btn-light btn-sm" href="{{ROOT}}docs/api-integration.html"><i class="bi bi-plug" aria-hidden="true"></i> <span data-i18n="landing.apiGuide">راهنمای اتصال API</span></a>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- =========================================================== stats band -->
+    <section class="landing-band">
+      <div class="landing-container landing-band__inner">
+        <div class="landing-band__item"><strong data-band-number="206">۲۰۶</strong><span data-i18n="landing.bandPages">صفحه HTML مستقل</span></div>
+        <div class="landing-band__item"><strong data-band-number="10">۱۰</strong><span data-i18n="landing.bandDashboards">داشبورد تخصصی</span></div>
+        <div class="landing-band__item"><strong data-band-number="40">۴۰+</strong><span data-i18n="landing.bandComponents">کامپوننت رابط</span></div>
+        <div class="landing-band__item"><strong data-band-number="3">۳</strong><span data-i18n="landing.bandLanguages">زبان و جهت</span></div>
+        <div class="landing-band__item"><strong>RTL</strong><span data-i18n="landing.bandRtl">راست‌به‌چپ واقعی</span></div>
       </div>
     </section>
 

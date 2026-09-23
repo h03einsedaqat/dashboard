@@ -27,6 +27,43 @@ export function setNumberLanguage(lang) {
   activeLanguage = lang || config.defaultLanguage;
 }
 
+/** The language every formatter falls back to (used by dates, tables, charts). */
+export const activeLang = () => activeLanguage;
+
+/**
+ * Localised vocabulary for the formatters below. Keeping it in one table means
+ * `formatCompact(1_200_000)` reads «۱٫۲ میلیون» in Persian, «1.2M» in English
+ * and «١٫٢ مليون» in Arabic — no call site has to care.
+ */
+const WORDS = {
+  fa: {
+    compact: ['هزار میلیارد', 'میلیارد', 'میلیون', 'هزار'],
+    percent: '٪',
+    bytes: ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت', 'ترابایت'],
+    hour: 'ساعت', minute: 'دقیقه', and: ' و ',
+    currency: { IRR: { prefix: '', suffix: ' ریال' }, IRT: { prefix: '', suffix: ' تومان' }, USD: { prefix: '$', suffix: '' }, EUR: { prefix: '€', suffix: '' }, AED: { prefix: '', suffix: ' د.إ' } },
+    locale: 'fa-IR',
+  },
+  ar: {
+    compact: ['تريليون', 'مليار', 'مليون', 'ألف'],
+    percent: '٪',
+    bytes: ['بايت', 'كيلوبايت', 'ميغابايت', 'غيغابايت', 'تيرابايت'],
+    hour: 'ساعة', minute: 'دقيقة', and: ' و ',
+    currency: { IRR: { prefix: '', suffix: ' ريال' }, IRT: { prefix: '', suffix: ' تومان' }, USD: { prefix: '$', suffix: '' }, EUR: { prefix: '€', suffix: '' }, AED: { prefix: '', suffix: ' د.إ' } },
+    locale: 'ar-AE',
+  },
+  en: {
+    compact: ['T', 'B', 'M', 'K'],
+    percent: '%',
+    bytes: ['B', 'KB', 'MB', 'GB', 'TB'],
+    hour: 'h', minute: 'min', and: ' ',
+    currency: { IRR: { prefix: 'IRR ', suffix: '' }, IRT: { prefix: 'IRT ', suffix: '' }, USD: { prefix: '$', suffix: '' }, EUR: { prefix: '€', suffix: '' }, AED: { prefix: '', suffix: ' AED' } },
+    locale: 'en-US',
+  },
+};
+
+export const words = (lang = activeLanguage) => WORDS[lang] ?? WORDS.fa;
+
 export const digitsOf = (lang = activeLanguage) => DIGIT_SETS[lang] ?? DIGIT_SETS.fa;
 
 /** Converts Latin digits to the active (or given) digit set. */
@@ -62,16 +99,19 @@ export function formatNumber(value, { lang = activeLanguage, decimals = 0, group
 export function formatCompact(value, { lang = activeLanguage, decimals = 1 } = {}) {
   const number = Number(toLatinDigits(value)) || 0;
   const abs = Math.abs(number);
+  const [trillion, billion, million, thousand] = words(lang).compact;
   const units = [
-    { limit: 1e12, suffix: 'هزار میلیارد' },
-    { limit: 1e9, suffix: 'میلیارد' },
-    { limit: 1e6, suffix: 'میلیون' },
-    { limit: 1e3, suffix: 'هزار' },
+    { limit: 1e12, suffix: trillion },
+    { limit: 1e9, suffix: billion },
+    { limit: 1e6, suffix: million },
+    { limit: 1e3, suffix: thousand },
   ];
   const unit = units.find((u) => abs >= u.limit);
   if (!unit) return formatNumber(number, { lang });
   const scaled = number / unit.limit;
-  return `${formatNumber(scaled, { lang, decimals: Math.abs(scaled) >= 100 ? 0 : decimals })} ${unit.suffix}`;
+  const body = formatNumber(scaled, { lang, decimals: Math.abs(scaled) >= 100 ? 0 : decimals });
+  /** Latin suffixes stick to the number (`12.4M`); Persian ones need a space. */
+  return /^[A-Za-z]+$/.test(unit.suffix) ? `${body}${unit.suffix}` : `${body} ${unit.suffix}`;
 }
 
 /**
@@ -82,24 +122,28 @@ export function formatCompact(value, { lang = activeLanguage, decimals = 1 } = {
  */
 export function formatCurrency(value, currency = config.currency, { lang = activeLanguage, decimals, compact = false, showCode = false } = {}) {
   const meta = CURRENCIES[currency] ?? CURRENCIES[config.currency] ?? CURRENCIES.IRR;
+  /** Currency wording follows the active language (ریال / ريال / IRR). */
+  const localised = words(lang).currency[currency] ?? { prefix: meta.prefix, suffix: meta.suffix };
   const number = Number(toLatinDigits(value)) || 0;
-  if (compact) {
-    const body = formatCompact(Math.abs(number), { lang });
-    return `${number < 0 ? '−' : ''}${meta.prefix}${body}${meta.suffix}${showCode ? ` ${currency}` : ''}`;
-  }
-  const body = formatNumber(Math.abs(number), { lang, decimals: decimals ?? meta.decimals });
-  return `${number < 0 ? '−' : ''}${meta.prefix}${body}${meta.suffix}${showCode ? ` ${currency}` : ''}`;
+  const body = compact
+    ? formatCompact(Math.abs(number), { lang })
+    : formatNumber(Math.abs(number), { lang, decimals: decimals ?? meta.decimals });
+  const code = showCode && lang === 'en' ? '' : showCode ? ` ${currency}` : '';
+  return `${number < 0 ? '−' : ''}${localised.prefix}${body}${localised.suffix}${code}`;
 }
 
 export function formatPercent(value, { lang = activeLanguage, decimals = 1, sign = false } = {}) {
   const number = Number(toLatinDigits(value)) || 0;
   const body = formatNumber(Math.abs(number), { lang, decimals });
-  return `${sign && number > 0 ? '+' : number < 0 ? '−' : ''}${body}٪`;
+  const mark = words(lang).percent;
+  /** In RTL the sign sits before the digits, in LTR `+12.4%` — both read right. */
+  const prefix = sign && number > 0 ? '+' : number < 0 ? '−' : '';
+  return lang === 'en' ? `${prefix}${body}${mark}` : `${prefix}${body}${mark}`;
 }
 
 export function formatBytes(bytes, { lang = activeLanguage, decimals = 1 } = {}) {
   const size = Number(toLatinDigits(bytes)) || 0;
-  const units = ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت', 'ترابایت'];
+  const units = words(lang).bytes;
   const index = size === 0 ? 0 : Math.min(units.length - 1, Math.floor(Math.log(size) / Math.log(1024)));
   const value = size / 1024 ** index;
   return `${formatNumber(value, { lang, decimals: index === 0 ? 0 : decimals })} ${units[index]}`;
@@ -107,12 +151,12 @@ export function formatBytes(bytes, { lang = activeLanguage, decimals = 1 } = {})
 
 export function formatDuration(minutes, { lang = activeLanguage } = {}) {
   const total = Math.max(0, Math.round(Number(toLatinDigits(minutes)) || 0));
+  const { hour, minute, and } = words(lang);
   const hours = Math.floor(total / 60);
   const mins = total % 60;
-  if (hours && mins) return `${formatNumber(hours, { lang })} ساعت و ${formatNumber(mins, { lang })} دقیقه`;
-  if (hours) return `${formatNumber(hours, { lang })} ساعت`;
-  if (mins) return `${formatNumber(mins, { lang })} دقیقه`;
-  return `${formatNumber(0, { lang })} دقیقه`;
+  if (hours && mins) return `${formatNumber(hours, { lang })} ${hour}${and}${formatNumber(mins, { lang })} ${minute}`;
+  if (hours) return `${formatNumber(hours, { lang })} ${hour}`;
+  return `${formatNumber(mins, { lang })} ${minute}`;
 }
 
 /** Parses user input in any digit set into a plain number. */
@@ -134,6 +178,7 @@ export function trendOf(delta) {
 export default {
   toDigits,
   toLatinDigits,
+  activeLang,
   formatNumber,
   formatCompact,
   formatCurrency,

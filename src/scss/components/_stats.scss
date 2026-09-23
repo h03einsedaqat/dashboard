@@ -185,6 +185,10 @@
   display: grid;
   gap: var(--nv-card-gap);
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  /* The dashboard widget editor re-orders cards at runtime: dense packing keeps
+     mixed 4/6/8/12-span rows free of holes after a drag. */
+  grid-auto-flow: dense;
 }
 .widget-grid > * {
   grid-column: span 12;

@@ -61,28 +61,36 @@
   border-radius: var(--nv-radius-lg);
 }
 
-/* Chart grid: charts keep a readable minimum width on every breakpoint. */
-.widget-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: var(--nv-card-gap);
-  align-items: start;
-}
+/* ---------------------------------------------------------------------------
+   Chart grid
+   ---------------------------------------------------------------------------
+   `.widget-grid` is the 12-column grid owned by `components/_stats.scss` — this
+   file only assigns spans. The previous implementation re-declared
+   `grid-template-columns` with `repeat(auto-fit, …)` and pulled the first card
+   of every row across two tracks; the two definitions fought each other, so
+   Chrome created twelve implicit tracks and pushed whole cards 180px outside
+   the viewport (horizontal scrolling on every dashboard).
+   --------------------------------------------------------------------------- */
 
 .widget-grid > .card {
   min-inline-size: 0;
   block-size: 100%;
 }
 
-.widget-grid > .card:nth-child(3n + 1) {
-  /* the first chart of every row gets more room on wide screens */
-  grid-column: span 2;
+@media (min-width: 992px) {
+  /* Two charts per row… */
+  .widget-grid > [data-widget^='chart-'] {
+    grid-column: span 6;
+  }
+  /* …and an odd set ends with one full-width chart instead of a gap. */
+  .widget-grid > [data-widget^='chart-']:last-child:nth-child(odd) {
+    grid-column: span 12;
+  }
 }
 
-@media (max-width: 1200px) {
-  .widget-grid > .card:nth-child(3n + 1) {
-    grid-column: span 1;
-  }
+/* A single chart (overview pages) keeps the whole row on its own. */
+.widget-grid > [data-widget^='chart-']:only-child {
+  grid-column: span 12;
 }
 
 .dash-bottom {

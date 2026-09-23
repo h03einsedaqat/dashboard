@@ -445,7 +445,7 @@ function dashboardHarness(slug) {
             <header class="card__head"><div><h2 class="card__title">${escapeHtml(chartTitle(key))}</h2><p class="card__subtitle">بازه فعال: <span data-range-label>۳۰ روز</span></p></div>
               <div class="card__actions"><div class="dropdown"><button class="icon-btn icon-btn--sm" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="گزینه‌های نمودار"><i class="bi bi-three-dots-vertical"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end" data-dropdown-menu><li><button class="dropdown-item" type="button" data-chart-toggle="area">نمودار ناحیه‌ای</button></li><li><button class="dropdown-item" type="button" data-chart-toggle="column">نمودار ستونی</button></li><li><button class="dropdown-item" type="button" data-chart-toggle="line">نمودار خطی</button></li></ul></div></div></header>
-            <div class="card__body"><div class="chart" data-chart-key="${escapeHtml(key)}" data-chart-height="300" data-chart="area"></div></div>
+            <div class="card__body"><div class="chart" data-chart-key="${escapeHtml(key)}" data-chart-height="300"></div></div>
           </section>`,
         )
         .join('')}

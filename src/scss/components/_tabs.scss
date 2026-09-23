@@ -157,11 +157,32 @@
   text-align: start;
   cursor: pointer;
 }
-.accordion-button::after {
+/**
+ * The chevron is authored in markup (`<i class="bi bi-chevron-down">`) so the
+ * markup stays self-describing; only rotate it here. Drawing a second glyph
+ * with `::after` (as an earlier revision did) produced two chevrons per row.
+ */
+.accordion-button > .bi:last-child,
+.accordion-button > i[class^='bi-']:last-child {
+  font-size: 0.85rem;
+  color: var(--nv-text-muted);
+  transition: transform var(--nv-dur) var(--nv-ease);
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+}
+
+.accordion-button:not(.collapsed) > .bi:last-child,
+.accordion-button:not(.collapsed) > i[class^='bi-']:last-child {
+  transform: rotate(180deg);
+}
+
+/* Markup that has no icon still gets a chevron. */
+.accordion-button:not(:has(> .bi))::after {
   content: '\F282';
   font-family: 'bootstrap-icons';
   font-size: 0.85rem;
   color: var(--nv-text-muted);
+  margin-inline-start: auto;
   transition: transform var(--nv-dur) var(--nv-ease);
 }
 .accordion-button:not(.collapsed)::after {

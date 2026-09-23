@@ -442,36 +442,9 @@
 }
 
 /* -------------------------------------------------------------- final cta */
-.landing-cta {
-  position: relative;
-  overflow: hidden;
-  padding: clamp(2.5rem, 5vw, 4rem);
-  border-radius: var(--nv-radius-2xl);
-  background: linear-gradient(135deg, var(--nv-primary), var(--nv-primary-active));
-  color: var(--nv-primary-contrast);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--nv-space-5);
-}
-.landing-cta h2 {
-  margin: 0;
-  color: inherit;
-  font-size: clamp(1.6rem, 3vw, 2.3rem);
-  letter-spacing: -0.02em;
-}
-.landing-cta p {
-  margin: 0;
-  max-width: 56ch;
-  color: rgba(255, 255, 255, 0.86);
-  line-height: 1.9;
-}
-.landing-cta .btn-light {
-  --btn-bg: #fff;
-  --btn-fg: var(--nv-primary-active);
-  border-color: transparent;
-}
+/* The CTA band is defined once, further down (see «CTA band»). The earlier
+   duplicate that lived here set `display:flex` + a radius on the section and
+   fought the band styling, so it is intentionally gone. */
 
 /* ------------------------------------------------------------- landing foot */
 .landing-footer {
@@ -761,10 +734,13 @@
 
 /* ----------------------------------------------------------- CTA band --- */
 .landing-cta {
-  padding-block: clamp(2.5rem, 5vw, 4rem);
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(2.75rem, 5.5vw, 4.5rem);
   background:
     radial-gradient(circle at 15% 15%, rgba(var(--nv-primary-rgb), 0.28), transparent 55%),
-    var(--nv-surface-inverse, var(--nv-surface-2));
+    radial-gradient(circle at 85% 85%, rgba(var(--nv-primary-rgb), 0.18), transparent 55%),
+    var(--nv-surface-2);
   border-block: 1px solid var(--nv-border);
   text-align: center;
 }
@@ -777,20 +753,33 @@
 .landing-cta__inner h2 {
   margin: 0 0 var(--nv-space-3);
   font-size: clamp(1.5rem, 3vw, 2.1rem);
+  letter-spacing: var(--nv-tracking-display);
 }
 .landing-cta__inner p {
   margin: 0 0 var(--nv-space-5);
+  max-width: 58ch;
+  margin-inline: auto;
   color: var(--nv-text-muted);
-  line-height: 1.95;
+  line-height: var(--nv-lh-content);
 }
 .landing-newsletter {
   display: flex;
   gap: var(--nv-space-2);
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  max-width: 34rem;
+  margin-inline: auto;
 }
+/* Bootstrap gives every `.form-control` `width: 100%`, which pushed the submit
+   button onto its own row. The field flexes; the button keeps its own width. */
 .landing-newsletter .form-control {
-  min-width: min(22rem, 100%);
+  flex: 1 1 16rem;
+  width: auto;
+  min-width: 0;
+}
+.landing-newsletter .btn {
+  flex: 0 0 auto;
 }
 
 /* -------------------------------------------------------------- footer --- */
@@ -1043,5 +1032,229 @@
   }
   .landing-counters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   Landing — premium pass
+   --------------------------------------------------------------------------
+   Additions for the marketing page: quick-start steps, the stats band, a
+   sharper hero and a tighter section rhythm. Everything is token-driven, so
+   dark mode, the six palettes and the density switch keep working.
+   ========================================================================== */
+
+/* Section rhythm: a touch more air on wide screens, never cramped on phones. */
+.landing-section {
+  padding-block: clamp(3.25rem, 7vw, 6.5rem);
+}
+
+.landing-section--soft {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--nv-surface) 92%, var(--nv-primary) 8%), var(--nv-surface));
+  border-block: 1px solid var(--nv-border);
+}
+
+.landing-section__head {
+  margin-block-end: clamp(2rem, 4vw, 3.25rem);
+}
+
+.landing-section__title {
+  letter-spacing: var(--nv-tracking-display);
+  max-width: 26ch;
+}
+
+.landing-section__text {
+  line-height: var(--nv-lh-content);
+}
+
+/* ------------------------------------------------------------------- hero */
+.landing-hero {
+  padding-block: clamp(2.75rem, 6vw, 5.5rem) clamp(3rem, 7vw, 6rem);
+}
+
+.landing-hero::after {
+  /* A whisper of a grid keeps the hero from feeling empty on ultra-wide screens. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--nv-border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--nv-border) 55%, transparent) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 10%, transparent 72%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.landing-hero__title {
+  letter-spacing: var(--nv-tracking-display);
+  line-height: 1.18;
+}
+
+.landing-hero__text {
+  line-height: var(--nv-lh-content);
+}
+
+.landing-hero__actions .btn {
+  --btn-pad-x: 1.15rem;
+}
+
+/* The floating "live preview" chip on top of the hero mock. */
+.landing-preview {
+  position: relative;
+}
+
+.landing-preview::after {
+  content: attr(data-preview-label);
+  position: absolute;
+  inset-block-start: -0.85rem;
+  inset-inline-start: 1.25rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  box-shadow: var(--nv-shadow-md);
+}
+
+/* --------------------------------------------------------- quick start steps */
+.landing-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: var(--nv-card-gap);
+  counter-reset: step;
+}
+
+.landing-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-6);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-xl);
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-xs);
+  transition: transform var(--nv-dur) var(--nv-ease), box-shadow var(--nv-dur) var(--nv-ease);
+}
+
+.landing-step:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--nv-shadow-md);
+}
+
+.landing-step__num {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-weight: var(--nv-fw-bold);
+}
+
+.landing-step h3 {
+  margin: 0;
+  font-size: var(--nv-text-h5);
+}
+
+.landing-step p {
+  margin: 0;
+  flex: 1 1 auto;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+  line-height: var(--nv-lh-content);
+}
+
+.landing-step__code {
+  margin: 0;
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border-radius: var(--nv-radius-md);
+  border: 1px dashed var(--nv-divider);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  line-height: 1.9;
+  direction: ltr;
+  text-align: start;
+  overflow-x: auto;
+}
+
+.landing-step .btn {
+  align-self: flex-start;
+}
+
+/* --------------------------------------------------------------- stats band */
+.landing-band {
+  border-block: 1px solid var(--nv-border);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(var(--nv-primary-rgb), 0.14), transparent 60%),
+    var(--nv-surface-2);
+}
+
+.landing-band__inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--nv-space-5);
+  padding-block: clamp(1.75rem, 4vw, 2.75rem);
+  text-align: center;
+}
+
+.landing-band__item strong {
+  display: block;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: var(--nv-fw-black);
+  color: var(--nv-heading);
+  letter-spacing: var(--nv-tracking-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-band__item span {
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-caption);
+}
+
+/* --------------------------------------------------------------- ui kit grid */
+.landing-grid--kit {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+/* ------------------------------------------------------------------- footer */
+.landing-footer {
+  padding-block: clamp(2.5rem, 5vw, 4rem) var(--nv-space-6);
+}
+
+.landing-footer__grid {
+  gap: var(--nv-space-6) var(--nv-space-7);
+}
+
+/* ------------------------------------------------------------ responsiveness */
+@media (max-width: 575.98px) {
+  .landing-section__title {
+    max-width: 100%;
+  }
+  .landing-step,
+  .landing-band__inner {
+    text-align: start;
+  }
+  .landing-band__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    text-align: start;
+  }
+  .landing-preview::after {
+    inset-inline-start: 0.75rem;
+  }
+}
+
+/* Reduced motion: the reveal animations are decorative only. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-step:hover,
+  .feature-card:hover {
+    transform: none;
   }
 }

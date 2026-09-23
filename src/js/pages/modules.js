@@ -553,8 +553,8 @@ async function initFinance() {
             ['outstanding', 'مطالبات باز', 'currency', 'warning', 'hourglass-split'],
           ])}
           <div class="widget-grid">
-            ${card({ title: 'جریان نقدی', subtitle: 'شش ماه گذشته', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-key="cashflow"></div>` })}
-            ${card({ title: 'ساختار درآمد', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-key="income-split"></div>` })}
+            ${card({ span: 8, title: 'جریان نقدی', subtitle: 'شش ماه گذشته', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-key="cashflow"></div>` })}
+            ${card({ span: 4, title: 'ساختار درآمد', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-key="income-split"></div>` })}
           </div>
           ${card({ title: 'گزارش سنی مطالبات', flush: true, body: `<table class="table"><thead><tr><th>بازه</th><th>مبلغ</th><th>سهم</th></tr></thead><tbody>${(aging.buckets ?? [])
             .map((bucket) => `<tr><td>${escapeHtml(bucket.label)}</td><td class="numeric">${formatCurrency(bucket.total, 'IRR')}</td><td><div class="progress progress--sm"><div class="progress-bar progress-bar--${bucket.tone ?? 'primary'}" style="width:${bucket.percent}%"></div></div></td></tr>`)
@@ -776,8 +776,8 @@ async function initProjects() {
             ['members', 'اعضای تیم', 'number', 'success', 'people'],
           ])}
           <div class="widget-grid">
-            ${card({ title: 'پیشرفت انجام کار', body: `<div class="chart" data-chart="radialBar" data-chart-height="300" data-chart-series='${JSON.stringify([project.progress ?? 0])}' data-chart-labels='["پیشرفت پروژه"]'></div>` })}
-            ${card({ title: 'توزیع بار کاری تیم', body: `<div class="chart" data-chart="bar" data-chart-height="300" data-chart-series='${JSON.stringify([{ name: 'تسک‌های باز', data: workload.map((row) => row.open ?? 0) }])}' data-chart-labels='${JSON.stringify(workload.map((row) => row.name))}'></div>` })}
+            ${card({ span: 4, title: 'پیشرفت انجام کار', body: `<div class="chart" data-chart="radialBar" data-chart-height="300" data-chart-series='${JSON.stringify([project.progress ?? 0])}' data-chart-labels='["پیشرفت پروژه"]'></div>` })}
+            ${card({ span: 8, title: 'توزیع بار کاری تیم', body: `<div class="chart" data-chart="bar" data-chart-height="300" data-chart-series='${JSON.stringify([{ name: 'تسک‌های باز', data: workload.map((row) => row.open ?? 0) }])}' data-chart-labels='${JSON.stringify(workload.map((row) => row.name))}'></div>` })}
           </div>
           ${tabs([
             { id: 'team', label: 'تیم', icon: 'people', body: card({ flush: true, body: `<ul class="list-group">${members.map((member) => `<li class="list-item"><img class="avatar avatar--sm" src="${escapeHtml(member.avatar)}" alt=""><span class="list-item__title">${escapeHtml(member.name)}<span class="list-item__sub">${escapeHtml(member.role ?? '')}</span></span><span class="list-item__meta">${toDigits(member.tasks ?? 0)} تسک</span></li>`).join('')}</ul>` }) },

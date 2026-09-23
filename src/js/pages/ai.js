@@ -614,8 +614,8 @@ async function aiUsage() {
         ['quota', 'سهمیه مصرف‌شده', 'percent', 'violet', 'pie-chart'],
       ])}
       <div class="widget-grid">
-        ${card({ title: 'روند مصرف توکن', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'توکن', data: usage.series ?? usage.tokens?.data ?? [] }])}' data-chart-labels='${JSON.stringify(usage.labels ?? usage.tokens?.labels ?? [])}'></div>` })}
-        ${card({ title: 'سهم مدل‌ها', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-series='${JSON.stringify((usage.byModel ?? []).map((model) => model.tokens ?? model.value ?? 0))}' data-chart-labels='${JSON.stringify((usage.byModel ?? []).map((model) => model.label ?? model.name ?? ''))}'></div>` })}
+        ${card({ span: 8, title: 'روند مصرف توکن', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'توکن', data: usage.series ?? usage.tokens?.data ?? [] }])}' data-chart-labels='${JSON.stringify(usage.labels ?? usage.tokens?.labels ?? [])}'></div>` })}
+        ${card({ span: 4, title: 'سهم مدل‌ها', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-series='${JSON.stringify((usage.byModel ?? []).map((model) => model.tokens ?? model.value ?? 0))}' data-chart-labels='${JSON.stringify((usage.byModel ?? []).map((model) => model.label ?? model.name ?? ''))}'></div>` })}
       </div>
       ${card({ title: 'تفکیک مصرف', flush: true, body: `<table class="table table--hover"><thead><tr><th>مدل</th><th>درخواست</th><th>توکن</th><th>هزینه</th><th>سهم</th></tr></thead><tbody>${(usage.byModel ?? [])
         .map((model) => {
@@ -858,8 +858,8 @@ async function aiDashboard() {
         ['jobs', 'کارهای زمان‌بندی‌شده', 'number', 'success', 'clock-history'],
       ])}
       <div class="widget-grid">
-        ${card({ title: 'روند مصرف', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'توکن', data: usage.series ?? [] }])}' data-chart-labels='${JSON.stringify(usage.labels ?? [])}'></div>` })}
-        ${card({ title: 'توزیع مدل‌ها', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-series='${JSON.stringify((usage.byModel ?? []).map((model) => model.tokens ?? 0))}' data-chart-labels='${JSON.stringify((usage.byModel ?? []).map((model) => model.label ?? ''))}'></div>` })}
+        ${card({ span: 8, title: 'روند مصرف', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'توکن', data: usage.series ?? [] }])}' data-chart-labels='${JSON.stringify(usage.labels ?? [])}'></div>` })}
+        ${card({ span: 4, title: 'توزیع مدل‌ها', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-series='${JSON.stringify((usage.byModel ?? []).map((model) => model.tokens ?? 0))}' data-chart-labels='${JSON.stringify((usage.byModel ?? []).map((model) => model.label ?? ''))}'></div>` })}
       </div>
       <div class="grid grid--2">
         ${card({ title: 'گفتگوهای اخیر', flush: true, body: `<ul class="list-group">${conversations
