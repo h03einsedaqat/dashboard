@@ -8,10 +8,13 @@
  *   • sticky header shadow, reading progress and back-to-top
  *   • secondary (two-column) navigation for `[data-layout='twocol']`
  */
-import { $, $$, on, debounce, lockScroll } from './dom.js';
+import { $, $$, create, on, debounce, lockScroll } from './dom.js';
 import { bus, EVENTS } from './bus.js';
 import { storage, KEYS } from './storage.js';
 import { theme } from './theme.js';
+
+/** True below the `lg` breakpoint, where the sidebar becomes a drawer. */
+const isMobile = () => window.matchMedia('(max-width: 991.98px)').matches;
 
 const state = {
   collapsed: storage.get(KEYS.sidebarCollapsed, false),
@@ -21,11 +24,16 @@ const state = {
 
 function applySidebar() {
   const root = document.documentElement;
+  /* On a phone `.sidebar-hidden` would leave no navigation at all. */
+  if (isMobile()) state.hidden = false;
   root.classList.toggle('sidebar-collapsed', Boolean(state.collapsed));
   root.classList.toggle('sidebar-hidden', Boolean(state.hidden));
   document.body.classList.toggle('sidebar-open', Boolean(state.open));
+  const mobile = isMobile();
   $$('[data-sidebar-toggle]').forEach((button) => {
-    button.setAttribute('aria-expanded', String(!state.hidden));
+    button.setAttribute('aria-expanded', String(mobile ? state.open : !state.hidden));
+    const label = mobile ? button.dataset.labelOpen : button.dataset.labelClose;
+    if (label) button.setAttribute('aria-label', label);
   });
   bus.emit(EVENTS.layout, { collapsed: state.collapsed, hidden: state.hidden, open: state.open, layout: theme.get('layout') });
 }
@@ -164,6 +172,95 @@ export const layout = {
   },
 
   /** Enhances every table so `data-table-sticky` headers stay readable. */
+  /**
+   * Two-column layout: a secondary panel next to the content that lists the
+   * children of the group the current page belongs to.
+   *
+   * The panel is built from the sidebar that already ships with the page, so it
+   * always matches the manifest — no second source of truth to keep in sync —
+   * and it is rebuilt whenever the layout or the language changes (labels are
+   * cloned *after* the translator has run, so they arrive translated).
+   */
+  initSecondaryNav() {
+    const shell = $('[data-app-shell]');
+    if (!shell) return;
+    const isTwocol = () => document.documentElement.dataset.layout === 'twocol';
+    let panel = $('.app-secondary', shell);
+
+    const close = () => {
+      panel?.remove();
+      panel = null;
+    };
+
+    const activeGroup = () => {
+      const active = $('.app-sidebar .nav__link.is-active, .topnav .nav__link.is-active');
+      const sub = active?.closest('.nav__sub');
+      const group = sub?.closest('.nav__item--has-sub') ?? $('.app-sidebar .nav__item--has-sub.is-open');
+      if (!group) return null;
+      const subList = group.querySelector('.nav__sub');
+      if (!subList || !subList.children.length) return null;
+      return { group, subList };
+    };
+
+    const build = () => {
+      if (!isTwocol()) {
+        close();
+        return;
+      }
+      const data = activeGroup();
+      if (!data) {
+        close();
+        return;
+      }
+      const { group, subList } = data;
+      if (!panel) {
+        panel = create('aside', {
+          class: 'app-secondary',
+          dataset: { appSecondary: '' },
+          role: 'navigation',
+        });
+        const main = $('.app-main', shell);
+        shell.insertBefore(panel, main ?? null);
+      }
+      const label = group.querySelector(':scope > .nav__link .nav__label')?.textContent.trim() ?? '';
+      const icon = group.querySelector(':scope > .nav__link .nav__icon i');
+      panel.setAttribute('aria-label', label);
+      panel.innerHTML = `
+        <p class="app-secondary__title">${label}</p>
+        <ul class="app-secondary__list"></ul>`;
+      const list = $('.app-secondary__list', panel);
+      $$(':scope > .nav__item', subList).forEach((item) => {
+        const link = item.querySelector('a.nav__link');
+        if (!link) return;
+        const li = create('li', { class: 'app-secondary__item' });
+        const clone = link.cloneNode(true);
+        clone.classList.add('app-secondary__link');
+        clone.classList.toggle('is-active', link.classList.contains('is-active'));
+        if (link.classList.contains('is-active')) clone.setAttribute('aria-current', 'page');
+        else clone.removeAttribute('aria-current');
+        // The rail tooltip is meaningless in a full-width list.
+        clone.removeAttribute('data-tooltip');
+        const iconSlot = clone.querySelector('.nav__icon i');
+        if (!iconSlot && icon) {
+          const host = create('span', { class: 'app-secondary__icon' });
+          host.innerHTML = icon.outerHTML;
+          clone.prepend(host);
+        }
+        li.append(clone);
+        list.append(li);
+      });
+      // Keep the group header icon for visual continuity with the sidebar.
+      if (icon) panel.querySelector('.app-secondary__title')?.prepend(icon.cloneNode(true));
+    };
+
+    build();
+    bus.on(EVENTS.layout, build);
+    bus.on(EVENTS.language, () => window.setTimeout(build, 60));
+    on(document, 'click', (event) => {
+      if (event.target.closest('[data-nav-toggle]')) window.setTimeout(build, 30);
+    });
+  },
+
   initStickyTables() {
     $$('[data-table-sticky]').forEach((node) => node.classList.add('table--sticky'));
   },
@@ -176,17 +273,24 @@ export const layout = {
     layout.initSwipe();
     layout.initScrollEffects();
     layout.initStickyTables();
+    layout.initSecondaryNav();
 
-    $$('[data-sidebar-toggle]').forEach((button) => on(button, 'click', () => layout.toggleHidden()));
+    /**
+     * One hamburger, two behaviours: below `lg` the sidebar is an off-canvas
+     * drawer that has to be opened (and closed), above it the same button
+     * removes the rail from the flow. Before this the mobile button only ever
+     * *hid* the sidebar, so a phone had no way to reach the navigation.
+     */
+    $$('[data-sidebar-toggle]').forEach((button) => on(button, 'click', () => (isMobile() ? layout.toggleDrawer() : layout.toggleHidden())));
+
+    // A drawer that was left open during a resize must not lock scrolling.
+    window.matchMedia('(min-width: 992px)').addEventListener?.('change', (event) => {
+      if (event.matches) layout.closeDrawer();
+    });
     $$('[data-sidebar-collapse]').forEach((button) => on(button, 'click', () => layout.toggleCollapse()));
     $$('[data-sidebar-open]').forEach((button) => on(button, 'click', () => layout.toggleDrawer()));
     $$('[data-drawer-close]').forEach((button) => on(button, 'click', () => layout.closeDrawer()));
 
-    // Close the mobile drawer when the viewport grows back to desktop.
-    const mq = window.matchMedia('(min-width: 992px)');
-    mq.addEventListener?.('change', (event) => {
-      if (event.matches) layout.closeDrawer();
-    });
     return layout;
   },
 };

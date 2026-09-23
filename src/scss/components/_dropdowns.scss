@@ -273,3 +273,48 @@
 .dropdown-item[data-lang] small {
   margin-inline-start: 0;
 }
+
+/* ==========================================================================
+   Open state — the wiring the controller expects
+   --------------------------------------------------------------------------
+   `core/dropdown.js` toggles `.is-open` + `data-open` on the panel (Bootstrap's
+   JS bundle is intentionally not shipped, so its `.show` rule never applies).
+   Without the rules below the panel keeps Bootstrap's `display: none` and every
+   dropdown in the product — the header language switcher, user menu, table
+   column pickers, export menus — silently fails to open.
+   ========================================================================== */
+.dropdown-menu.is-open,
+.dropdown-menu[data-open='true'] {
+  display: block;
+  inset-block-start: calc(100% + var(--bs-dropdown-spacer, 0.125rem));
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  /* Set by the controller when a menu would overflow the viewport edge. */
+  translate: var(--nv-menu-shift, 0) 0;
+}
+
+.dropdown-menu.is-open.dropdown-menu-end,
+.dropdown-menu[data-open='true'].dropdown-menu-end,
+.dropdown-menu.is-open.dropdown-menu--end {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+/* Menus that open inside a compact toolbar pin to the trigger's inline end. */
+.dropup .dropdown-menu.is-open,
+.dropup .dropdown-menu[data-open='true'] {
+  inset-block-start: auto;
+  inset-block-end: calc(100% + var(--bs-dropdown-spacer, 0.125rem));
+}
+
+/* The panel keeps the nav chrome above it but must win over cards and tables. */
+.dropdown-menu.is-open {
+  z-index: var(--nv-z-header);
+}
+
+/* Horizontal-only scroll menus (long language/currency lists) */
+.dropdown-menu.is-open {
+  max-height: min(24rem, 70vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

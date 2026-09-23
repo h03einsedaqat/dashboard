@@ -14,7 +14,7 @@
 import { $, $$, on, render, escapeHtml } from '../core/dom.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
-import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
+import { formatCompact, formatCurrency, formatDuration, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
 import { createChart, chartColors, refreshCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { analyticsService } from '../../services/index.js';
@@ -64,16 +64,20 @@ async function paintKpis(instance) {
   await import('../core/charts.js').then(({ initCharts }) => initCharts(strip));
 }
 
+/**
+ * KPI values go through the shared formatters, so the unit words (روز / day /
+ * يوم) and the percent mark follow the active language.
+ */
 function formatKpi(kpi) {
   switch (kpi.unit) {
     case 'currency':
       return formatCurrency(kpi.value, 'IRR', { compact: true });
     case 'percent':
-      return `${formatNumber(kpi.value, { decimals: 1 })}٪`;
+      return formatPercent(kpi.value, { decimals: 1 });
     case 'day':
-      return `${toDigits(kpi.value)} روز`;
+      return formatDuration(Number(kpi.value) * 1440);
     case 'minute':
-      return `${toDigits(kpi.value)} دقیقه`;
+      return formatDuration(kpi.value);
     default:
       return formatNumber(kpi.value);
   }
@@ -89,7 +93,13 @@ async function paintCharts(instance) {
     const payload = data[key];
     if (!payload) continue;
     const chart = await createChart(node, {
-      type: node.dataset.chart ?? payload.type ?? 'area',
+      /**
+       * The data service decides the chart kind (`sources` and `devices` are
+       * donuts, `orders` is a column chart). The `data-chart` attribute on the
+       * placeholder is only a fallback — reading it first turned every
+       * controller-driven chart into an area chart.
+       */
+      type: payload.type ?? node.dataset.chart ?? 'area',
       series: payload.series,
       labels: payload.labels,
       height: Number(node.dataset.chartHeight ?? 320),
@@ -106,11 +116,36 @@ async function collectSeries(instance) {
   const revenue = await analyticsService.revenue({ range });
   const traffic = await analyticsService.traffic({ range });
   const base = {
+    /**
+     * Revenue is a combo chart: money as an area, order counts as columns on a
+     * second axis, the target as a dashed line. Mixing two magnitudes on one
+     * axis made the order columns collapse into a flat band before.
+     */
     revenue: {
       type: 'area',
-      series: revenue.series.filter((s) => s.id !== 'target').map((s) => ({ name: s.label, data: s.data, type: s.type === 'column' ? 'column' : 'area' })),
+      mixed: true,
+      series: revenue.series.map((s) => ({
+        name: s.label,
+        type: s.type === 'column' ? 'column' : s.type === 'line' ? 'line' : 'area',
+        data: s.data,
+        ...(s.dashed ? { dashed: true } : {}),
+      })),
       labels: revenue.labels,
-      colors: chartColors(2),
+      colors: chartColors(3),
+      extra: {
+        yaxis: [
+          /**
+           * ApexCharts echoes the value it handed to the formatter when that
+           * formatter returns a string, so a currency formatter appended its
+           * own unit twice («۴.۵ هزار ریال۴.۵ هزار ریال»). Returning the number
+           * for the axis and letting `formatCompact` label the title keeps the
+           * ticks clean.
+           */
+          { seriesName: 'درآمد', labels: { formatter: (value) => (typeof value === 'number' ? formatCompact(value) : String(value ?? '')) } },
+          { seriesName: 'سفارش‌ها', opposite: true, labels: { formatter: (value) => (typeof value === 'number' ? formatCompact(value) : String(value ?? '')) } },
+          { seriesName: 'هدف', show: false },
+        ],
+      },
     },
     orders: {
       type: 'column',
@@ -119,8 +154,12 @@ async function collectSeries(instance) {
     },
     target: {
       type: 'area',
-      series: [{ name: 'هدف', data: revenue.series.find((s) => s.id === 'target')?.data ?? [] }, { name: 'واقعی', data: revenue.series.find((s) => s.id === 'revenue')?.data ?? [] }],
+      series: [
+        { name: 'هدف', data: revenue.series.find((s) => s.id === 'target')?.data ?? [] },
+        { name: 'واقعی', data: revenue.series.find((s) => s.id === 'revenue')?.data ?? [] },
+      ],
       labels: revenue.labels,
+      extra: { yaxis: { title: { text: 'مبلغ (ریال)' }, labels: { formatter: (value) => (typeof value === 'number' ? formatCompact(value) : String(value ?? '')) } } },
     },
     traffic: {
       type: 'area',

@@ -7,7 +7,7 @@
  * a user preference (`nova:calendar` = `jalali` | `gregorian`).
  */
 import * as jalaali from 'jalaali-js';
-import { toDigits } from './numbers.js';
+import { toDigits, activeLang } from './numbers.js';
 import { storage, KEYS } from './storage.js';
 
 export const JALALI_MONTHS = [
@@ -24,6 +24,21 @@ export const GREGORIAN_MONTHS = [
 export const WEEK_DAYS_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 export const WEEK_DAYS_SHORT_FA = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 export const WEEK_DAYS_EN = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+/** Latin + Arabic month / weekday names so every locale reads natively. */
+export const GREGORIAN_MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const GREGORIAN_MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+export const JALALI_MONTHS_EN = ['Farvardin', 'Ordibehesht', 'Khordad', 'Tir', 'Mordad', 'Shahrivar', 'Mehr', 'Aban', 'Azar', 'Dey', 'Bahman', 'Esfand'];
+export const JALALI_MONTHS_AR = ['فَروَردين', 'أرديبهشت', 'خُرداد', 'تير', 'مُرداد', 'شهريور', 'مِهر', 'آبان', 'آذار', 'دي', 'بهمن', 'إسفند'];
+export const WEEK_DAYS_LONG_EN = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+export const WEEK_DAYS_LONG_AR = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+
+/** Month names for the active language (falls back to Persian). */
+export function monthNames(lang = activeLang()) {
+  if (lang === 'en') return { jalali: JALALI_MONTHS_EN, gregorian: GREGORIAN_MONTHS_EN };
+  if (lang === 'ar') return { jalali: JALALI_MONTHS_AR, gregorian: GREGORIAN_MONTHS_AR };
+  return { jalali: JALALI_MONTHS, gregorian: GREGORIAN_MONTHS };
+}
 
 export const JALALI_HOLIDAYS = [
   '01/01', '01/02', '01/03', '01/04', '01/12', '01/13',
@@ -74,17 +89,17 @@ export function parts(date = new Date()) {
   return { year: j.year, month: j.month, day: j.day, weekday: d.getDay(), date: d };
 }
 
-export function monthLabel(year, month, { short = false } = {}) {
-  if (calendarSystem === 'gregorian') {
-    const name = GREGORIAN_MONTHS[(month - 1 + 12) % 12];
-    return short ? name.slice(0, 4) : name;
-  }
-  const name = JALALI_MONTHS[(month - 1 + 12) % 12];
+export function monthLabel(year, month, { short = false, lang = activeLang() } = {}) {
+  const names = monthNames(lang);
+  const name = (calendarSystem === 'gregorian' ? names.gregorian : names.jalali)[(month - 1 + 12) % 12];
   return short ? name.slice(0, 4) : name;
 }
 
-export function weekdayLabels({ short = true } = {}) {
-  if (calendarSystem === 'gregorian') return short ? WEEK_DAYS_EN : ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+export function weekdayLabels({ short = true, lang = activeLang() } = {}) {
+  if (calendarSystem === 'gregorian' || lang !== 'fa') {
+    if (lang === 'ar') return short ? ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'] : WEEK_DAYS_LONG_AR;
+    if (lang === 'en') return short ? WEEK_DAYS_EN : WEEK_DAYS_LONG_EN;
+  }
   return short ? WEEK_DAYS_SHORT_FA : WEEK_DAYS_FA;
 }
 
@@ -99,22 +114,28 @@ export function weekDayIndex(date = new Date()) {
  * @param {Date|string} date
  * @param {Object} [options] { system, format: 'short'|'long'|'iso'|'time'|'datetime'|'month', lang }
  */
-export function formatDate(date, { system = calendarSystem, format = 'short', lang = 'fa' } = {}) {
+export function formatDate(date, { system = calendarSystem, format = 'short', lang = activeLang() } = {}) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
+  const names = monthNames(lang);
+  const weekdays = weekdayLabels({ short: false, lang });
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   if (format === 'time') return toDigits(time, lang);
   if (format === 'datetime') return `${formatDate(d, { system, format: 'short', lang })} — ${toDigits(time, lang)}`;
 
-  if (system === 'gregorian') {
-    const label = `${d.getDate()} ${GREGORIAN_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-    return format === 'long' ? `${WEEK_DAYS_FA[weekDayIndex(d)]}، ${label}` : toDigits(label, lang);
+  /** English and Arabic read the Gregorian calendar by default. */
+  const useGregorian = system === 'gregorian' || (lang !== 'fa' && system !== 'jalali');
+  if (useGregorian) {
+    const label = lang === 'en'
+      ? `${names.gregorian[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+      : `${d.getDate()} ${names.gregorian[d.getMonth()]} ${d.getFullYear()}`;
+    return format === 'long' ? `${weekdays[weekDayIndex(d)]}، ${label}` : toDigits(label, lang);
   }
 
   const { jy, jm, jd } = jalaali.toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
-  if (format === 'month') return `${JALALI_MONTHS[jm - 1]} ${toDigits(jy, lang)}`;
-  const label = `${toDigits(jd, lang)} ${JALALI_MONTHS[jm - 1]} ${toDigits(jy, lang)}`;
-  return format === 'long' ? `${WEEK_DAYS_FA[weekDayIndex(d)]}، ${label}` : label;
+  if (format === 'month') return `${names.jalali[jm - 1]} ${toDigits(jy, lang)}`;
+  const label = `${toDigits(jd, lang)} ${names.jalali[jm - 1]} ${toDigits(jy, lang)}`;
+  return format === 'long' ? `${weekdays[weekDayIndex(d)]}، ${label}` : label;
 }
 
 /** Machine-usable ISO date that keeps the *current* calendar system's numbers. */
@@ -125,7 +146,7 @@ export function formatIso(date = new Date()) {
   return `${jy}/${pad(jm)}/${pad(jd)}`;
 }
 
-export function relativeTime(date, { lang = 'fa' } = {}) {
+export function relativeTime(date, { lang = activeLang() } = {}) {
   const then = new Date(date).getTime();
   if (Number.isNaN(then)) return '—';
   const diff = Math.round((then - Date.now()) / 1000);
@@ -133,7 +154,8 @@ export function relativeTime(date, { lang = 'fa' } = {}) {
     ['year', 31536000], ['month', 2592000], ['week', 604800],
     ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1],
   ];
-  const formatter = new Intl.RelativeTimeFormat(lang === 'fa' ? 'fa-IR' : lang, { numeric: 'auto' });
+  const locale = lang === 'fa' ? 'fa-IR' : lang === 'ar' ? 'ar-AE' : 'en-US';
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const [unit, seconds] = units.find(([, size]) => Math.abs(diff) >= size) ?? ['second', 1];
   const value = Math.round(diff / seconds);
   return toDigits(formatter.format(value, unit), lang);

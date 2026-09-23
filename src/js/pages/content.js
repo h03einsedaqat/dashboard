@@ -190,6 +190,7 @@ export async function initLanding() {
     });
   }
 
+  refreshLandingNumbers(node);
   $$('[data-counter]', node).forEach((counter) => counter.removeAttribute('data-counter'));
   initCharts(node);
   on(node, 'click', (event) => {
@@ -206,6 +207,20 @@ export async function initLanding() {
     await services.contentService.subscribe(input.value);
     input.value = '';
     toast.success('عضویت انجام شد', 'خبرنامه ماهانه برای شما ارسال می‌شود.');
+  });
+}
+
+/**
+ * The stats band under the quick-start steps keeps its authored value but
+ * re-renders the digits for the active language (۲۰۶ / 206 / ٢٠٦). Exported so
+ * the language switch can refresh it without re-rendering the whole page.
+ */
+export function refreshLandingNumbers(root = document) {
+  $$('[data-band-number]', root).forEach((item) => {
+    const raw = item.dataset.bandNumber ?? item.textContent;
+    const match = String(raw).match(/^([\d۰-۹]+)(.*)$/);
+    if (!match) return;
+    item.textContent = `${formatNumber(match[1])}${match[2]}`;
   });
 }
 

@@ -229,3 +229,139 @@
     padding: var(--nv-space-4) var(--nv-space-5);
   }
 }
+
+/* ==========================================================================
+   Runtime wiring for the modal / drawer controller
+   --------------------------------------------------------------------------
+   `core/modal.js` mounts a stage element (`.modal-backdrop[data-modal-id]` or
+   `.drawer-overlay[data-modal-id]`), adds `.is-visible` once mounted and
+   `.is-leaving` while it animates out. Bootstrap's stylesheet still hides a
+   bare `.modal` (`display: none`) and knows nothing about `.drawer-overlay`,
+   which is why the panel used to render invisible over a plain dark scrim.
+   These rules own the whole presentation: stage, panel, sizes and motion.
+   ========================================================================== */
+.modal-host {
+  display: contents;
+}
+
+/* ---------------------------------------------------------------- the stage */
+.modal-backdrop[data-modal-id] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(var(--nv-space-4), 6vh, var(--nv-space-12)) var(--nv-space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--nv-overlay);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity var(--nv-dur) var(--nv-ease);
+}
+
+.drawer-overlay[data-modal-id] {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nv-z-drawer);
+  background-color: var(--nv-overlay);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity var(--nv-dur) var(--nv-ease);
+}
+
+.modal-backdrop[data-modal-id].is-visible,
+.drawer-overlay[data-modal-id].is-visible {
+  opacity: 1;
+}
+
+.modal-backdrop[data-modal-id].is-leaving,
+.drawer-overlay[data-modal-id].is-leaving {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------------- the panel */
+.modal-backdrop[data-modal-id] > .modal {
+  --nv-modal-w: 32rem;
+  display: block;
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  width: min(100%, var(--nv-modal-w));
+  /* Bootstrap gives `.modal` height:100%; the panel must hug its content. */
+  height: auto;
+  max-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  color: var(--nv-text);
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-xl);
+  box-shadow: var(--nv-shadow-lg);
+  opacity: 0;
+  transform: translateY(12px) scale(0.985);
+  transition: opacity var(--nv-dur) var(--nv-ease-out), transform var(--nv-dur) var(--nv-ease-out);
+}
+
+.modal-backdrop[data-modal-id].is-visible > .modal {
+  opacity: 1;
+  transform: none;
+}
+
+.modal-backdrop[data-modal-id] > .modal-sm {
+  --nv-modal-w: 24rem;
+}
+.modal-backdrop[data-modal-id] > .modal-lg {
+  --nv-modal-w: 44rem;
+}
+.modal-backdrop[data-modal-id] > .modal-xl {
+  --nv-modal-w: 58rem;
+}
+.modal-backdrop[data-modal-id] > .modal-full {
+  --nv-modal-w: 76rem;
+}
+
+/* Long dialogs scroll their body instead of the whole stage. */
+.modal-backdrop[data-modal-id] > .modal--scrollable,
+.modal-backdrop[data-modal-id] > .modal--scrollable {
+  display: flex;
+  flex-direction: column;
+}
+.modal--scrollable .modal__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal--centered {
+  margin-block: auto;
+}
+
+/* The drawer stage hands the panel its own animation. */
+.drawer-overlay[data-modal-id] > .drawer {
+  z-index: 1;
+}
+.drawer-overlay[data-modal-id].is-visible > .drawer,
+.drawer-overlay[data-modal-id] > .drawer.is-open {
+  transform: translateX(0);
+}
+
+/* Scroll-lock compensation: no layout jump when an overlay opens. */
+html.is-scroll-locked {
+  overflow: hidden;
+}
+html.is-scroll-locked body {
+  padding-inline-end: var(--nv-scrollbar-gap, 0px);
+}
+
+/* Modals stack: the newest backdrop sits on top of the previous one. */
+.modal-backdrop[data-modal-id] ~ .modal-backdrop[data-modal-id] {
+  z-index: calc(var(--nv-z-drawer) + 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop[data-modal-id],
+  .drawer-overlay[data-modal-id],
+  .modal-backdrop[data-modal-id] > .modal {
+    transition-duration: 1ms;
+  }
+  .modal-backdrop[data-modal-id] > .modal {
+    transform: none;
+  }
+}

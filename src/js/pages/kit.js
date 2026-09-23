@@ -79,8 +79,13 @@ export const resourceFor = (name) => services.default[name] ?? null;
 
 /* --------------------------------------------------------------- primitives */
 
-export function card({ title = '', subtitle = '', body = '', actions = '', foot = '', flush = false, icon = '', className = '', bodyClass = '' } = {}) {
-  return `<section class="card ${className}">
+export function card({ title = '', subtitle = '', body = '', actions = '', foot = '', flush = false, icon = '', className = '', bodyClass = '', span = null } = {}) {
+  /**
+   * `span` writes the design system's own column hint (`data-span`), so cards
+   * composed in JavaScript take part in the 12-column `.widget-grid` exactly
+   * like hand-written markup does.
+   */
+  return `<section class="card ${className}"${span ? ` data-span="${Number(span)}"` : ''}>
     ${title || subtitle || actions ? `<header class="card__head">${icon ? `<span class="card__icon"><i class="bi bi-${icon}"></i></span>` : ''}
       <div>${title ? `<h2 class="card__title">${title}</h2>` : ''}${subtitle ? `<p class="card__subtitle">${subtitle}</p>` : ''}</div>
       ${actions ? `<div class="card__actions">${actions}</div>` : ''}</header>` : ''}

@@ -54,16 +54,22 @@ function open(trigger, { focusFirst = false } = {}) {
   }
 }
 
-/** Flips the menu when it would overflow the viewport (RTL-safe). */
+/**
+ * Nudges the panel back inside the viewport (RTL-safe). The offset is a signed
+ * pixel value consumed by `translate` in `components/_dropdowns.scss`, so the
+ * menu never falls off the screen edge on narrow viewports.
+ */
 function align(menu, trigger) {
   menu.style.removeProperty('--nv-menu-shift');
   const rect = menu.getBoundingClientRect();
   const viewport = window.innerWidth;
-  if (menu.classList.contains('dropdown-menu--end') || menu.classList.contains('dropdown-menu-end')) return;
+  if (!rect.width || !viewport) return;
   if (rect.right > viewport - 8) {
-    menu.style.setProperty('--nv-menu-shift', `${Math.min(rect.right - viewport + 12, rect.width)}px`);
+    const shift = -Math.min(rect.right - viewport + 12, rect.width);
+    menu.style.setProperty('--nv-menu-shift', `${Math.round(shift)}px`);
   } else if (rect.left < 8) {
-    menu.style.setProperty('--nv-menu-shift', `${Math.max(rect.left * -1 + 12, 0)}px`);
+    const shift = Math.max(8 - rect.left, 0);
+    menu.style.setProperty('--nv-menu-shift', `${Math.round(shift)}px`);
   }
 }
 
