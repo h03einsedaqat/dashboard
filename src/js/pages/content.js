@@ -62,8 +62,25 @@ export async function initLanding() {
     services.contentService.techStack(),
   ]);
 
+  /**
+   * The counter strip is generated from `contentService.counters()` so the
+   * numbers on the page always match the product (page count, components…).
+   */
+  const counterHost = $('[data-landing-counters]', node);
+  if (counterHost && counters.length) {
+    render(
+      counterHost,
+      counters
+        .map(
+          (item) => `<div class="landing-counter"><dt>${escapeHtml(item.label)}</dt><dd data-counter="${Number(item.value) || 0}" data-counter-suffix="${escapeHtml(item.suffix ?? '')}">${formatNumber(0)}</dd></div>`,
+        )
+        .join(''),
+    );
+  }
+
   $$('[data-counter]', node).forEach((counter) => {
     const target = Number(counter.dataset.counter ?? 0);
+    const suffix = counter.dataset.counterSuffix ?? '';
     let current = 0;
     const step = Math.max(1, Math.round(target / 40));
     const timer = setInterval(() => {
@@ -72,7 +89,7 @@ export async function initLanding() {
         current = target;
         clearInterval(timer);
       }
-      counter.textContent = formatNumber(current);
+      counter.textContent = `${formatNumber(current)}${target === 0 ? '' : suffix}`;
     }, 24);
   });
 
@@ -82,7 +99,7 @@ export async function initLanding() {
       grid,
       highlights
         .map(
-          (item) => `<article class="card card--icon" data-reveal><span class="card__icon"><i class="bi bi-${escapeHtml(item.icon ?? 'stars')}"></i></span>
+          (item) => `<article class="card card--icon" data-reveal><span class="card__icon card__icon--${escapeHtml(item.tone ?? 'primary')}"><i class="bi bi-${escapeHtml(item.icon ?? 'stars')}" aria-hidden="true"></i></span>
             <h3 class="card__title">${escapeHtml(item.title)}</h3><p class="card__subtitle">${escapeHtml(item.text ?? item.body ?? '')}</p></article>`,
         )
         .join(''),
@@ -95,7 +112,7 @@ export async function initLanding() {
       testimonialGrid,
       testimonials
         .map(
-          (item) => `<figure class="card"><div class="card__body"><span class="rating rating--readonly">${Array.from({ length: 5 }, (_, index) => `<i class="bi bi-star${index < item.rating ? '-fill' : ''}"></i>`).join('')}</span>
+          (item) => `<figure class="card"><div class="card__body"><span class="rating rating--readonly">${Array.from({ length: 5 }, (_, index) => `<i class="bi bi-star${index < item.rating ? '-fill' : ''}" aria-hidden="true"></i>`).join('')}</span>
             <blockquote class="mt-3 mb-3">${escapeHtml(item.text)}</blockquote>
             <figcaption class="d-flex align-items-center gap-3"><img class="avatar avatar--sm" src="${escapeHtml(item.avatar)}" alt=""><div><strong>${escapeHtml(item.name)}</strong><span class="list-item__sub">${escapeHtml(item.role)}</span></div></figcaption></div></figure>`,
         )
@@ -109,12 +126,18 @@ export async function initLanding() {
       pricingHost,
       pricing
         .map(
-          (plan) => `<article class="price-card ${plan.featured ? 'price-card--featured' : ''}">
+          (plan) => `<article class="price-card${plan.featured ? ' price-card--featured' : ''}">
             ${plan.featured ? '<span class="price-card__badge">پیشنهاد ویژه</span>' : ''}
             <h3 class="price-card__name">${escapeHtml(plan.name)}</h3>
             <p class="price-card__desc">${escapeHtml(plan.description ?? '')}</p>
-            <p class="price-card__amount">${formatCurrency(plan.price, 'IRR', { compact: true })}<span>/ ماه</span></p>
-            <ul class="price-card__list">${(plan.features ?? []).map((feature) => `<li><i class="bi bi-check2-circle"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
+            <p class="price-card__amount">${plan.price ? formatCurrency(plan.price, 'IRR', { compact: true }) : 'رایگان'}<span>${plan.price ? ' / ماه' : ''}</span></p>
+            <ul class="price-card__list">${(plan.features ?? [])
+              .map((feature) => (typeof feature === 'string' ? { text: feature, included: true } : feature))
+              .map(
+                (feature) =>
+                  `<li${feature.included === false ? ' class="is-muted"' : ''}><i class="bi bi-${feature.included === false ? 'dash-circle' : 'check2-circle'}" aria-hidden="true"></i> ${escapeHtml(feature.text ?? '')}</li>`,
+              )
+              .join('')}</ul>
             <a class="btn ${plan.featured ? 'btn-primary' : 'btn-light'} w-100" href="system/pricing.html">شروع کنید</a>
           </article>`,
         )
@@ -128,8 +151,8 @@ export async function initLanding() {
       faqHost,
       `<div class="faq-list" data-accordion>${faq
         .map(
-          (item, index) => `<div class="accordion-item"><button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-accordion-toggle aria-expanded="${index === 0}">${escapeHtml(item.question)}<i class="bi bi-chevron-down"></i></button>
-            <div class="accordion-body" data-accordion-body ${index === 0 ? '' : 'hidden'}><p>${escapeHtml(item.answer)}</p></div></div>`,
+          (item, index) => `<div class="accordion-item"><button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-accordion-toggle aria-expanded="${index === 0}">${escapeHtml(item.q ?? item.question ?? '')}<i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+            <div class="accordion-body" data-accordion-body ${index === 0 ? '' : 'hidden'}><p>${escapeHtml(item.a ?? item.answer ?? '')}</p></div></div>`,
         )
         .join('')}</div>`,
     );
@@ -140,9 +163,31 @@ export async function initLanding() {
     render(
       techHost,
       tech
-        .map((item) => `<div class="integration-card"><span class="integration-card__logo"><i class="bi bi-${escapeHtml(item.icon ?? 'code-slash')}"></i></span><div class="integration-card__body"><strong class="integration-card__title">${escapeHtml(item.name)}</strong><p class="integration-card__text">${escapeHtml(item.text ?? item.description ?? '')}</p></div></div>`)
+        .map((item) => `<div class="integration-card"><span class="integration-card__logo"><i class="bi bi-${escapeHtml(item.icon ?? 'code-slash')}" aria-hidden="true"></i></span><div class="integration-card__body"><strong class="integration-card__title">${escapeHtml(item.name)}</strong><p class="integration-card__text">${escapeHtml(item.note ?? item.text ?? item.description ?? '')}</p></div></div>`)
         .join(''),
     );
+  }
+
+  /*
+   * Landing navigation: below the `lg` breakpoint the header collapses to a
+   * menu button, so the panel has to open, close on selection and report its
+   * state for assistive technology.
+   */
+  const menuButton = $('[data-landing-menu]', node) ?? $('[data-landing-menu]');
+  const menu = $('#landing-nav') ?? $('.landing-nav');
+  if (menuButton && menu) {
+    const setMenu = (open) => {
+      menu.classList.toggle('is-open', open);
+      menuButton.setAttribute('aria-expanded', String(open));
+      menuButton.innerHTML = `<i class="bi bi-${open ? 'x-lg' : 'list'}" aria-hidden="true"></i>`;
+    };
+    on(menuButton, 'click', () => setMenu(!menu.classList.contains('is-open')));
+    on(menu, 'click', (event) => {
+      if (event.target.closest('a')) setMenu(false);
+    });
+    on(document, 'keydown', (event) => {
+      if (event.key === 'Escape' && menu.classList.contains('is-open')) setMenu(false);
+    });
   }
 
   $$('[data-counter]', node).forEach((counter) => counter.removeAttribute('data-counter'));
@@ -720,6 +765,101 @@ export async function initPreview() {
 
 /* ================================================================ auth */
 
+/**
+ * Field renderer for the authentication screens.
+ *
+ * The template's own `formMarkup()` is the right tool for record forms; the
+ * sign-in screens need the same fields with a leading icon, an optional
+ * password reveal button and an optional strength meter — all wired to the
+ * controllers in `core/form.js` (`[data-password-toggle]`, `[data-password-field]`).
+ */
+function authField({ name, label, labelKey, type = 'text', icon = 'input-cursor', placeholder = '', required = false, autocomplete = '', rule = '', min = 0, match = '', meter = false }) {
+  const id = `auth-${name}`;
+  const text = labelKey ? `<span data-i18n="${labelKey}">${label}</span>` : label;
+  const labelHtml = `<label class="form-label" for="${id}">${text}${required ? ' <span class="text-danger" aria-hidden="true">*</span>' : ''}</label>`;
+  const attrs = [
+    'class="form-control"',
+    required ? 'required' : '',
+    rule ? `data-rule="${rule}"` : '',
+    min ? `data-min="${min}"` : '',
+    match ? `data-match="${match}"` : '',
+    autocomplete ? `autocomplete="${autocomplete}"` : '',
+    meter ? `data-password-field="#${id}-meter"` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const input = `<input id="${id}" name="${name}" type="${type}" ${attrs} placeholder="${escapeHtml(placeholder)}">`;
+  const control =
+    type === 'password'
+      ? `<div class="input-group input-group--icon input-group--icon-end">
+          <i class="bi bi-lock" aria-hidden="true"></i>${input}
+          <button class="input-group__icon" type="button" data-password-toggle="#${id}" aria-label="نمایش رمز عبور"><i class="bi bi-eye" aria-hidden="true"></i></button>
+        </div>
+        ${
+          meter
+            ? `<div class="password-strength" id="${id}-meter" data-score="0"><span></span><span></span><span></span><span></span><small class="password-meter__label" data-password-label></small></div>`
+            : ''
+        }`
+      : `<div class="input-group input-group--icon"><i class="bi bi-${icon}" aria-hidden="true"></i>${input}</div>`;
+  return `<div class="form-field">${labelHtml}${control}</div>`;
+}
+
+const AUTH_FIELDS = {
+  email: { name: 'email', label: 'ایمیل', labelKey: 'auth.email', type: 'email', icon: 'envelope', rule: 'email', required: true, autocomplete: 'email', placeholder: 'you@company.com' },
+  password: { name: 'password', label: 'رمز عبور', labelKey: 'auth.password', type: 'password', required: true, autocomplete: 'current-password', placeholder: '••••••••' },
+  newPassword: { name: 'password', label: 'رمز عبور جدید', labelKey: 'auth.newPassword', type: 'password', rule: 'password', min: 8, required: true, autocomplete: 'new-password', meter: true },
+  confirm: { name: 'confirm', label: 'تکرار رمز عبور', labelKey: 'auth.confirmPassword', type: 'password', match: 'password', required: true, autocomplete: 'new-password' },
+  name: { name: 'name', label: 'نام و نام خانوادگی', labelKey: 'auth.fullName', icon: 'person', required: true, autocomplete: 'name' },
+  phone: { name: 'phone', label: 'شماره موبایل', labelKey: 'auth.phone', icon: 'telephone', rule: 'phone', autocomplete: 'tel' },
+};
+
+/** The demo account every authentication screen mentions. */
+const AUTH_DEMO = { email: 'demo@novaadmin.dev', password: '12345678' };
+
+function authDemoBox() {
+  return `<div class="auth-demo" data-demo-box>
+    <div class="auth-demo__row"><span data-i18n="auth.demoEmail">ایمیل آزمایشی</span><code dir="ltr">${AUTH_DEMO.email}</code></div>
+    <div class="auth-demo__row"><span data-i18n="auth.demoPassword">رمز آزمایشی</span><code dir="ltr">${AUTH_DEMO.password}</code></div>
+    <button class="btn btn-light btn-sm" type="button" data-demo-fill><i class="bi bi-magic" aria-hidden="true"></i> <span data-i18n="auth.fillDemo">پر کردن خودکار فرم</span></button>
+  </div>`;
+}
+
+function authSocial() {
+  return `<div class="auth-card__divider"><span data-i18n="auth.orContinue">یا ادامه با</span></div>
+    <div class="auth-social">
+      <button class="btn btn-light" type="button" data-social="google"><i class="bi bi-google" aria-hidden="true"></i> <span data-i18n="auth.socialGoogle">گوگل</span></button>
+      <button class="btn btn-light" type="button" data-social="github"><i class="bi bi-github" aria-hidden="true"></i> <span data-i18n="auth.socialGithub">گیت‌هاب</span></button>
+      <button class="btn btn-light" type="button" data-social="sso"><i class="bi bi-shield-lock" aria-hidden="true"></i> SSO</button>
+    </div>`;
+}
+
+function authBrandMark() {
+  return `<div class="auth-card__brand">
+    <img src="assets/logo-mark.svg" alt="" width="40" height="40">
+    <span class="auth-card__brand-text"><strong>NOVAADMIN</strong><small data-i18n="auth.secureNote">اتصال شما رمزنگاری‌شده است؛ اطلاعات ورود روی سرور ذخیره نمی‌شود.</small></span>
+  </div>`;
+}
+
+function authHead({ titleKey, title, textKey, text, icon = 'shield-lock' }) {
+  return `<header class="auth-card__head">
+    <span class="auth-card__icon"><i class="bi bi-${icon}" aria-hidden="true"></i></span>
+    <h2 class="auth-card__title" data-i18n="${titleKey}">${title}</h2>
+    <p class="auth-card__text" data-i18n="${textKey}">${text}</p>
+  </header>`;
+}
+
+function authNote(icon = 'shield-check') {
+  return `<p class="auth-note"><i class="bi bi-${icon}" aria-hidden="true"></i> <span data-i18n="auth.secureNote">اتصال شما رمزنگاری‌شده است؛ اطلاعات ورود روی سرور ذخیره نمی‌شود.</span></p>`;
+}
+
+function authWhyList() {
+  return `<ul class="auth-why">
+    <li><i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i> <span data-i18n="auth.whyOne">۲۰۶ صفحه آماده و ۱۰ داشبورد با داده واقعی</span></li>
+    <li><i class="bi bi-translate" aria-hidden="true"></i> <span data-i18n="auth.whyTwo">سه زبان، RTL کامل و تقویم شمسی</span></li>
+    <li><i class="bi bi-life-preserver" aria-hidden="true"></i> <span data-i18n="auth.whyThree">مستندات فارسی و پشتیبانی شش‌ماهه</span></li>
+  </ul>`;
+}
+
 export async function initAuth() {
   const node = $('[data-auth]') ?? document.querySelector('.auth-page');
   if (!node) return;
@@ -727,57 +867,116 @@ export async function initAuth() {
   // path keeps every variation (split, minimal, 2FA, lock…) working.
   const page = document.querySelector('[data-resource^="auth-"]')?.dataset.resource ?? kit.pageId();
 
-  const forms = {
-    'auth-login-minimal': null, // filled from the login spec below
-    'auth-login-split': null,
+  /** Per-page copy and layout. `variation` drives the visual differences. */
+  const specs = {
     'auth-login': {
-      title: 'ورود به حساب',
-      fields: [
-        { name: 'email', label: 'ایمیل', type: 'email', rule: 'email', required: true, placeholder: 'you@company.com' },
-        { name: 'password', label: 'گذرواژه', type: 'password', rule: 'password', min: 8, required: true },
-      ],
+      variation: 'standard',
+      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'shield-lock' },
+      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
+      submitKey: 'auth.login',
       submit: 'ورود',
-      note: 'گذرواژه را فراموش کرده‌اید؟',
+      redirect: 'dashboards/analytics.html',
+    },
+    'auth-login-split': {
+      variation: 'social-first',
+      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'stars' },
+      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
+      submitKey: 'auth.login',
+      submit: 'ورود',
+      redirect: 'dashboards/analytics.html',
+    },
+    'auth-login-minimal': {
+      variation: 'minimal',
+      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'box-arrow-in-right' },
+      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
+      submitKey: 'auth.login',
+      submit: 'ورود',
+      redirect: 'dashboards/analytics.html',
     },
     'auth-register': {
-      title: 'ساخت حساب جدید',
-      fields: [
-        { name: 'name', label: 'نام و نام خانوادگی', required: true },
-        { name: 'email', label: 'ایمیل', type: 'email', rule: 'email', required: true },
-        { name: 'phone', label: 'تلفن همراه', rule: 'phone' },
-        { name: 'password', label: 'گذرواژه', type: 'password', rule: 'password', min: 8, required: true },
-        { name: 'confirm', label: 'تکرار گذرواژه', type: 'password', match: 'password', required: true },
-        { name: 'terms', label: 'قوانین و شرایط را می‌پذیرم', type: 'switch' },
-      ],
+      variation: 'standard',
+      wide: true,
+      head: { titleKey: 'auth.registerTitle', title: 'ساخت حساب جدید', textKey: 'auth.registerSubtitle', text: 'در چند ثانیه حساب خود را بسازید', icon: 'person-plus' },
+      fields: [AUTH_FIELDS.name, AUTH_FIELDS.email, AUTH_FIELDS.phone, AUTH_FIELDS.newPassword, AUTH_FIELDS.confirm],
+      terms: true,
+      submitKey: 'auth.createAccount',
       submit: 'ساخت حساب',
-      note: 'حساب کاربری دارید؟',
+      redirect: 'auth/verify-email.html',
     },
-    'auth-forgot': { title: 'بازیابی گذرواژه', fields: [{ name: 'email', label: 'ایمیل حساب', type: 'email', rule: 'email', required: true }], submit: 'ارسال پیوند بازیابی', note: 'پیوند بازیابی تا ۱۰ دقیقه معتبر است.' },
+    'auth-forgot': {
+      variation: 'standard',
+      head: { titleKey: 'auth.forgotTitle', title: 'بازیابی رمز عبور', textKey: 'auth.forgotSubtitle', text: 'ایمیل خود را وارد کنید تا لینک بازیابی ارسال شود', icon: 'key' },
+      fields: [AUTH_FIELDS.email],
+      submitKey: 'auth.sendLink',
+      submit: 'ارسال لینک بازیابی',
+      backLink: true,
+    },
     'auth-reset': {
-      title: 'تعیین گذرواژه جدید',
-      fields: [
-        { name: 'password', label: 'گذرواژه جدید', type: 'password', rule: 'password', min: 8, required: true },
-        { name: 'confirm', label: 'تکرار گذرواژه', type: 'password', match: 'password', required: true },
+      variation: 'standard',
+      head: { titleKey: 'auth.resetTitle', title: 'تعیین رمز عبور جدید', textKey: 'auth.resetSubtitle', text: 'رمز عبور قوی انتخاب کنید', icon: 'shield-lock' },
+      fields: [AUTH_FIELDS.newPassword, AUTH_FIELDS.confirm],
+      submitKey: 'auth.updatePassword',
+      submit: 'به‌روزرسانی رمز عبور',
+      redirect: 'auth/login.html',
+    },
+    'auth-login-2fa': {
+      variation: 'standard',
+      head: { titleKey: 'auth.twoFactorTitle', title: 'ورود دو مرحله‌ای', textKey: 'auth.twoFactorSubtitle', text: 'کد برنامه احراز هویت را وارد کنید', icon: 'shield-check' },
+      otp: true,
+      redirect: 'dashboards/analytics.html',
+    },
+    'auth-verify': {
+      variation: 'standard',
+      head: { titleKey: 'auth.verifyTitle', title: 'تأیید حساب کاربری', textKey: 'auth.verifySubtitle', text: 'کد ۶ رقمی ارسال‌شده به ایمیل را وارد کنید', icon: 'envelope-check' },
+      otp: true,
+      redirect: 'dashboards/analytics.html',
+    },
+    'auth-lock': {
+      variation: 'minimal',
+      head: { titleKey: 'auth.lockTitle', title: 'صفحه قفل شده است', textKey: 'auth.lockSubtitle', text: 'برای ادامه رمز عبور خود را وارد کنید', icon: 'lock' },
+      fields: [AUTH_FIELDS.password],
+      submitKey: 'auth.unlock',
+      submit: 'باز کردن قفل',
+      avatar: 'assets/img/avatars/avatar-08.svg',
+      person: 'سارا محمدی',
+      redirect: 'dashboards/analytics.html',
+      secondary: { href: 'login.html', key: 'auth.useAnotherAccount', text: 'ورود با حساب دیگر' },
+    },
+    'auth-logout': {
+      variation: 'minimal',
+      head: { titleKey: 'auth.loggedOut', title: 'از حساب خود خارج شدید', textKey: 'auth.lockSubtitle', text: 'برای ادامه رمز عبور خود را وارد کنید', icon: 'box-arrow-right' },
+      success: { key: 'auth.success', text: 'نشست شما با موفقیت بسته شد. داده‌های شما محفوظ است.' },
+      actions: [
+        { href: 'login.html', className: 'btn-primary', icon: 'box-arrow-in-right', key: 'auth.backToSignIn', text: 'بازگشت به ورود' },
+        { href: 'index.html', className: 'btn-light', icon: 'house-door', key: 'auth.backHome', text: 'بازگشت به صفحه اصلی' },
       ],
-      submit: 'ثبت گذرواژه',
-      note: 'پس از ثبت، همه نشست‌ها بسته می‌شوند.',
     },
   };
 
-  if (page === 'auth-verify' || page === 'auth-2fa') {
+  const spec = specs[page] ?? specs['auth-login'];
+  const variation = spec.variation ?? 'standard';
+  const cardClasses = ['auth-card', spec.wide ? 'auth-card--wide' : '', variation === 'minimal' ? 'auth-card--plain' : ''].filter(Boolean).join(' ');
+
+  // ---------------------------------------------------------------- OTP flow
+  if (spec.otp) {
     render(
       node,
-      `<div class="auth-card">
-        <div class="auth-card__head"><img src="assets/logo-mark.svg" alt="" width="44" height="44">
-          <h2 class="auth-card__title">${page === 'auth-2fa' ? 'ورود دو مرحله‌ای' : 'تأیید ایمیل'}</h2>
-          <p class="auth-card__text">${page === 'auth-2fa' ? 'کد ۶ رقمی برنامه احراز هویت را وارد کنید.' : 'کد ارسال‌شده به ایمیل خود را وارد کنید.'}</p></div>
-        <form data-otp-form class="d-flex flex-column gap-3">
-          <div class="otp-row" data-otp>${Array.from({ length: 6 }, (_, index) => `<input class="form-control otp-input numeric" inputmode="numeric" maxlength="1" aria-label="رقم ${index + 1}">`).join('')}</div>
-          <button class="btn btn-primary w-100" type="submit" data-submit>تأیید کد</button>
-          <button class="btn btn-ghost w-100" type="button" data-resend>ارسال دوباره کد</button>
+      `<div class="${cardClasses}">
+        ${authBrandMark()}
+        ${authHead(spec.head)}
+        <form data-otp-form class="form-stack" novalidate>
+          <div class="form-field">
+            <label class="form-label" data-i18n="auth.codeLabel">کد تأیید</label>
+            <div class="otp-row" data-otp>${Array.from({ length: 6 }, (_, index) => `<input class="form-control otp-input numeric" inputmode="numeric" maxlength="1" aria-label="رقم ${index + 1}">`).join('')}</div>
+          </div>
+          <button class="btn btn-primary w-100" type="submit" data-submit><i class="bi bi-check2-circle" aria-hidden="true"></i> <span data-i18n="auth.verifyAction">تأیید کد</span></button>
+          <button class="btn btn-light w-100" type="button" data-resend><i class="bi bi-arrow-repeat" aria-hidden="true"></i> <span data-i18n="auth.resendCode">ارسال دوباره کد</span></button>
+          <a class="btn btn-ghost w-100" href="login.html"><i class="bi bi-arrow-right" aria-hidden="true"></i> <span data-i18n="auth.backToSignIn">بازگشت به ورود</span></a>
         </form>
+        ${authNote('envelope-check')}
       </div>`,
     );
+
     const inputs = $$('[data-otp] input', node);
     inputs.forEach((input, index) =>
       on(input, 'input', () => {
@@ -785,13 +984,13 @@ export async function initAuth() {
       }),
     );
     on($('[data-otp]', node), 'paste', (event) => {
-      const text = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+      const text = event.clipboardData?.getData('text')?.replace(/\D/g, '').slice(0, 6) ?? '';
       if (!text) return;
       event.preventDefault();
       inputs.forEach((input, index) => {
         input.value = text[index] ?? '';
       });
-      inputs[Math.min(text.length, 5)].focus();
+      inputs[Math.min(text.length, 5)]?.focus();
     });
     on($('[data-otp-form]', node), 'submit', (event) => {
       event.preventDefault();
@@ -801,57 +1000,93 @@ export async function initAuth() {
         return;
       }
       toast.success('تأیید شد', 'در حال انتقال به داشبورد…');
-      setTimeout(() => window.location.assign('dashboards/analytics.html'), 900);
+      setTimeout(() => window.location.assign(spec.redirect ?? 'dashboards/analytics.html'), 900);
     });
     on($('[data-resend]', node), 'click', () => toast.info('کد ارسال شد', 'کد جدید تا ۲ دقیقه دیگر می‌رسد.'));
     return;
   }
 
-  if (page === 'auth-lock') {
+  // ------------------------------------------------- simple status card only
+  if (spec.actions?.length) {
     render(
       node,
-      `<div class="auth-card"><div class="auth-card__head"><img class="avatar avatar--2xl" src="assets/img/avatars/avatar-08.svg" alt=""><h2 class="auth-card__title">سارا محمدی</h2><p class="auth-card__text">برای ادامه، گذرواژه خود را وارد کنید.</p></div>
-        <form data-lock-form class="form-stack">${formMarkup([{ name: 'password', label: 'گذرواژه', type: 'password', required: true }])}
-          <button class="btn btn-primary w-100" type="submit">باز کردن قفل</button>
-          <a class="btn btn-ghost w-100" href="login.html">ورود با حساب دیگر</a></form></div>`,
+      `<div class="${cardClasses}">
+        ${authBrandMark()}
+        ${authHead(spec.head)}
+        ${spec.success ? `<p class="auth-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> <span data-i18n="${spec.success.key}">${spec.success.text}</span></p>` : ''}
+        <div class="auth-card__actions">${spec.actions
+          .map(
+            (action) =>
+              `<a class="btn ${action.className} w-100" href="${action.href}"><i class="bi bi-${action.icon}" aria-hidden="true"></i> <span data-i18n="${action.key}">${action.text}</span></a>`,
+          )
+          .join('')}</div>
+        ${authNote()}
+      </div>`,
     );
-    on($('[data-lock-form]', node), 'submit', (event) => {
-      event.preventDefault();
-      const value = $('[name="password"]', event.currentTarget).value;
-      if (value.length < 4) {
-        toast.warning('گذرواژه کوتاه است', 'گذرواژه صحیح را وارد کنید.');
-        return;
-      }
-      toast.success('خوش آمدید', 'در حال انتقال به داشبورد…');
-      setTimeout(() => window.location.assign('dashboards/analytics.html'), 900);
-    });
     return;
   }
 
-  if (page === 'auth-logout') {
-    render(node, `<div class="auth-card"><div class="auth-card__head"><img src="assets/logo-mark.svg" alt="" width="44" height="44"><h2 class="auth-card__title">از حساب خود خارج شدید</h2><p class="auth-card__text">برای ادامه دوباره وارد شوید. داده‌های شما محفوظ است.</p></div><a class="btn btn-primary w-100" href="login.html">ورود دوباره</a></div>`);
-    return;
-  }
+  // ------------------------------------------------------------- form cards
+  const head = spec.avatar
+    ? `<header class="auth-card__head">
+        <img class="avatar avatar--2xl" src="${spec.avatar}" alt="">
+        <h2 class="auth-card__title">${escapeHtml(spec.person ?? '')}</h2>
+        <p class="auth-card__text" data-i18n="${spec.head.textKey}">${spec.head.text}</p>
+      </header>`
+    : `${authBrandMark()}${authHead(spec.head)}`;
 
-  forms['auth-login-minimal'] = forms['auth-login-split'] = forms['auth-login'];
-  const spec = forms[page] ?? forms['auth-login'];
-  const isLogin = page.startsWith('auth-login');
   render(
     node,
-    `<div class="auth-card">
-      <div class="auth-card__head"><img src="assets/logo-mark.svg" alt="" width="44" height="44">
-        <h2 class="auth-card__title">${escapeHtml(spec.title)}</h2>
-        <p class="auth-card__text">${escapeHtml(spec.note)}</p></div>
+    `<div class="${cardClasses}">
+      ${head}
+      ${spec.fields.some((field) => field.name === 'email') && variation !== 'minimal' ? authDemoBox() : ''}
+      ${variation === 'social-first' ? authSocial() : ''}
       <form data-auth-form class="form-stack" novalidate>
-        ${formMarkup(spec.fields)}
-        ${isLogin ? `<div class="d-flex align-items-center justify-content-between"><label class="form-check"><input type="checkbox" class="form-check-input" name="remember" checked><span class="form-check-label">مرا به خاطر بسپار</span></label><a class="fs-caption" href="forgot-password.html">فراموشی گذرواژه؟</a></div>` : ''}
-        <button class="btn btn-primary w-100" type="submit" data-submit>${escapeHtml(spec.submit)}</button>
+        <div class="form-grid">${spec.fields.map(authField).join('')}</div>
+        ${
+          spec.terms
+            ? `<label class="form-check"><input type="checkbox" class="form-check-input" name="terms" required><span class="form-check-label" data-i18n="auth.acceptTerms">قوانین و مقررات را می‌پذیرم</span></label>`
+            : ''
+        }
+        ${
+          spec.fields.some((field) => field.name === 'password') && page.startsWith('auth-login')
+            ? `<div class="auth-meta">
+                <label class="form-check"><input type="checkbox" class="form-check-input" name="remember" checked><span class="form-check-label" data-i18n="auth.remember">مرا به خاطر بسپار</span></label>
+                <a class="fs-caption" href="forgot-password.html" data-i18n="auth.forgot">رمز عبور را فراموش کرده‌اید؟</a>
+              </div>`
+            : ''
+        }
+        <button class="btn btn-primary w-100" type="submit" data-submit><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span data-i18n="${spec.submitKey}">${spec.submit}</span></button>
+        ${
+          spec.secondary
+            ? `<a class="btn btn-ghost w-100" href="${spec.secondary.href}"><i class="bi bi-person" aria-hidden="true"></i> <span data-i18n="${spec.secondary.key}">${spec.secondary.text}</span></a>`
+            : ''
+        }
       </form>
-      <div class="auth-card__divider"><span>یا ادامه با</span></div>
-      <div class="d-flex gap-2"><button class="btn btn-light w-100" type="button" data-social="google"><i class="bi bi-google"></i> گوگل</button><button class="btn btn-light w-100" type="button" data-social="github"><i class="bi bi-github"></i> گیت‌هاب</button></div>
-      <div class="auth-card__foot">${isLogin ? 'حساب ندارید؟ <a href="register.html">ثبت‌نام کنید</a>' : 'حساب دارید؟ <a href="login.html">ورود</a>'}</div>
+      ${variation === 'social-first' ? '' : authSocial()}
+      ${variation === 'social-first' ? authWhyList() : ''}
+      ${authNote()}
+      ${
+        spec.backLink
+          ? `<div class="auth-card__foot"><a href="login.html" data-i18n="auth.backToLogin"><i class="bi bi-arrow-right" aria-hidden="true"></i> بازگشت به ورود</a></div>`
+          : `<div class="auth-card__foot"><span data-i18n="${page === 'auth-register' ? 'auth.hasAccount' : 'auth.noAccount'}">${page === 'auth-register' ? 'قبلاً ثبت‌نام کرده‌اید؟' : 'حساب کاربری ندارید؟'}</span> <a href="${page === 'auth-register' ? 'login.html' : 'register.html'}" data-i18n="${page === 'auth-register' ? 'auth.login' : 'auth.register'}">${page === 'auth-register' ? 'ورود' : 'ثبت‌نام'}</a></div>`
+      }
     </div>`,
   );
+
+  // ------------------------------------------------------------ interactions
+  const demoBox = $('[data-demo-box]', node);
+  if (demoBox) {
+    on($('[data-demo-fill]', demoBox), 'click', () => {
+      const form = $('[data-auth-form]', node);
+      const email = $('[name="email"]', form);
+      const password = $('[name="password"]', form);
+      if (email) email.value = AUTH_DEMO.email;
+      if (password) password.value = AUTH_DEMO.password;
+      [email, password].forEach((input) => input?.dispatchEvent?.({ type: 'input', target: input }));
+      toast.info('اطلاعات آزمایشی وارد شد', 'برای ورود روی دکمه ورود بزنید.');
+    });
+  }
 
   on($('[data-auth-form]', node), 'submit', async (event) => {
     event.preventDefault();
@@ -862,17 +1097,24 @@ export async function initAuth() {
       return;
     }
     const button = $('[data-submit]', form);
+    const label = button.querySelector('[data-i18n]');
+    const original = label?.textContent;
     button.classList.add('is-loading');
-    try {
-      toast.success('با موفقیت انجام شد', 'در حال انتقال…');
-      setTimeout(() => window.location.assign(page === 'auth-register' ? 'verify-email.html' : 'dashboards/analytics.html'), 900);
-    } finally {
-      button.classList.remove('is-loading');
-    }
+    button.disabled = true;
+    if (label) label.textContent = page === 'auth-register' ? 'در حال ساخت حساب…' : 'در حال ورود…';
+    // The template has no backend: the mock service answers, then the demo
+    // dashboard opens. Swap this call for your own authentication endpoint.
+    await services.authService.login({ email: form.email?.value ?? '', password: form.password?.value ?? '' }).catch(() => null);
+    toast.success('ورود موفق', 'در حال انتقال به داشبورد…');
+    setTimeout(() => window.location.assign(spec.redirect ?? 'dashboards/analytics.html'), 800);
+    button.classList.remove('is-loading');
+    button.disabled = false;
+    if (label && original) label.textContent = original;
   });
+
   on(node, 'click', (event) => {
     const social = event.target.closest('[data-social]');
-    if (social) toast.info('ورود اجتماعی', 'در نسخه نمایشی، ورود با سرویس‌های بیرونی غیرفعال است.');
+    if (social) toast.info('ورود اجتماعی', `سرویس ${social.dataset.social.toUpperCase()} در نسخه نمایشی غیرفعال است.`);
   });
 }
 
@@ -895,7 +1137,7 @@ export async function initSystemPages() {
             (plan) => `<article class="price-card ${plan.featured ? 'price-card--featured' : ''}">${plan.featured ? '<span class="price-card__badge">محبوب‌ترین</span>' : ''}
               <h3 class="price-card__name">${escapeHtml(plan.name)}</h3><p class="price-card__desc">${escapeHtml(plan.description ?? '')}</p>
               <p class="price-card__amount" data-price-monthly="${plan.price}" data-price-yearly="${Math.round(plan.price * 10)}">${formatCurrency(plan.price, 'IRR', { compact: true })}<span>/ ماه</span></p>
-              <ul class="price-card__list">${(plan.features ?? []).map((feature) => `<li><i class="bi bi-check2-circle"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
+              <ul class="price-card__list">${(plan.features ?? []).map((feature) => `<li><i class="bi bi-check2-circle" aria-hidden="true"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
               <button class="btn ${plan.featured ? 'btn-primary' : 'btn-light'} w-100" type="button" data-choose-plan="${escapeHtml(plan.id)}">انتخاب پلن</button></article>`,
           )
           .join('')}</div>

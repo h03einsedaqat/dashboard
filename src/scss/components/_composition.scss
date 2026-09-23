@@ -465,6 +465,10 @@
     color: $fg;
     background: $bg;
   }
+  .card--icon .card__icon--#{$tone} {
+    color: $fg;
+    background: $bg;
+  }
   .notification-item__icon--#{$tone} {
     color: $fg;
     background: $bg;

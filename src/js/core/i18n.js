@@ -123,15 +123,28 @@ export function setDirection(dir, { persist = true } = {}) {
   return value;
 }
 
+/**
+ * Binds the language pickers.
+ *
+ * Called again whenever the language changes (the switchers re-render), so every
+ * binding is guarded: a delegated listener that stacked up per switch would run
+ * `setLanguage()` several times for one tap and grow without limit on pages
+ * whose switcher markup is static (the header dropdown).
+ */
 export function initSelectors(root = document) {
   // Theme customizer language picker: [data-customizer="language"] [data-value]
-  on(root, 'click', (event) => {
-    const group = event.target.closest('[data-customizer="language"]');
-    const press = event.target.closest('[data-value]');
-    if (group && press) setLanguage(press.dataset.value);
-  });
+  if (root.documentElement?.dataset.i18nSelectors !== '1') {
+    on(root, 'click', (event) => {
+      const group = event.target.closest('[data-customizer="language"]');
+      const press = event.target.closest('[data-value]');
+      if (group && press) setLanguage(press.dataset.value);
+    });
+    if (root.documentElement) root.documentElement.dataset.i18nSelectors = '1';
+  }
 
   $$('[data-language-switch]', root).forEach((node) => {
+    if (node.dataset.i18nBound === '1') return;
+    node.dataset.i18nBound = '1';
     const handler = (event) => {
       const code = event.target.closest('[data-lang]')?.dataset.lang ?? node.value;
       if (!code) return;
@@ -163,8 +176,10 @@ export function initI18n() {
 /** Fills the header language switcher with every available locale. */
 export function renderLanguageLabels(root = document) {
   $$('[data-language-list]', root).forEach((list) => {
-    if (list.dataset.ready === '1') return;
-    list.dataset.ready = '1';
+    // Guarded per language, not once: the active item's check mark has to move
+    // when the user switches.
+    if (list.dataset.renderedLang === state.lang) return;
+    list.dataset.renderedLang = state.lang;
     list.innerHTML = languageList
       .map(
         (item) => `<button type="button" class="dropdown-item lang-option${item.code === state.lang ? ' is-active' : ''}" data-lang="${item.code}">

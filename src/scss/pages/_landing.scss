@@ -847,3 +847,201 @@
 .configurator__group .customizer__label {
   margin: 0;
 }
+
+/* ==========================================================================
+   Landing — structure, mobile navigation and the section building blocks
+   --------------------------------------------------------------------------
+   The marketing page is a standalone document (`index.html` at the project
+   root) that shares the design system with the admin pages: the same tokens,
+   cards, buttons and icons. Everything below keeps the page on a readable
+   measure, gives it a real mobile menu and styles the reusable blocks the
+   sections are built from.
+   ========================================================================== */
+
+/* ---------------------------------------------------------- mobile menu --- */
+.landing-menu-toggle {
+  display: none;
+  margin-inline-start: auto;
+}
+
+.landing-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-2) var(--nv-space-4);
+  list-style: none;
+  margin: var(--nv-space-6) 0 0;
+  padding: 0;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+.landing-trust li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+}
+.landing-trust i {
+  color: var(--nv-success);
+}
+
+.landing-section__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--nv-space-3);
+  margin-block-start: var(--nv-space-8);
+}
+
+.landing-hero__actions--center {
+  justify-content: center;
+  margin-block: var(--nv-space-5) var(--nv-space-6);
+}
+
+/* ------------------------------------------------------------- card grids --- */
+.landing-grid--layouts {
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+.landing-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-5) var(--nv-space-4);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  color: var(--nv-text-2);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform var(--nv-dur) var(--nv-ease),
+    border-color var(--nv-dur) var(--nv-ease),
+    box-shadow var(--nv-dur) var(--nv-ease);
+}
+.landing-layout i {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  font-size: 1.25rem;
+}
+.landing-layout strong {
+  color: var(--nv-heading);
+  font-size: var(--nv-text-body-sm);
+}
+.landing-layout span {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.landing-layout:hover,
+.landing-layout:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--nv-primary);
+  box-shadow: var(--nv-shadow-md);
+  outline: none;
+}
+
+.landing-grid--kit {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.landing-kit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-5);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  color: inherit;
+  transition:
+    border-color var(--nv-dur) var(--nv-ease),
+    box-shadow var(--nv-dur) var(--nv-ease);
+}
+.landing-kit i {
+  color: var(--nv-primary);
+  font-size: 1.35rem;
+}
+.landing-kit strong {
+  color: var(--nv-heading);
+}
+.landing-kit span {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.landing-kit:hover,
+.landing-kit:focus-visible {
+  border-color: var(--nv-primary);
+  box-shadow: var(--nv-shadow-md);
+}
+
+/* -------------------------------------------------------- FAQ + footer --- */
+.faq-wrap {
+  max-width: 52rem;
+  margin-inline: auto;
+}
+
+.landing-footer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-2);
+  margin-block-start: var(--nv-space-4);
+}
+.landing-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-2) var(--nv-space-4);
+  justify-content: space-between;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+@media (max-width: 991.98px) {
+  .landing-menu-toggle {
+    display: inline-flex;
+  }
+  .landing-header__inner {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .landing-nav {
+    order: 3;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    inline-size: 100%;
+    margin-inline-start: 0;
+    padding-block: var(--nv-space-2) var(--nv-space-4);
+  }
+  .landing-nav.is-open {
+    display: flex;
+  }
+  .landing-nav a {
+    padding-block: var(--nv-space-3);
+    border-block-end: 1px solid var(--nv-divider);
+    font-size: var(--nv-text-body);
+  }
+  .landing-nav a:last-child {
+    border-block-end: 0;
+  }
+  .landing-header__actions {
+    margin-inline-start: var(--nv-space-3);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .landing-header__signin {
+    display: none;
+  }
+  .landing-header__actions .btn-primary span {
+    display: none;
+  }
+  .landing-header__actions .btn-primary {
+    padding-inline: var(--nv-space-3);
+  }
+  .landing-counters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

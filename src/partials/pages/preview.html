@@ -25,7 +25,10 @@
       <div class="landing-header__actions">
         <button class="icon-btn" type="button" data-theme-toggle data-i18n-title="ui.theme" aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
         <button class="icon-btn" type="button" data-direction-toggle data-i18n-title="ui.direction" aria-label="تغییر جهت"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></button>
-        <button class="icon-btn" type="button" data-language-switch data-i18n-title="ui.language" aria-label="تغییر زبان"><i class="bi bi-translate" aria-hidden="true"></i></button>
+<div class="dropdown">
+          <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان" data-i18n-title="ui.language"><i class="bi bi-translate" aria-hidden="true"></i></button>
+          <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+        </div>
         <button class="btn btn-light btn-sm" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span data-i18n="ui.customizer">شخصی‌سازی</span></button>
         <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-play-fill" aria-hidden="true"></i> <span data-i18n="ui.openAi">ورود به دمو</span></a>
       </div>
@@ -294,7 +297,10 @@
     <div class="preview-toolbar__inner">
       <button class="btn btn-sm btn-light" type="button" data-theme-toggle><i class="bi bi-circle-half" aria-hidden="true"></i> تم</button>
       <button class="btn btn-sm btn-light" type="button" data-direction-toggle><i class="bi bi-arrow-left-right" aria-hidden="true"></i> جهت</button>
-      <button class="btn btn-sm btn-light" type="button" data-language-switch><i class="bi bi-translate" aria-hidden="true"></i> زبان</button>
+<div class="dropdown">
+        <button class="btn btn-sm btn-light" type="button" data-dropdown-toggle="true" aria-expanded="false"><i class="bi bi-translate" aria-hidden="true"></i> <span data-i18n="ui.language">زبان</span></button>
+        <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+      </div>
       <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> شخصی‌سازی</button>
       <a class="btn btn-sm btn-primary" href="dashboards/analytics.html"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> داشبورد</a>
     </div>

@@ -18,6 +18,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE_DIR = path.join(ROOT, 'src/pages');
 
+/** Same `@include` + `{{TOKEN}}` pipeline the dev server and the build use. */
+const { renderPageHtml } = await import('./nova-plugin.mjs');
+
 /* ------------------------------------------------------------- DOM shim ---- */
 
 /** Diagnostics collected while a scenario runs (missing shim APIs, null nodes). */
@@ -530,11 +533,27 @@ function buildDocument(html) {
     addEventListener: (type, handler) => documentElement.addEventListener(type, handler),
     removeEventListener: () => {},
     dispatchEvent: (event) => documentElement.dispatchEvent(event),
+    dispatchEvent: (event) => documentElement.dispatchEvent(event),
     execCommand: () => true,
     exitFullscreen: async () => {},
     documentElement2: null,
   };
   documentElement.append(body);
+  /*
+   * A real browser copies every `<html>` attribute onto `documentElement`
+   * (`lang`, `dir`, `data-theme`…). The template reads them before its first
+   * paint, so the harness has to expose them too.
+   */
+  const htmlTag = html?.match(/<html\s([^>]*)>/i);
+  if (htmlTag) {
+    const attrRe = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+    let attr;
+    while ((attr = attrRe.exec(htmlTag[1]))) {
+      const [, name, dq, sq, bare] = attr;
+      if (!name || name === '/') continue;
+      documentElement.setAttribute(name, dq ?? sq ?? bare ?? '');
+    }
+  }
   if (html) {
     const { attrString, inner } = splitBody(html);
     const attrRe = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
@@ -549,6 +568,80 @@ function buildDocument(html) {
     if (title) document.title = title[1].trim();
   }
   return { document, documentElement, body };
+}
+
+/**
+ * Clicks every `[data-lang]` control and reports what actually changed: the
+ * document `lang`/`dir`, plus how many translated nodes swapped their text.
+ *
+ * This is the automated answer to “does the language switcher work?” — a button
+ * that only flips an attribute would pass nothing here, because the sample
+ * nodes are read before and after the click.
+ */
+async function checkLanguageSwitch(document, win) {
+  const sample = () => {
+    const nodes = document.querySelectorAll('[data-i18n], [data-i18n-title]');
+    return nodes.slice(0, 40).map((node) => `${node.getAttribute('data-i18n') ?? node.getAttribute('data-i18n-title')}=${node.textContent ?? ''}`);
+  };
+  const containers = document.querySelectorAll('[data-language-switch]');
+  const active = document.documentElement.getAttribute('lang') ?? document.documentElement.getAttribute('data-lang');
+  const languages = document
+    .querySelectorAll('[data-lang]')
+    .map((node) => node.getAttribute('data-lang'))
+    .filter(Boolean);
+  const report = { languages, initial: document.documentElement.getAttribute('lang'), results: [], noSwitcher: languages.length === 0 };
+  /* Baseline of the *previous* step: a page with several switchers translates
+     more than once, so every click is compared with the state it replaced. */
+  let before = sample();
+  for (const lang of languages) {
+    const target = document.querySelectorAll('[data-lang]').find((node) => node.getAttribute('data-lang') === lang);
+    if (!target) continue;
+    // Compare against the language the page is in *right now*: a page can carry
+    // several switchers (header + footer), so the second pass legitimately has
+    // to translate back to the default language.
+    const current = document.documentElement.getAttribute('lang') ?? document.documentElement.getAttribute('data-lang');
+    /*
+     * The switcher is delegated (`on(container, 'click', …)`), and this shim
+     * does not bubble: dispatch on the container with the button as `target`,
+     * which is exactly what a real browser would deliver.
+     */
+    const container = containers.find((node) => node.querySelectorAll('[data-lang]').includes(target)) ?? target;
+    const event = { type: 'click', target, preventDefault() {}, stopPropagation() {} };
+    container.dispatchEvent(event);
+    if (container !== target) target.dispatchEvent({ ...event });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const after = sample();
+    const changed = after.filter((line, index) => line !== before[index]).length;
+    before = after;
+    report.results.push({
+      lang,
+      expected: lang !== current,
+      htmlLang: document.documentElement.getAttribute('lang'),
+      dir: document.documentElement.getAttribute('dir'),
+      changed,
+      stored: win.localStorage.getItem('nova:lang') ?? win.localStorage.getItem('nova-language') ?? null,
+    });
+  }
+  return report;
+}
+
+/**
+ * Clicks the theme switch and confirms the change actually reached the
+ * document (`data-theme` / `data-theme-mode`) — every page ships the control,
+ * so it has to do something.
+ */
+async function checkThemeToggle(document) {
+  const toggle = document.querySelector('[data-theme-toggle]');
+  if (!toggle) return { ok: false, reason: 'no [data-theme-toggle]' };
+  const root = document.documentElement;
+  const before = { mode: root.getAttribute('data-theme-mode'), theme: root.getAttribute('data-theme') };
+  toggle.click();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const after = { mode: root.getAttribute('data-theme-mode'), theme: root.getAttribute('data-theme') };
+  toggle.click();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const back = { mode: root.getAttribute('data-theme-mode'), theme: root.getAttribute('data-theme') };
+  return { ok: after.mode !== before.mode, before, after, back };
 }
 
 async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
@@ -580,6 +673,8 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }),
     addEventListener: (type, handler) => documentElement.addEventListener(type, handler),
     removeEventListener: () => {},
+    /** `window.dispatchEvent` exists on the real object; toast/theme code uses it. */
+    dispatchEvent: (event) => documentElement.dispatchEvent(event),
     requestAnimationFrame: (fn) => setTimeout(() => fn(Date.now()), 0),
     cancelAnimationFrame: (id) => clearTimeout(id),
     setTimeout: (...args) => setTimeout(...args),
@@ -603,6 +698,15 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
     Event: class {
       constructor(type, options = {}) {
         this.type = type;
+        Object.assign(this, options);
+      }
+      preventDefault() {}
+      stopPropagation() {}
+    },
+    CustomEvent: class {
+      constructor(type, options = {}) {
+        this.type = type;
+        this.detail = options?.detail ?? null;
         Object.assign(this, options);
       }
       preventDefault() {}
@@ -651,7 +755,9 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
   globalThis.HTMLFormElement = Element;
   globalThis.Node = Element;
   globalThis.Text = Text;
-  globalThis.CustomEvent = win.CustomEvent;
+  // Never assign `undefined` over a Node global: the harness only replaces what
+  // it actually implements (`new CustomEvent` is used by toasts and events).
+  if (win.CustomEvent) globalThis.CustomEvent = win.CustomEvent;
   globalThis.Event = win.Event;
   globalThis.window = win;
   globalThis.document = document;
@@ -695,6 +801,8 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
     await new Promise((resolve) => setTimeout(resolve, settle));
 
     if (inspect) result.metrics = inspect(document);
+    if (CHECK_I18N) result.i18n = await checkLanguageSwitch(document, win);
+    if (CHECK_THEME) result.theme = await checkThemeToggle(document);
     result.shimIssues = [...shimIssues];
   } catch (error) {
     result.error = error;
@@ -718,6 +826,12 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
 /* ------------------------------------------------------------------- runner */
 
 const VERBOSE = process.argv.includes('--verbose');
+const i18nReport = [];
+/** `--i18n` additionally clicks every language control and reports the result. */
+const CHECK_I18N = process.argv.includes('--i18n');
+/** `--theme` clicks the light/dark switch on every page and reports the result. */
+const CHECK_THEME = process.argv.includes('--theme');
+const themeReport = [];
 
 /** Every generated page, relative to `src/pages`. */
 function walkPages(dir, prefix = '', acc = []) {
@@ -729,6 +843,18 @@ function walkPages(dir, prefix = '', acc = []) {
 }
 
 function pageHtml(url) {
+  /*
+   * The marketing landing page lives at the project root (a standalone
+   * document that shares the design system) and is served through the Vite
+   * plugin, which resolves `@include` and `{{TOKEN}}` placeholders on the way
+   * out. Reading the raw file here would test unresolved markup, so the same
+   * transform is applied to it.
+   */
+  if (url === 'index.html') {
+    const file = path.join(ROOT, 'index.html');
+    if (!fs.existsSync(file)) return null;
+    return renderPageHtml(fs.readFileSync(file, 'utf8'), { warn: () => {} });
+  }
   const file = path.join(PAGE_DIR, url);
   if (!fs.existsSync(file)) return null;
   return fs.readFileSync(file, 'utf8');
@@ -987,7 +1113,7 @@ function judgePage(url, m) {
     : { ok: false, label: 'data blocks', value: blocks };
 }
 
-const ALL_PAGES = walkPages(PAGE_DIR);
+const ALL_PAGES = [...walkPages(PAGE_DIR), ...(fs.existsSync(path.join(ROOT, 'index.html')) ? ['index.html'] : [])].sort();
 const allMode = process.argv.includes('--all');
 const filterTerm = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 const selected = allMode
@@ -999,6 +1125,8 @@ let failures = 0;
 const thin = [];
 const errored = [];
 const totals = { kpi: 0, charts: 0, rows: 0 };
+/** Machine-readable per-page records (`--json`), used by `tools/qa-toggles.mjs`. */
+const records = [];
 
 for (const url of selected) {
   const html = pageHtml(url);
@@ -1023,6 +1151,22 @@ for (const url of selected) {
     if (VERBOSE) {
       console.log(`${status} ${url}  kpi:${m.kpi} charts:${m.charts} rows:${m.rows} cards:${m.cards} list:${m.listItems} timeline:${m.timeline} items:${m.items} text:${m.textLength}`);
     }
+    records.push({
+      url,
+      error: result.error ? String(result.error.message) : null,
+      errors: result.errors.slice(0, 5),
+      metrics: m,
+      theme: result.theme ?? null,
+      i18n: result.i18n ?? null,
+    });
+    if (CHECK_THEME && result.theme && !result.theme.ok) themeReport.push({ url, ...result.theme });
+    if (CHECK_THEME && result.theme?.ok && VERBOSE) console.log(`    theme ${result.theme.before.mode} → ${result.theme.after.mode} → ${result.theme.back.mode}`);
+    if (CHECK_I18N && result.i18n) {
+      const line = result.i18n.results.map((row) => `${row.lang}→${row.dir}(${row.changed}${row.expected ? '' : '*'})`).join(' ');
+      const bad = result.i18n.results.filter((row) => row.htmlLang !== row.lang || (row.expected && !row.changed));
+      console.log(`    lang ${result.i18n.initial} | ${line}${bad.length ? '  ✖ mismatch' : ''}`);
+      i18nReport.push({ url, ...result.i18n, bad: bad.length });
+    }
     continue;
   }
 
@@ -1031,6 +1175,38 @@ for (const url of selected) {
   (result.shimIssues ?? []).slice(0, 2).forEach((line) => console.log(`    dom: ${line.slice(0, 170)}`));
   result.errors.slice(0, 3).forEach((line) => console.log(`    console.error: ${line.slice(0, 160)}`));
   result.warnings.slice(0, 3).forEach((line) => console.log(`    warn: ${line.slice(0, 160)}`));
+}
+
+if (CHECK_I18N && i18nReport.length) {
+  const broken = i18nReport.filter((row) => row.bad || row.noSwitcher || row.results.some((r) => r.expected && !r.changed));
+  console.log('');
+  console.log(`  language switch — ${i18nReport.length} page(s) tested, ${i18nReport.length - broken.length} switching cleanly`);
+  if (broken.length) {
+    console.log(`  ✖ ${broken.length} page(s) did not translate on switch:`);
+    for (const row of broken.slice(0, 20)) {
+      if (row.noSwitcher) {
+        console.log(`    · ${row.url} — no language control on the page`);
+        continue;
+      }
+      console.log(`    · ${row.url} — ${row.results.map((r) => `${r.lang}:${r.changed}${r.htmlLang !== r.lang ? '(lang mismatch)' : ''}`).join(' ')}`);
+    }
+  }
+}
+
+if (process.argv.includes('--json')) {
+  console.log(`NOVA_JSON:${JSON.stringify({ pages: records })}`);
+  process.exit(failures ? 1 : 0);
+}
+
+if (CHECK_THEME && selected.length) {
+  console.log('');
+  console.log(`  theme switch — ${selected.length} page(s) tested, ${selected.length - themeReport.length} switching to dark and back`);
+  if (themeReport.length) {
+    console.log(`  ✖ ${themeReport.length} page(s) did not switch theme:`);
+    for (const row of themeReport.slice(0, 15)) {
+      console.log(`    · ${row.url} — ${row.reason ?? 'no change'} (${JSON.stringify(row.before)} → ${JSON.stringify(row.after)})`);
+    }
+  }
 }
 
 if (allMode) {

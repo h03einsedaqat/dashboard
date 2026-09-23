@@ -225,6 +225,123 @@
   justify-content: center;
 }
 
+/* ---------------------------------------------------------- sign-in extras ---
+   The authentication cards are built from the same fields as the rest of the
+   template (`input-group--icon`, `password-strength`), plus a few blocks that
+   only exist here: the demo credentials, the security note, the reason-to-buy
+   list and the status message after a successful action.
+   ------------------------------------------------------------------------- */
+
+.auth-card--plain {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+}
+.auth-card__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.5;
+}
+.auth-card__brand-text strong {
+  color: var(--nv-heading);
+  letter-spacing: 0.02em;
+}
+.auth-card__brand-text small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.auth-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-2);
+}
+
+.auth-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-2) var(--nv-space-4);
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border: 1px dashed var(--nv-border-strong);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  font-size: var(--nv-text-micro);
+}
+.auth-demo__row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  color: var(--nv-text-muted);
+}
+.auth-demo__row code {
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-surface-3);
+  color: var(--nv-heading);
+  font-size: var(--nv-text-micro);
+}
+.auth-demo .btn {
+  margin-inline-start: auto;
+}
+
+.auth-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nv-space-2);
+  margin: 0;
+  padding-block-start: var(--nv-space-3);
+  border-block-start: 1px solid var(--nv-divider);
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  line-height: 1.8;
+}
+.auth-note i {
+  color: var(--nv-success);
+  margin-block-start: 0.15rem;
+}
+
+.auth-why {
+  list-style: none;
+  margin: 0;
+  padding: var(--nv-space-4);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-primary-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+  font-size: var(--nv-text-body-sm);
+}
+.auth-why li {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  color: var(--nv-text-2);
+}
+.auth-why i {
+  color: var(--nv-primary-soft-fg);
+  font-size: 1.05rem;
+}
+
+.auth-success {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-3);
+  margin: 0;
+  padding: var(--nv-space-3) var(--nv-space-4);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+  font-size: var(--nv-text-body-sm);
+}
+
 .auth-tools {
   position: fixed;
   inset-block-start: var(--nv-space-4);

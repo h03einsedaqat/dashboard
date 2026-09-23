@@ -398,7 +398,10 @@ function authShell(page, body) {
   const demoBar = `<div class="auth-tools">
       <button class="btn btn-light btn-sm" type="button" data-theme-toggle><i class="bi bi-circle-half" aria-hidden="true"></i> <span data-i18n="ui.theme">تم</span></button>
       <button class="btn btn-light btn-sm" type="button" data-direction-toggle><i class="bi bi-arrow-left-right" aria-hidden="true"></i> <span data-i18n="ui.direction">جهت</span></button>
-      <button class="btn btn-light btn-sm" type="button" data-language-switch><i class="bi bi-translate" aria-hidden="true"></i> <span data-i18n="ui.language">زبان</span></button>
+      <div class="dropdown">
+        <button class="btn btn-light btn-sm" type="button" data-dropdown-toggle="true" aria-expanded="false"><i class="bi bi-translate" aria-hidden="true"></i> <span data-i18n="ui.language">زبان</span></button>
+        <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+      </div>
       <a class="btn btn-primary btn-sm" href="${href('dashboards/analytics.html')}"><i class="bi bi-play-fill" aria-hidden="true"></i> ورود به دمو بدون ثبت‌نام</a>
     </div>`;
 

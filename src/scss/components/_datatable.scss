@@ -94,6 +94,61 @@
   color: var(--nv-text-2);
 }
 
+/* The footer row pairs the “showing x of y” text with the page size select and
+   the numbered pager. Without this the numbers and the select collide. */
+.datatable__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+  margin-inline-start: auto;
+}
+.datatable__pager .page-size {
+  inline-size: auto;
+  min-inline-size: 6.5rem;
+  min-height: 2.15rem;
+  padding-block: 0;
+  font-size: var(--nv-text-caption);
+}
+
+/* Single overlay host for the loading / empty / error states: it replaces the
+   row area instead of pushing the footer down. */
+.datatable__state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--nv-space-6);
+  background: color-mix(in srgb, var(--nv-surface) 78%, transparent);
+  backdrop-filter: blur(2px);
+  z-index: 3;
+}
+.datatable__state[hidden] {
+  display: none;
+}
+.datatable__state .empty-state {
+  margin: 0;
+}
+
+@media (max-width: 575.98px) {
+  .datatable__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .datatable__pager {
+    margin-inline-start: 0;
+    justify-content: space-between;
+  }
+  .pagination {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .page-link {
+    min-width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
 .datatable__loading {
   position: absolute;
   inset: 0;

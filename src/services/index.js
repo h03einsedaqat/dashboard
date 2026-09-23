@@ -12,7 +12,7 @@
 export { ApiError, apiConfig, http, mock, call } from './client.js';
 export { createResourceService, runQuery } from './resource.js';
 
-export { userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService } from './user.service.js';
+export { authService, userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService } from './user.service.js';
 export { productService, categoryService, brandService, tagService, inventoryService, reviewService, couponService, orderService, orderActions, catalogService } from './commerce.service.js';
 export { companyService, contactService, leadService, dealService, pipelineService, crmActivityService, callService, meetingService, campaignService, salesForecastService } from './crm.service.js';
 export { projectService, taskService, kanbanService, backlogService, milestoneService, projectFeedService, timeTrackingService } from './project.service.js';
@@ -25,7 +25,7 @@ export { modelService, promptService, promptActions, conversationService, chatSe
 export { analyticsService } from './analytics.service.js';
 export { searchService, commandService, settingsService, contentService, statusService, helpService, docsService, demoService } from './system.service.js';
 
-import { userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService } from './user.service.js';
+import { authService, userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService } from './user.service.js';
 import { productService, categoryService, brandService, tagService, inventoryService, reviewService, couponService, orderService, orderActions, catalogService } from './commerce.service.js';
 import { companyService, contactService, leadService, dealService, pipelineService, crmActivityService, callService, meetingService, campaignService, salesForecastService } from './crm.service.js';
 import { projectService, taskService, kanbanService, backlogService, milestoneService, projectFeedService, timeTrackingService } from './project.service.js';
@@ -39,6 +39,7 @@ import { analyticsService } from './analytics.service.js';
 import { searchService, commandService, settingsService, contentService, statusService, helpService, docsService, demoService } from './system.service.js';
 
 export default {
+  auth: authService,
   users: userService, roles: roleService, teams: teamService, departments: departmentService, customers: customerService,
   invitations: invitationService, sessions: sessionService, apiKeys: apiKeyService, activity: activityService, notifications: notificationService,
   products: productService, categories: categoryService, brands: brandService, tags: tagService, inventory: inventoryService,

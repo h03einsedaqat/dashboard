@@ -668,6 +668,25 @@
   flex-direction: column;
   gap: var(--nv-space-2);
 }
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nv-space-2);
+  line-height: 1.8;
+  color: var(--nv-text-2);
+}
+.checklist li > i {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  margin-block-start: 0.15rem;
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-success-soft);
+  color: var(--nv-success);
+  font-size: 0.8rem;
+}
 
 .verification-badge {
   display: inline-flex;

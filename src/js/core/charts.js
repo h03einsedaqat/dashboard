@@ -124,6 +124,32 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
   return deepMerge(merged, { ...extra, series, labels, colors: palette });
 }
 
+/**
+ * Charts inside a hidden tab, a collapsed card or an accordion panel are laid
+ * out with a width of zero: ApexCharts then draws a squashed chart that only
+ * `updateOptions()` can repair. Watching the container means the chart is
+ * redrawn the moment it actually gets space — no page reload, no resize by the
+ * visitor.
+ */
+function watchSize(node, chart) {
+  if (typeof ResizeObserver === 'undefined' || node.dataset.chartWatch === '1') return;
+  node.dataset.chartWatch = '1';
+  let last = node.clientWidth || 0;
+  const observer = new ResizeObserver(() => {
+    const width = node.clientWidth || 0;
+    if (width === last) return;
+    const wasHidden = last === 0;
+    last = width;
+    if (!wasHidden) return;
+    try {
+      chart.updateOptions(buildOptions(payloadFromNode(node)), false, true);
+    } catch (error) {
+      console.warn('[nova:charts] resize redraw failed', error);
+    }
+  });
+  observer.observe(node);
+}
+
 function normalizeType(type) {
   if (type === 'sparkline' || type === 'spark') return 'area';
   if (type === 'area' || type === 'line' || type === 'column' || type === 'bar' || type === 'radar' || type === 'heatmap') return type;
@@ -157,6 +183,7 @@ export async function createChart(node, options = {}) {
     instances.set(node, chart);
     node.dataset.chartReady = '1';
     node.classList.remove('chart--failed');
+    watchSize(node, chart);
     return chart;
   } catch (error) {
     /**

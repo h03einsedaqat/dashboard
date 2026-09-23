@@ -70,9 +70,11 @@ npm run build      # خروجی آماده انتشار در dist/
 | `npm run gen:assets` | تولید لوگو، آواتار، تصویر محصول و لوگوی برندها |
 | `npm run gen:nav` | ساخت منوی سراسری، `sitemap.xml` و `robots.txt` |
 | `npm run qa:links` | کنترل خروجی: لینک شکسته، دارایی گم‌شده، کلاس بی‌استایل، دسترس‌پذیری، SEO |
-| `npm run qa:smoke` | اجرای ۱۵۰ سناریوی صفحه در DOM شبیه‌سازی‌شده (بدون نیاز به مرورگر) |
+| `npm run qa:smoke` | اجرای همه صفحه‌ها در DOM شبیه‌سازی‌شده (بدون نیاز به مرورگر) |
+| `npm run qa:toggles` | کلیک واقعی روی کلید زبان و تم در هر صفحه و بررسی نتیجه |
+| `npm run qa:i18n` | بازرسی ترجمه‌ها: کلیدهای استفاده‌شده در fa/en/ar |
 | `npm run qa:responsive` | بازرسی واکنش‌گرایی: ویوپورت، جدول‌ها، دراور موبایل، نقاط شکست ۳۲۰ تا ۱۹۲۰ |
-| `npm run qa:all` | ساخت + هر سه کنترل کیفیت |
+| `npm run qa:all` | ساخت + همه کنترل‌های کیفیت |
 | `npm run package` | ساخت بسته نهایی قابل تحویل (ZIP) |
 
 > پوشه‌های `src/pages`، `src/partials/docs`، `src/data/navigation.js`، `public/sitemap.xml` و `public/robots.txt` **تولیدشده** هستند و در گیت نگه داشته نمی‌شوند؛ با `npm run gen:all` (و به‌صورت خودکار در `dev` و `build`) بازساخته می‌شوند.

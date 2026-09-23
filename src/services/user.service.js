@@ -165,4 +165,59 @@ export const notificationService = {
   },
 };
 
-export default { userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService };
+/**
+ * Authentication service.
+ *
+ * The template ships without a backend, so every call resolves against a mock
+ * account: the demo credentials on the sign-in page work out of the box and the
+ * REST shape (`POST /auth/login`, …) matches what a real endpoint would return.
+ * Point `config.api` at your own server and the same calls hit it unchanged.
+ */
+export const authService = {
+  async login({ email, password }) {
+    return call('create', 'auth/login', {
+      body: { email, password },
+      resolver: () => {
+        const account = users.find((user) => user.email === email) ?? users[0];
+        const demo = email === 'demo@novaadmin.dev' || Boolean(account);
+        return {
+          token: `demo-${Date.now().toString(36)}`,
+          expiresIn: 3600,
+          user: {
+            id: account?.id ?? 'u-1',
+            name: account?.name ?? 'کاربر مهمان',
+            email: email || 'demo@novaadmin.dev',
+            role: account?.roleLabel ?? 'مدیر',
+            avatar: account?.avatar ?? 'assets/img/avatars/avatar-04.svg',
+          },
+          demo,
+        };
+      },
+      latency: [420, 900],
+    });
+  },
+  async register(payload) {
+    return call('create', 'auth/register', {
+      body: payload,
+      resolver: () => ({ id: `u-${Date.now().toString(36)}`, ...payload, status: 'invited', verificationSent: true }),
+      latency: [500, 1100],
+    });
+  },
+  async requestReset(email) {
+    return call('create', 'auth/forgot', { body: { email }, resolver: () => ({ email, sentAt: new Date().toISOString(), expiresIn: 600 }) });
+  },
+  async resetPassword(token, password) {
+    return call('update', 'auth/reset', { body: { token, password }, resolver: () => ({ token, updated: true, sessionsClosed: 3 }) });
+  },
+  async verifyCode(code) {
+    return call('create', 'auth/verify', { body: { code }, resolver: () => ({ code, verified: String(code).length === 6 }) });
+  },
+  async logout() {
+    return call('create', 'auth/logout', { resolver: () => ({ loggedOutAt: new Date().toISOString() }) });
+  },
+  async sessions() {
+    return call('list', 'auth/sessions', { resolver: () => sessions });
+  },
+};
+
+export default { authService, userService, roleService, teamService, departmentService, customerService, invitationService, sessionService, apiKeyService, activityService, notificationService };
