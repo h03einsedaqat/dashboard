@@ -70,6 +70,14 @@ export async function initLanding() {
   if (!node) return;
   node.dataset.appClaimed = '1';
 
+  /* `config.version` (mirrored in package.json) is the single source of the release
+     number: the hero badge and the changelog heading print it, so nothing goes stale
+     on the next release. */
+  $$('[data-app-version]').forEach((target) => {
+    const text = toDigits(config.version ?? '');
+    if (text) target.textContent = text;
+  });
+
   wireLandingHeader(node);
   initMarquee(node);
   initHeroShowcase(node);
@@ -571,18 +579,58 @@ async function landingTestimonials() {
     .join('');
 }
 
+/**
+ * `pricingPlans` keeps features as `{ text, included }` objects and the price as a
+ * raw number in Toman. Every pricing surface — the landing cards, `system/pricing`
+ * and the comparison table — reads the list through this, so an object never
+ * reaches `escapeHtml()` (which printed "[object Object]") and all three views agree
+ * on what an excluded feature means.
+ */
+function planView(plan) {
+  const price = Number(plan?.price) || 0;
+  const features = (plan?.features ?? plan?.items ?? []).map((feature) =>
+    typeof feature === 'string'
+      ? { text: feature, included: true }
+      : { text: String(feature?.text ?? feature?.label ?? ''), included: feature?.included !== false },
+  );
+  return {
+    ...plan,
+    raw: plan,
+    name: plan?.name ?? plan?.title ?? 'پلن',
+    description: plan?.description ?? plan?.tagline ?? plan?.text ?? '',
+    price,
+    features,
+    badge: plan?.badge ?? (plan?.featured ? 'پیشنهاد ما' : ''),
+  };
+}
+
 async function landingPricing() {
-  const plans = await services.contentService.pricing();
-  return (plans ?? [])
-    .map(
-      (plan) => `<article class="landing-plan${plan.featured ? ' landing-plan--featured' : ''}">
-        ${plan.featured ? '<span class="landing-plan__flag">پیشنهاد ما</span>' : ''}
-        <header><h3 class="landing-plan__name">${escapeHtml(plan.name ?? plan.title)}</h3><p class="landing-plan__tagline">${escapeHtml(plan.tagline ?? plan.text ?? '')}</p></header>
-        <p class="landing-plan__price">${escapeHtml(plan.price ?? '')}${plan.period ? `<small>${escapeHtml(plan.period)}</small>` : ''}</p>
-        <ul class="landing-plan__list">${(plan.features ?? plan.items ?? []).map((feature) => `<li><i class="bi bi-check2" aria-hidden="true"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
+  const plans = (await services.contentService.pricing()) ?? [];
+  return plans
+    .map((raw) => {
+      const plan = planView(raw);
+      /* `price: 0` means free, `price: null` means "ask us" — the two must not read
+         the same way. */
+      const price =
+        plan.price > 0
+          ? `${formatNumber(plan.price)} <span class="landing-plan__unit">تومان</span>`
+          : plan.raw?.price == null
+            ? escapeHtml(plan.period || 'تماس بگیرید')
+            : 'رایگان';
+      return `<article class="landing-plan${plan.featured ? ' landing-plan--featured' : ''}">
+        ${plan.badge ? `<span class="landing-plan__flag">${escapeHtml(plan.badge)}</span>` : ''}
+        <header><h3 class="landing-plan__name">${escapeHtml(plan.name)}</h3><p class="landing-plan__tagline">${escapeHtml(plan.description)}</p></header>
+        <p class="landing-plan__price">${price}${plan.price !== 0 && plan.period ? `<small>${escapeHtml(plan.period)}</small>` : ''}</p>
+        <ul class="landing-plan__list">${plan.features
+          .map(
+            (feature) => `<li${feature.included ? '' : ' class="is-excluded"'}><i class="bi ${feature.included ? 'bi-check2' : 'bi-x-lg'}" aria-hidden="true"></i> ${escapeHtml(feature.text)}${
+              feature.included ? '' : '<span class="visually-hidden"> — در این پلن نیست</span>'
+            }</li>`,
+          )
+          .join('')}</ul>
         <a class="btn ${plan.featured ? 'btn-light' : 'btn-primary'}" href="auth/register.html">${escapeHtml(plan.cta ?? 'خرید و دانلود')}</a>
-      </article>`,
-    )
+      </article>`;
+    })
     .join('');
 }
 
@@ -1747,14 +1795,19 @@ export async function initSystemPages() {
       `<div class="dashboard-shell">
         ${pageHeader({ title: 'پلن‌ها و قیمت‌گذاری', subtitle: 'پلن مناسب تیم خود را انتخاب کنید — تغییر پلن در هر زمان ممکن است', icon: 'tags' })}
         <div class="toggle-billing"><span>پرداخت ماهانه</span><label class="form-switch"><input type="checkbox" class="form-check-input" data-billing-toggle><span class="visually-hidden">پرداخت سالانه</span></label><span>پرداخت سالانه (۲۰٪ تخفیف)</span></div>
-        <div class="pricing-grid" data-pricing-grid>${plans
-          .map(
-            (plan) => `<article class="price-card ${plan.featured ? 'price-card--featured' : ''}">${plan.featured ? '<span class="price-card__badge">محبوب‌ترین</span>' : ''}
-              <h3 class="price-card__name">${escapeHtml(plan.name)}</h3><p class="price-card__desc">${escapeHtml(plan.description ?? '')}</p>
-              <p class="price-card__amount" data-price-monthly="${plan.price}" data-price-yearly="${Math.round(plan.price * 10)}">${formatCurrency(plan.price, 'IRR', { compact: true })}<span>/ ماه</span></p>
-              <ul class="price-card__list">${(plan.features ?? []).map((feature) => `<li><i class="bi bi-check2-circle" aria-hidden="true"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
-              <button class="btn ${plan.featured ? 'btn-primary' : 'btn-light'} w-100" type="button" data-choose-plan="${escapeHtml(plan.id)}">انتخاب پلن</button></article>`,
-          )
+        <div class="pricing-grid" data-pricing-grid>${(plans ?? [])
+          .map((raw) => {
+            const plan = planView(raw);
+            return `<article class="price-card ${plan.featured ? 'price-card--featured' : ''}">${plan.featured ? `<span class="price-card__badge">${escapeHtml(plan.badge || 'محبوب‌ترین')}</span>` : ''}
+              <h3 class="price-card__name">${escapeHtml(plan.name)}</h3><p class="price-card__desc">${escapeHtml(plan.description)}</p>
+              <p class="price-card__amount" data-price-monthly="${plan.price}" data-price-yearly="${plan.price * 10}">${formatNumber(plan.price)} تومان<span>/ ماه</span></p>
+              <ul class="price-card__list">${plan.features
+                .map(
+                  (feature) => `<li class="${feature.included ? '' : 'is-excluded'}"><i class="bi ${feature.included ? 'bi-check2-circle' : 'bi-x-circle'}" aria-hidden="true"></i> ${escapeHtml(feature.text)}</li>`,
+                )
+                .join('')}</ul>
+              <button class="btn ${plan.featured ? 'btn-primary' : 'btn-light'} w-100" type="button" data-choose-plan="${escapeHtml(plan.id)}">انتخاب پلن</button></article>`;
+          })
           .join('')}</div>
         ${card({ title: 'مقایسه کامل', flush: true, body: compareTable(plans) })}
       </div>`,
@@ -1763,7 +1816,7 @@ export async function initSystemPages() {
       const yearly = event.target.checked;
       $$('[data-price-monthly]', node).forEach((price) => {
         const value = Number(yearly ? price.dataset.priceYearly : price.dataset.priceMonthly);
-        price.innerHTML = `${formatCurrency(value, 'IRR', { compact: true })}<span>/ ${yearly ? 'سال' : 'ماه'}</span>`;
+        price.innerHTML = `${formatNumber(value)} تومان<span>/ ${yearly ? 'سال' : 'ماه'}</span>`;
       });
     });
     on(node, 'click', (event) => {
@@ -2013,12 +2066,22 @@ export async function initSystemPages() {
 }
 
 function compareTable(plans) {
-  const features = [...new Set(plans.flatMap((plan) => plan.features ?? []))];
-  return `<div class="table-wrap"><table class="table table--bordered compare-table"><thead><tr><th>ویژگی</th>${plans.map((plan) => `<th class="text-center">${escapeHtml(plan.name)}</th>`).join('')}</tr></thead>
+  const views = (plans ?? []).map(planView);
+  /* Compare by the feature text: the same feature is a different object in each
+     plan, so identity (`.includes`) never matched and every cell showed a tick. */
+  const features = [...new Set(views.flatMap((plan) => plan.features.map((feature) => feature.text)))];
+  const holds = (plan, text) => plan.features.some((feature) => feature.text === text && feature.included);
+  return `<div class="table-wrap"><table class="table table--bordered compare-table"><thead><tr><th>ویژگی</th>${views
+    .map((plan) => `<th class="text-center">${escapeHtml(plan.name)}</th>`)
+    .join('')}</tr></thead>
     <tbody>${features
       .map(
-        (feature) => `<tr><th scope="row">${escapeHtml(feature)}</th>${plans
-          .map((plan) => `<td class="text-center">${(plan.features ?? []).includes(feature) ? '<i class="bi bi-check2-circle text-success"></i>' : '<i class="bi bi-dash text-muted"></i>'}</td>`)
+        (text) => `<tr><th scope="row">${escapeHtml(text)}</th>${views
+          .map(
+            (plan) => `<td class="text-center">${
+              holds(plan, text) ? '<i class="bi bi-check2-circle text-success"></i><span class="visually-hidden">دارد</span>' : '<i class="bi bi-dash text-muted"></i><span class="visually-hidden">ندارد</span>'
+            }</td>`,
+          )
           .join('')}</tr>`,
       )
       .join('')}</tbody></table></div>`;

@@ -1846,3 +1846,21 @@
     min-inline-size: 11rem;
   }
 }
+
+/* Price unit and excluded features on the plan cards: the data marks what a plan
+   does not include, so the card has to say so without looking broken. */
+.landing-plan__unit {
+  font-size: 0.62em;
+  font-weight: 700;
+  color: var(--nv-text-muted);
+}
+
+.landing-plan__list .is-excluded {
+  color: var(--nv-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--nv-text-muted) 55%, transparent);
+
+  .bi {
+    color: var(--nv-text-muted);
+  }
+}

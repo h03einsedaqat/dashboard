@@ -7,7 +7,7 @@
   excluded from the generated navigation, so it opens straight from the build.
   The marketing copy lives in src/data/landing.js — edit it there.
 -->
-<html lang="fa" dir="rtl" data-theme="light" data-primary="indigo" data-layout="sidebar" data-density="comfortable" data-font-size="base" data-sidebar-style="light" data-header-style="light" data-radius="md" data-scrollbar="thin" data-i18n-ready="false">
+<html lang="fa" dir="rtl" data-theme="light" data-primary="indigo" data-layout="sidebar" data-density="comfortable" data-font-size="base" data-sidebar-style="light" data-header-style="light" data-radius="md" data-scrollbar="thin">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,20 +16,31 @@
     <meta name="keywords" content="قالب داشبورد فارسی, پنل مدیریت RTL, admin template persian, bootstrap rtl dashboard, قالب ادمین جلالی" />
     <meta name="author" content="NOVAADMIN" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="#top" />
+    <link rel="canonical" href="https://novaadmin.dev/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="NOVAADMIN" />
     <meta property="og:locale" content="fa_IR" />
+    <meta property="og:url" content="https://novaadmin.dev/" />
     <meta property="og:title" content="NOVAADMIN — قالب داشبورد و پنل مدیریت فارسی" />
     <meta property="og:description" content="۲۰۶ صفحه واقعی، ۱۰ داشبورد تخصصی، RTL کامل، تقویم جلالی، ۸ پالت رنگی و شش چیدمان — با سورس کامل." />
-    <meta property="og:image" content="./assets/img/previews/analytics-light.svg" />
+    <meta property="og:image" content="https://novaadmin.dev/assets/img/previews/analytics-light.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="750" />
+    <meta property="og:image:alt" content="نمای داشبورد تحلیل در تم روشن — یکی از ده داشبورد قالب" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="NOVAADMIN — قالب داشبورد و پنل مدیریت فارسی" />
     <meta name="twitter:description" content="قالب کامل پنل مدیریت فارسی با RTL، تقویم جلالی، ۱۰ داشبورد تخصصی و سورس تمیز." />
-    <meta name="twitter:image" content="./assets/img/previews/analytics-light.svg" />
+    <meta name="twitter:image" content="https://novaadmin.dev/assets/img/previews/analytics-light.svg" />
     <title>NOVAADMIN — قالب داشبورد و پنل مدیریت فارسی | ۲۰۶ صفحه، ۱۰ داشبورد</title>
     <link rel="icon" href="./assets/favicon.svg" sizes="any" type="image/svg+xml" />
     <link rel="stylesheet" href="./src/scss/main.scss" />
+    <!--
+      قبل از انتشار، این پنج مقدار را با اطلاعات واقعی خودتان جایگزین کنید:
+      ۱) دامنه در canonical / og:url / offers.url  ۲) قیمت در offers — باید با جدول
+      «پلن‌ها» در همین صفحه یکی باشد  ۳) ایمیل پشتیبانی  ۴) softwareVersion (با
+      package.json یکی باشد)  ۵) og:image — اگر اسکرین‌شات واقعی (PNG/JPG) دارید آن را
+      بگذارید؛ شبکه‌های اجتماعی SVG را نمایش نمی‌دهند.
+    -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -38,10 +49,17 @@
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "Admin Dashboard Template",
         "operatingSystem": "Web",
-        "softwareVersion": "1.0.0",
+        "softwareVersion": "1.0.2",
         "inLanguage": ["fa", "en", "ar"],
-        "offers": { "@type": "Offer", "price": "49.00", "priceCurrency": "USD" },
-        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "ratingCount": "212" },
+        "url": "https://novaadmin.dev/",
+        "image": "https://novaadmin.dev/assets/img/previews/analytics-light.svg",
+        "offers": {
+          "@type": "Offer",
+          "price": "2450000",
+          "priceCurrency": "IRT",
+          "availability": "https://schema.org/InStock",
+          "url": "https://novaadmin.dev/#pricing"
+        },
         "featureList": ["RTL / LTR", "Jalali calendar", "Dark mode", "10 dashboards", "206 pages", "PWA"]
       }
     </script>
@@ -129,7 +147,7 @@
       <div class="container-xxl">
         <div class="row align-items-center g-5">
           <div class="col-lg-6" data-reveal>
-            <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> نسخه ۱٫۰٫۰ — آماده انتشار</span>
+            <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> نسخه <span data-app-version>۱٫۰٫۰</span> — آماده انتشار</span>
             <h1 class="landing-hero__title">
               یک <span class="text-gradient">پنل مدیریت</span> که مثل محصول واقعی ساخته شده، نه مثل دمو
             </h1>
@@ -434,7 +452,7 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
         <div class="row g-4">
           <div class="col-lg-4" data-reveal>
             <span class="eyebrow"><i class="bi bi-megaphone" aria-hidden="true"></i> تازه‌ها</span>
-            <h2 class="section-title">نسخه ۱٫۰٫۰</h2>
+            <h2 class="section-title">نسخه <span data-app-version>۱٫۰٫۰</span></h2>
             <p class="section-subtitle">انتشار عمومی با ۲۰۶ صفحه، ۱۰ داشبورد، شش چیدمان، سه زبان و کیت رابط کامل. از این پس هر نسخه با CHANGELOG منتشر می‌شود.</p>
             <a class="btn btn-light" href="#release"><i class="bi bi-clock-history" aria-hidden="true"></i> تاریخچه کامل نسخه‌ها</a>
           </div>
@@ -595,7 +613,7 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
             <div class="d-flex gap-2 mt-3">
               <a class="btn btn-sm btn-icon btn-outline-secondary" href="#pricing" aria-label="خرید و قیمت"><i class="bi bi-bag-check" aria-hidden="true"></i></a>
               <a class="btn btn-sm btn-icon btn-outline-secondary" href="#faq" aria-label="پرسش‌های متداول"><i class="bi bi-patch-question" aria-hidden="true"></i></a>
-              <a class="btn btn-sm btn-icon btn-outline-secondary" href="mailto:support@novaadmin.app" aria-label="ایمیل پشتیبانی"><i class="bi bi-envelope" aria-hidden="true"></i></a>
+              <a class="btn btn-sm btn-icon btn-outline-secondary" href="mailto:support@novaadmin.dev" aria-label="ایمیل پشتیبانی"><i class="bi bi-envelope" aria-hidden="true"></i></a>
             </div>
           </div>
           <div class="col-6 col-lg-2">

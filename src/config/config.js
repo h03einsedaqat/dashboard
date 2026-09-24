@@ -14,7 +14,7 @@ export const config = {
   appName: 'NOVAADMIN',
   appShortName: 'NOVA',
   tagline: 'Modern. Persian-First. Enterprise Ready.',
-  version: '1.0.0',
+  version: '1.0.2',
   releaseDate: '2026-09-22',
 
   /** Logo files live in `public/assets/` (they are copied as-is). */
