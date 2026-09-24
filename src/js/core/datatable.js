@@ -32,6 +32,8 @@ import { storage } from './storage.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits, parseNumber } from './numbers.js';
 import { formatDate, relativeTime } from './jalali.js';
 import * as services from '../../services/index.js';
+import { COLUMNS } from './columns.js';
+import { openRecordView, openRecordEdit, statusLabel } from './record-dialogs.js';
 
 const tables = new WeakMap();
 
@@ -67,7 +69,7 @@ const renderers = {
   },
   badge: (row, column) => {
     const value = resolve(row, column);
-    const label = column.labels?.[value] ?? value ?? '—';
+    const label = column.labels?.[value] ?? statusLabel(value);
     return `<span class="badge badge--soft-${toneFor(value)}">${escapeHtml(label)}</span>`;
   },
   status: (row, column) => {
@@ -99,6 +101,20 @@ const renderers = {
     const list = resolve(row, column) ?? [];
     return list.slice(0, 2).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join(' ') || '—';
   },
+  datetime: (row, column) => {
+    const value = resolve(row, column);
+    return value ? `<span class="numeric">${formatDate(value, { format: 'medium' })}</span><span class="table__primary-sub d-block">${relativeTime(value)}</span>` : '—';
+  },
+  boolean: (row, column) => (resolve(row, column) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> بله</span>' : '<span class="badge badge--soft-neutral">خیر</span>'),
+  swatch: (row, column) => {
+    const color = row.color ?? 'var(--nv-primary)';
+    return `<span class="tag-chip" style="--chip:${escapeHtml(color)}"><i class="bi bi-tag-fill" aria-hidden="true"></i>${escapeHtml(resolve(row, column) ?? '—')}</span>`;
+  },
+  color: (row, column) => {
+    const color = resolve(row, column);
+    return color ? `<span class="d-inline-flex align-items-center gap-2"><span class="color-dot" style="background:${escapeHtml(color)}"></span><code>${escapeHtml(color)}</code></span>` : '—';
+  },
+  clamp: (row, column) => `<span class="table__clamp" title="${escapeHtml(resolve(row, column) ?? '')}">${escapeHtml(resolve(row, column) ?? '—')}</span>`,
   thumbnail: (row, column) => `<img class="table__thumb" src="${escapeHtml(resolve(row, column))}" alt="" loading="lazy" />`,
   link: (row, column) => {
     const url = (column.href ?? '').replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(resolve(row, key) ?? ''));
@@ -107,7 +123,7 @@ const renderers = {
   actions: (row, column) => {
     const url = (column.href ?? '').replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(resolve(row, key) ?? ''));
     return `<div class="table__actions">
-      ${url ? `<a class="icon-btn icon-btn--sm" href="${escapeHtml(url)}" title="مشاهده" aria-label="مشاهده"><i class="bi bi-eye" aria-hidden="true"></i></a>` : ''}
+      ${url ? `<a class="icon-btn icon-btn--sm" href="${escapeHtml(url)}" title="مشاهده جزئیات" aria-label="مشاهده جزئیات"><i class="bi bi-eye" aria-hidden="true"></i></a>` : `<button type="button" class="icon-btn icon-btn--sm" data-row-view title="مشاهده جزئیات" aria-label="مشاهده جزئیات"><i class="bi bi-eye" aria-hidden="true"></i></button>`}
       <button type="button" class="icon-btn icon-btn--sm" data-row-edit title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil" aria-hidden="true"></i></button>
       <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" data-row-delete title="حذف" aria-label="حذف"><i class="bi bi-trash3" aria-hidden="true"></i></button>
     </div>`;
@@ -115,8 +131,10 @@ const renderers = {
 };
 
 function resolve(row, column) {
+  if (!row || !column) return undefined;
   if (typeof column === 'string') return column.split('.').reduce((acc, key) => acc?.[key], row);
-  if (column.field) return column.field.split('.').reduce((acc, key) => acc?.[key], row);
+  const path = column.field ?? column.key;
+  if (path) return String(path).split('.').reduce((acc, key) => acc?.[key], row);
   return undefined;
 }
 
@@ -195,7 +213,10 @@ export function createDataTable(root, options = {}) {
   const resource = options.resource ?? root.dataset.resource ?? 'orders';
   const service = options.service ?? services.default[resource] ?? services.orderService;
   const perPageOptions = [10, 20, 50, 100];
-  const columns = options.columns ?? readColumns(root);
+  const declared = options.columns ?? readColumns(root);
+  /* A table shipped with an empty <thead> (catalogue pages) falls back to the
+     column registry, so it never renders rows of blank cells. */
+  const columns = declared.length ? declared : (COLUMNS[resource] ?? []).map((column) => ({ ...column, field: column.field ?? column.key }));
   const prefsKey = `table:${resource}`;
   const saved = storage.get(prefsKey, {});
 
@@ -220,6 +241,7 @@ export function createDataTable(root, options = {}) {
     },
   };
   tables.set(root, instance);
+  bindPageHead();
 
   buildShell(instance);
   bindEvents(instance);
@@ -232,6 +254,10 @@ export function createDataTable(root, options = {}) {
 function buildShell(instance) {
   const { root, columns } = instance;
   const body = $('[data-datatable-body]', root);
+  const existingHead = $('thead tr', root);
+  if (body && existingHead && !$('th[data-column]', existingHead) && columns.length) {
+    existingHead.innerHTML = columns.map(headCell).join('');
+  }
   if (!body) {
     const table = $('table', root) ?? root.appendChild(create('table', { class: 'table table--hover' }));
     if (!$('thead', table)) {
@@ -366,10 +392,15 @@ function bindEvents(instance) {
       return;
     }
 
-    const pageLink = event.target.closest('[data-page]');
-    if (pageLink) {
+    /* Scoped to the pager: `<body data-page="…">` also carries a data-page
+       attribute, and matching it turned every other click (edit, delete…)
+       into a NaN page number — the «نمایش NaN تا NaN» bug. */
+    const pageLink = event.target.closest('.pagination [data-page]');
+    if (pageLink && root.contains(pageLink)) {
+      if (pageLink.disabled) return;
       const target = pageLink.dataset.page;
       const next = target === 'first' ? 1 : target === 'last' ? instance.state.pages : Number(target);
+      if (!Number.isFinite(next)) return;
       instance.state.page = Math.min(Math.max(1, next), instance.state.pages);
       instance.load();
       return;
@@ -404,7 +435,14 @@ function bindEvents(instance) {
     const rowEdit = event.target.closest('[data-row-edit]');
     if (rowEdit) {
       const row = rowEdit.closest('tr');
-      bus.emit('datatable:edit', { id: row?.dataset.id, resource: instance.resource, table: instance });
+      instance.editRow(row?.dataset.id);
+      return;
+    }
+
+    const rowView = event.target.closest('[data-row-view]');
+    if (rowView) {
+      const row = rowView.closest('tr');
+      instance.viewRow(row?.dataset.id);
     }
   });
 
@@ -525,6 +563,61 @@ function attachLoad(instance) {
     return instance.load();
   };
 
+  const findRow = async (id) => {
+    const local = instance.state.rows.find((row) => String(row.id) === String(id));
+    if (local) return local;
+    try {
+      return instance.service.get ? await instance.service.get(id) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const detailsHrefFor = (row) => {
+    const column = instance.columns.find((col) => col.type === 'actions' && col.href);
+    return column ? column.href.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(row?.[key] ?? '')) : '';
+  };
+
+  instance.editRow = async (id) => {
+    if (!id) return;
+    const handled = bus.emit('datatable:edit', { id, resource: instance.resource, table: instance });
+    if (instance.onEdit) {
+      instance.onEdit(id);
+      return;
+    }
+    if (handled === true) return;
+    const record = await findRow(id);
+    if (!record) {
+      toast.warning('رکورد پیدا نشد', 'ممکن است پیش‌تر حذف شده باشد.');
+      return;
+    }
+    if (!instance.service.update) {
+      toast.info('فقط خواندنی', 'این منبع داده امکان ویرایش ندارد.');
+      return;
+    }
+    openRecordEdit({ record, columns: instance.columns, service: instance.service, rows: instance.state.rows, resource: instance.resource, onSaved: (saved) => {
+      instance.load();
+      bus.emit(EVENTS.dataChanged, { resource: instance.resource, action: 'update', id: saved?.id ?? id });
+    } });
+  };
+
+  instance.viewRow = async (id) => {
+    if (!id) return;
+    const record = await findRow(id);
+    if (!record) {
+      toast.warning('رکورد پیدا نشد', 'ممکن است پیش‌تر حذف شده باشد.');
+      return;
+    }
+    openRecordView({
+      record,
+      columns: instance.columns,
+      resource: instance.resource,
+      detailsHref: detailsHrefFor(record),
+      onEdit: instance.service.update ? () => instance.editRow(id) : null,
+      onDelete: instance.service.remove ? () => instance.removeRow(id) : null,
+    });
+  };
+
   instance.removeRow = async (id) => {
     if (!id) return;
     const ok = await modal.confirm({ title: 'حذف مورد', text: 'این مورد برای همیشه حذف می‌شود. ادامه می‌دهید؟', tone: 'danger', confirmText: 'حذف کن' });
@@ -610,7 +703,10 @@ function renderRows(instance, rows) {
   paintSortState(instance);
   $$('tr', body).forEach((tr) => {
     if (instance.root.dataset.clickable === 'false') return;
-    on(tr, 'dblclick', () => bus.emit('datatable:open', { id: tr.dataset.id, resource: instance.resource }));
+    on(tr, 'dblclick', (event) => {
+      if (event.target.closest('a, button, input, select, label')) return;
+      instance.viewRow(tr.dataset.id);
+    });
   });
 }
 
@@ -717,6 +813,74 @@ function syncSelection(instance) {
     selectAll.indeterminate = !selectAll.checked && boxes.some((box) => box.checked);
   }
   bus.emit(EVENTS.tableSelection, { resource: instance.resource, ids: [...instance.state.selected] });
+}
+
+/**
+ * Page-head buttons generated for every list page (`data-table-columns`,
+ * `data-table-export`, `data-create-<resource>`) had no listener, so the
+ * toolbar above each table was decorative. One delegated handler routes them
+ * to the first data table on the page.
+ */
+function firstTable(resource) {
+  const node = (resource && document.querySelector(`[data-datatable][data-resource="${resource}"]`)) || document.querySelector('[data-datatable]');
+  return node ? tables.get(node) ?? null : null;
+}
+
+function blankFrom(template = {}) {
+  const blank = {};
+  Object.entries(template).forEach(([key, value]) => {
+    if (key === 'id') return;
+    if (typeof value === 'number') blank[key] = 0;
+    else if (typeof value === 'boolean') blank[key] = false;
+    else if (Array.isArray(value)) blank[key] = value.every((item) => typeof item !== 'object') ? [] : value;
+    else if (value && typeof value === 'object') blank[key] = value;
+    else if (/(At|Date|^at$|^from$|^to$)/.test(key) && !Number.isNaN(Date.parse(value))) blank[key] = new Date().toISOString();
+    else if (['status', 'stage', 'priority', 'type', 'direction', 'category', 'method', 'gateway', 'department', 'team', 'plan', 'role', 'source', 'carrier', 'zone', 'color', 'avatar', 'image', 'logo', 'ownerAvatar'].includes(key)) blank[key] = value;
+    else blank[key] = '';
+  });
+  return blank;
+}
+
+let pageHeadBound = false;
+function bindPageHead() {
+  if (pageHeadBound || typeof document === 'undefined') return;
+  pageHeadBound = true;
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const columnsButton = target.closest('[data-table-columns]');
+    if (columnsButton) {
+      const table = firstTable();
+      const toggle = table && table.root.querySelector('.datatable__toolbar [data-dropdown-toggle]');
+      if (toggle) {
+        event.preventDefault();
+        table.root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => toggle.click(), 250);
+      }
+      return;
+    }
+    const exportButton = target.closest('[data-table-export]');
+    if (exportButton) {
+      const table = firstTable();
+      if (table) {
+        event.preventDefault();
+        table.export('excel');
+      }
+      return;
+    }
+    const createButton = [...target.closest('button, a')?.attributes ?? []].find((attr) => /^data-create-(?!key$)/.test(attr.name));
+    if (createButton) {
+      const resource = createButton.name.replace('data-create-', '');
+      const table = firstTable(resource === 'item' ? null : resource);
+      if (!table || !table.service?.create) return;
+      event.preventDefault();
+      const template = table.state.rows[0] ?? {};
+      openRecordEdit({ record: blankFrom(template), columns: table.columns, service: table.service, rows: table.state.rows, resource: table.resource, isNew: true, onSaved: () => {
+        table.state.page = 1;
+        table.load();
+      } });
+    }
+  });
 }
 
 /** Boots every declarative table on the page. */

@@ -119,13 +119,37 @@ export function createResourceService({
   extend,
 } = {}) {
   /** Session-level overlay so create/update/delete actually stick while browsing. */
+  /*
+   * The overlay is mirrored to sessionStorage: every screen is a standalone
+   * HTML page, so without it an edit or a delete was forgotten the moment the
+   * visitor opened the details page or came back to the list.
+   */
+  const storeKey = `nova:overlay:${name}`;
   const overlay = { created: [], updated: new Map(), removed: new Set() };
+  try {
+    const saved = typeof sessionStorage !== 'undefined' ? JSON.parse(sessionStorage.getItem(storeKey) ?? 'null') : null;
+    if (saved) {
+      overlay.created = saved.created ?? [];
+      overlay.updated = new Map(saved.updated ?? []);
+      overlay.removed = new Set(saved.removed ?? []);
+    }
+  } catch {
+    /* private mode / corrupted entry — start clean */
+  }
+  const persist = () => {
+    try {
+      sessionStorage.setItem(storeKey, JSON.stringify({ created: overlay.created, updated: [...overlay.updated], removed: [...overlay.removed] }));
+    } catch {
+      /* storage full or unavailable — the in-memory overlay still works */
+    }
+  };
 
   const snapshot = () => {
     const base = typeof collection === 'function' ? collection() : collection;
-    const rows = base.filter((row) => !overlay.removed.has(row.id));
-    const patched = rows.map((row) => (overlay.updated.has(row.id) ? { ...row, ...overlay.updated.get(row.id) } : row));
-    return [...overlay.created, ...patched];
+    const rows = (Array.isArray(base) ? base : []).filter((row) => !overlay.removed.has(String(row.id)));
+    const patched = rows.map((row) => (overlay.updated.has(String(row.id)) ? { ...row, ...overlay.updated.get(String(row.id)) } : row));
+    const created = overlay.created.map((row) => (overlay.updated.has(String(row.id)) ? { ...row, ...overlay.updated.get(String(row.id)) } : row));
+    return [...created, ...patched];
   };
 
   const service = {
@@ -161,6 +185,7 @@ export function createResourceService({
           ...payload,
         };
         overlay.created.unshift(row);
+        persist();
         return row;
       };
       return call('create', name, { body: payload, resolver });
@@ -173,7 +198,8 @@ export function createResourceService({
         const current = collectionRows.find((item) => String(item.id) === String(id));
         if (!current) throw new ApiError('مورد درخواستی یافت نشد.', { status: 404, code: 'not_found' });
         const next = { ...current, ...payload, id: current.id, updatedAt: new Date().toISOString() };
-        overlay.updated.set(current.id, next);
+        overlay.updated.set(String(current.id), next);
+        persist();
         return next;
       };
       return call('update', name, { id, body: payload, resolver });
@@ -190,8 +216,9 @@ export function createResourceService({
         const exists = snapshot().some((item) => String(item.id) === String(id));
         if (!exists) throw new ApiError('مورد درخواستی یافت نشد.', { status: 404, code: 'not_found' });
         overlay.created = overlay.created.filter((row) => String(row.id) !== String(id));
-        overlay.updated.delete(id);
+        overlay.updated.delete(String(id));
         overlay.removed.add(String(id));
+        persist();
         return { id, deleted: true };
       };
       return call('remove', name, { id, resolver });
@@ -214,6 +241,7 @@ export function createResourceService({
       overlay.created = [];
       overlay.updated.clear();
       overlay.removed.clear();
+      persist();
     },
 
     get size() {

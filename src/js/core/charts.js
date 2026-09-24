@@ -264,22 +264,67 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
  * visitor.
  */
 function watchSize(node, chart) {
-  if (typeof ResizeObserver === 'undefined' || node.dataset.chartWatch === '1') return;
-  node.dataset.chartWatch = '1';
-  let last = node.clientWidth || 0;
-  const observer = new ResizeObserver(() => {
-    const width = node.clientWidth || 0;
-    if (width === last) return;
-    const wasHidden = last === 0;
+  if (typeof ResizeObserver === 'undefined') return;
+  /* One observer per node; it always talks to the node's *current* chart. */
+  if (node.__novaResize) return;
+  let last = Math.round(node.clientWidth || 0);
+  let timer = 0;
+  const redraw = () => {
+    const current = instances.get(node);
+    if (!current || !node.isConnected) return;
+    const width = Math.round(node.clientWidth || 0);
+    if (!width) return;
+    const drawn = Math.round(current.w?.globals?.svgWidth ?? 0);
+    /* Redraw when the container changed, or when the SVG was laid out at a
+       stale width (the «chart stays small until I click it» bug). */
+    if (width === last && Math.abs(drawn - width) <= 2) return;
     last = width;
-    if (!wasHidden) return;
     try {
-      chart.updateOptions(buildOptions(lastPayload.get(node) ?? payloadFromNode(node)), false, true);
+      current.updateOptions({ chart: { width: '100%' } }, true, false, false);
     } catch (error) {
       console.warn('[nova:charts] resize redraw failed', error);
     }
+  };
+  const observer = new ResizeObserver(() => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(redraw, 60);
   });
   observer.observe(node);
+  node.__novaResize = { observer, redraw };
+}
+
+/**
+ * Charts drawn while the page is still settling (web fonts, sidebar width,
+ * reveal animations, late stylesheets) can keep the width they measured at
+ * that moment. A few passes after load re-measure every chart so they fill
+ * their cards without the visitor having to click or resize anything.
+ */
+export function resyncCharts() {
+  instances.forEach((chart, node) => {
+    if (!node.isConnected) {
+      instances.delete(node);
+      return;
+    }
+    const width = Math.round(node.clientWidth || 0);
+    const drawn = Math.round(chart.w?.globals?.svgWidth ?? 0);
+    if (width && Math.abs(drawn - width) > 2) {
+      try {
+        chart.updateOptions({ chart: { width: '100%' } }, true, false, false);
+      } catch {
+        /* chart was destroyed mid-way */
+      }
+    }
+  });
+}
+
+if (typeof window !== 'undefined') {
+  const passes = () => [120, 400, 900, 1800, 3200].forEach((delay) => window.setTimeout(resyncCharts, delay));
+  window.addEventListener('load', passes, { once: true });
+  document.fonts?.ready?.then(() => window.setTimeout(resyncCharts, 50));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') window.setTimeout(resyncCharts, 80);
+  });
+  window.addEventListener('nova:layout', () => [80, 360].forEach((delay) => window.setTimeout(resyncCharts, delay)));
 }
 
 /**
@@ -327,9 +372,13 @@ async function getApex() {
  */
 export async function createChart(node, options = {}) {
   if (!node) return null;
+  /* Render token: two overlapping calls on one node (boot pass + controller)
+     used to both finish and stack two charts in the same card. */
+  const token = (node.__novaChartToken ?? 0) + 1;
+  node.__novaChartToken = token;
   const existing = instances.get(node);
   if (existing) {
-    existing.destroy();
+    try { existing.destroy(); } catch { /* already gone */ }
     instances.delete(node);
   }
   const raw = payloadFromNode(node, options);
@@ -347,9 +396,21 @@ export async function createChart(node, options = {}) {
   }
   try {
     const ApexCharts = await getApex();
+    if (node.__novaChartToken !== token) return instances.get(node) ?? null;
+    const previous = instances.get(node);
+    if (previous) {
+      try { previous.destroy(); } catch { /* ignore */ }
+      instances.delete(node);
+    }
+    node.querySelectorAll(':scope > .apexcharts-canvas, :scope > div[id^="apexcharts"]').forEach((stale) => stale.remove());
     const chart = new ApexCharts(node, payload);
-    await chart.render();
     instances.set(node, chart);
+    await chart.render();
+    if (node.__novaChartToken !== token) {
+      try { chart.destroy(); } catch { /* ignore */ }
+      if (instances.get(node) === chart) instances.delete(node);
+      return instances.get(node) ?? null;
+    }
     node.dataset.chartReady = '1';
     node.classList.remove('chart--failed', 'chart--empty');
     delete node.dataset.chartFallback;
@@ -362,6 +423,8 @@ export async function createChart(node, options = {}) {
      * on screen (this also keeps automated runs honest — they can see the
      * difference between "chart drawn" and "chart failed").
      */
+    if (node.__novaChartToken !== token) return instances.get(node) ?? null;
+    instances.delete(node);
     console.warn('[nova:charts] render failed', error);
     showState(node, 'chart--failed', t('charts.renderFailed'));
     node.dataset.chartReady = '1';
@@ -427,7 +490,7 @@ function payloadFromNode(node, override = {}) {
  */
 export async function initCharts(root = document) {
   const nodes = $$('[data-chart]', root).filter(
-    (node) => node.dataset.chartReady !== '1' && node.dataset.chartOwner !== 'controller',
+    (node) => node.dataset.chartReady !== '1' && node.dataset.chartOwner !== 'controller' && !node.__novaChartToken,
   );
   await Promise.all(nodes.map((node) => createChart(node)));
   return nodes.length;
