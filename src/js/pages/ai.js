@@ -95,7 +95,7 @@ export async function initAiWorkspace() {
       return aiScheduler();
     case 'ai/models.html':
       return aiModels();
-    case 'ai/keys.html':
+    case 'ai/api-keys.html':
       return aiKeys();
     case 'ai/history.html':
       return aiHistory();

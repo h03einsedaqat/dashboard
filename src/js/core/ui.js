@@ -6,7 +6,7 @@
  * interactions that are too small for a module of their own but must behave
  * identically on every page.
  */
-import { $, $$, on, debounce, ready } from './dom.js';
+import { $, $$, on, once, debounce, ready } from './dom.js';
 import { bus, EVENTS } from './bus.js';
 import { toast } from './toast.js';
 import { storage } from './storage.js';
@@ -17,6 +17,8 @@ import { createSortable } from './dragdrop.js';
 
 /* ---------------------------------------------------------------------- tabs */
 function initTabs(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Tabs', root)) return;
   on(root, 'click', (event) => {
     const tab = event.target.closest('[data-tab]');
     if (!tab) return;
@@ -42,6 +44,8 @@ function initTabs(root = document) {
 
 /* ----------------------------------------------------------------- accordion */
 function initAccordion(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Accordion', root)) return;
   on(root, 'click', (event) => {
     const head = event.target.closest('[data-accordion-toggle]');
     if (!head) return;
@@ -66,6 +70,8 @@ function initAccordion(root = document) {
 
 /* ----------------------------------------------------------- filter bar sync */
 function initFilterBars(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:FilterBars', root)) return;
   $$('[data-filter-bar]', root).forEach((bar) => {
     const target = document.querySelector(bar.dataset.filterBar);
     if (!target) return;
@@ -92,6 +98,8 @@ function initFilterBars(root = document) {
  * notification-style message a page injects.
  */
 function initAlerts(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Alerts', root)) return;
   on(root, 'click', (event) => {
     const close = event.target.closest('[data-alert-close]');
     if (!close) return;
@@ -107,6 +115,8 @@ function initAlerts(root = document) {
 
 /* -------------------------------------------------------------- copy buttons */
 function initCopyButtons(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:CopyButtons', root)) return;
   on(root, 'click', async (event) => {
     const trigger = event.target.closest('[data-copy]');
     if (!trigger) return;
@@ -132,6 +142,8 @@ function initCopyButtons(root = document) {
 
 /* ------------------------------------------------------------------ tooltips */
 function initTooltips(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Tooltips', root)) return;
   $$('[data-tooltip]', root).forEach((node) => {
     if (node.dataset.tooltipReady === '1') return;
     node.dataset.tooltipReady = '1';
@@ -142,6 +154,8 @@ function initTooltips(root = document) {
 
 /* -------------------------------------------------------------- view switch */
 function initViewSwitches(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:ViewSwitches', root)) return;
   $$('[data-view-switch]', root).forEach((switcher) => {
     const selector = switcher.dataset.viewSwitch;
     const host = document.querySelector(selector);
@@ -165,6 +179,7 @@ function initViewSwitches(root = document) {
 
 /* ------------------------------------------------------------ sortable lists */
 async function initSortables(root = document) {
+  if (!once('init:sortables', root)) return;
   const lists = $$('[data-sortable]', root);
   if (!lists.length) return;
   lists.forEach(async (list) => {
@@ -187,6 +202,8 @@ async function initSortables(root = document) {
 
 /* --------------------------------------------------------------- date ranges */
 function initDateRanges(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:DateRanges', root)) return;
   on(root, 'click', (event) => {
     const preset = event.target.closest('[data-range-preset]');
     if (!preset) return;
@@ -201,28 +218,120 @@ function initDateRanges(root = document) {
 }
 
 /* ------------------------------------------------------------ reveal on view */
+/**
+ * Reveal on scroll — with a guarantee that content is never left invisible.
+ *
+ * The previous version built a fresh `IntersectionObserver` per call and only
+ * observed what existed at that moment. Page content, though, is painted *after*
+ * `initUi()` has run (controllers, KPI strips, data tables, charts), so every
+ * card carrying `data-reveal` stayed at `opacity: 0` forever — which is exactly
+ * what "the section never comes up" and "there is an empty gap above the chart"
+ * reports were about.
+ *
+ * This implementation:
+ *   • keeps ONE observer for the document and reuses it on every `initReveal()`;
+ *   • watches the DOM for late `[data-reveal]` nodes (MutationObserver) so
+ *     injected markup is picked up automatically;
+ *   • reveals anything already inside the viewport immediately (no wait for the
+ *     observer's first callback, no flash on short pages);
+ *   • has a watchdog: a node that is still hidden 2.5s after being observed is
+ *     revealed anyway. A cosmetic animation must never be able to hide data.
+ */
+let revealObserver = null;
+const revealWatch = new WeakMap();
+
+function forceReveal(node) {
+  node.classList.add('is-revealed');
+  node.dataset.revealed = 'done';
+  const timer = revealWatch.get(node);
+  if (timer) {
+    clearTimeout(timer);
+    revealWatch.delete(node);
+  }
+}
+
+function inViewport(node) {
+  if (typeof node.getBoundingClientRect !== 'function') return true;
+  const rect = node.getBoundingClientRect();
+  if (!rect.width && !rect.height) return false;
+  const height = window.innerHeight || document.documentElement.clientHeight || 0;
+  return rect.top < height + 80 && rect.bottom > -80;
+}
+
+function trackReveal(node, observer) {
+  if (node.dataset.revealed === 'done') return;
+  /** Nothing to fade in for a hidden panel (tab page, collapsed card): mark it
+   *  revealed so it shows normally the moment its container opens. */
+  if (node.hidden || node.closest('[hidden]')) {
+    forceReveal(node);
+    return;
+  }
+  if (inViewport(node)) {
+    forceReveal(node);
+    return;
+  }
+  observer?.observe(node);
+  if (revealWatch.has(node)) return;
+  revealWatch.set(
+    node,
+    setTimeout(() => {
+      forceReveal(node);
+      observer?.unobserve(node);
+    }, 2500),
+  );
+}
+
 function initReveal(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Reveal', root)) return;
   const nodes = $$('[data-reveal]', root);
-  if (!nodes.length) return;
   if (!('IntersectionObserver' in window)) {
     nodes.forEach((node) => node.classList.add('is-revealed'));
     return;
   }
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-revealed');
-        observer.unobserve(entry.target);
+  if (!revealObserver) {
+    revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          forceReveal(entry.target);
+          revealObserver?.unobserve(entry.target);
+        });
+      },
+      { rootMargin: '0px 0px -24px 0px', threshold: 0.02 },
+    );
+
+    /** Late markup (tables, modals, charts, filtered lists) joins the same observer. */
+    if (typeof MutationObserver !== 'undefined') {
+      const watcher = new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (!(node instanceof Element)) continue;
+            const targets = node.matches('[data-reveal]') ? [node, ...$$('[data-reveal]', node)] : [...node.querySelectorAll('[data-reveal]')];
+            targets.forEach((target) => trackReveal(target, revealObserver));
+            if (node.hasAttribute?.('data-reveal')) trackReveal(node, revealObserver);
+          }
+        }
       });
-    },
-    { rootMargin: '0px 0px -40px 0px', threshold: 0.1 },
-  );
-  nodes.forEach((node) => observer.observe(node));
+      watcher.observe(document.body, { childList: true, subtree: true });
+    }
+
+    /** Scroll/resize: reveal anything that has scrolled into view right away. */
+    const sweep = debounce(() => {
+      $$('[data-reveal]:not(.is-revealed)').forEach((node) => {
+        if (inViewport(node)) forceReveal(node);
+      });
+    }, 90);
+    on(window, 'scroll', sweep, { passive: true });
+    on(window, 'resize', sweep);
+  }
+  nodes.forEach((node) => trackReveal(node, revealObserver));
 }
 
 /* ------------------------------------------------------------------- printing */
 function initPrint(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Print', root)) return;
   on(root, 'click', (event) => {
     const trigger = event.target.closest('[data-print]');
     if (!trigger) return;
@@ -245,6 +354,8 @@ function initPrint(root = document) {
 
 /* --------------------------------------------------------------- misc helpers */
 function initCounters(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Counters', root)) return;
   const nodes = $$('[data-counter]', root);
   if (!nodes.length) return;
   const animate = (node) => {
@@ -274,6 +385,8 @@ function initCounters(root = document) {
 }
 
 function initCharCounters(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:CharCounters', root)) return;
   $$('[data-char-counter]', root).forEach((input) => {
     const output = document.querySelector(input.dataset.charCounter);
     if (!output) return;
@@ -286,6 +399,8 @@ function initCharCounters(root = document) {
 }
 
 function initTimestamps(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Timestamps', root)) return;
   $$('[data-relative]', root).forEach((node) => {
     const value = node.dataset.relative || node.textContent.trim();
     node.textContent = jdate.relativeTime(value);
@@ -294,6 +409,8 @@ function initTimestamps(root = document) {
 }
 
 function initSwatches(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Swatches', root)) return;
   on(root, 'click', (event) => {
     const swatch = event.target.closest('[data-swatch]');
     if (!swatch) return;
@@ -304,6 +421,8 @@ function initSwatches(root = document) {
 }
 
 function initTimelineFilters(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:TimelineFilters', root)) return;
   on(root, 'click', (event) => {
     const chip = event.target.closest('[data-timeline-filter]');
     if (!chip) return;
@@ -320,6 +439,7 @@ function initTimelineFilters(root = document) {
 
 /** Boots every behaviour above. Safe to call again after injecting markup. */
 export function initUi(root = document) {
+  if (!once('ui', root)) return false;
   initTabs(root);
   initAccordion(root);
   initFilterBars(root);

@@ -135,6 +135,16 @@ export default {
     totalItems: 'إجمالي العناصر',
     showing: 'عرض',
     results: 'نتيجة',
+    series: 'سلسلة',
+  },
+
+  /** Labels rendered by the chart engine itself (legend, heat shades, errors). */
+  charts: {
+    total: 'الإجمالي',
+    low: 'منخفض',
+    medium: 'متوسط',
+    high: 'مرتفع',
+    renderFailed: 'تعذّر رسم المخطط — البيانات أو المكتبة غير متوفرة.',
   },
 
   header: {
@@ -307,6 +317,7 @@ export default {
   },
 
   auth: {
+    title: 'الحساب',
     phone: 'رقم الجوال',
     secureNote: 'اتصالك مشفّر؛ لا تُخزَّن بيانات الدخول على أي خادم.',
     demoEmail: 'البريد التجريبي',
@@ -715,6 +726,7 @@ export default {
   },
 
   footer: {
+    tagline: 'قالب احترافي للوحة التحكم بالفارسية',
     product: 'المنتج',
     resources: 'المصادر',
     legal: 'قانوني',

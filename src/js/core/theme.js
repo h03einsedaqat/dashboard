@@ -99,13 +99,49 @@ function applyRadius() {
   });
 }
 
+/**
+ * Keeps the theme customizer drawer in step with the live state.
+ *
+ * The drawer's controls are declared as `[data-customizer="<key>"] >
+ * [data-value="<value>"]` and `set()` accepts them, but nothing used to write
+ * the active state back: switching layout or density looked like a no-op — the
+ * preview changed and the button never did, which reads as "the styles broke".
+ * Each group now carries `.is-active` plus `aria-pressed`/`aria-checked`.
+ */
+function syncCustomizerGroups(snapshot = state) {
+  $$('[data-customizer]').forEach((group) => {
+    const key = group.dataset.customizer;
+    if (!key) return;
+    /**
+     * `language` lives in the i18n module and `layout` has a stored alias:
+     * `sidebar` (what the markup and config use) and `default` (what the engine
+     * keeps) mean the same thing, so comparing the raw strings left the layout
+     * row of the customizer never highlighted.
+     */
+    let value = '';
+    if (key === 'language') value = document.documentElement.lang ?? '';
+    else if (key === 'layout') value = normaliseLayout(String(snapshot.layout ?? 'default'));
+    else if (key in snapshot) value = String(snapshot[key] ?? '');
+    else return;
+    const compare = (candidate) => (key === 'layout' ? normaliseLayout(candidate) : candidate) === value;
+    $$('[data-value]', group).forEach((node) => {
+      const isActive = compare(String(node.dataset.value));
+      node.classList.toggle('is-active', isActive);
+      node.setAttribute('aria-pressed', String(isActive));
+      if (node.getAttribute('role') === 'radio' || node.getAttribute('role') === 'tab') node.setAttribute('aria-checked', String(isActive));
+      node.tabIndex = isActive ? 0 : -1;
+    });
+  });
+}
+
 function syncControls() {
+  syncCustomizerGroups(state);
   $$('[data-theme-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.themeOption === state.theme));
   $$('[data-primary-option]').forEach((node) => {
     node.classList.toggle('is-active', node.dataset.primaryOption === state.primary);
     node.setAttribute('aria-pressed', String(node.dataset.primaryOption === state.primary));
   });
-  $$('[data-layout-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.layoutOption === state.layout));
+  $$('[data-layout-option]').forEach((node) => node.classList.toggle('is-active', normaliseLayout(node.dataset.layoutOption) === state.layout));
   $$('[data-direction-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.directionOption === state.direction));
   $$('[data-density-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.densityOption === state.density));
   $$('[data-fontsize-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.fontsizeOption === state.fontSize));
@@ -301,6 +337,13 @@ export const theme = {
     return () => listeners.get(key).delete(handler);
   },
   snapshot: () => ({ ...state }),
+  /**
+   * Re-applies the active state to every appearance control on the page.
+   * `set()` already calls it, but markup painted *after* boot (the preview
+   * page's configurator, injected customizer groups) needs one pass so the
+   * current value is highlighted instead of looking unselected.
+   */
+  sync: () => syncControls(),
   /** Convenience used by the customizer drawer. */
   applyLanguage(code) {
     setLanguage(code);

@@ -13,6 +13,28 @@ export function ready(fn) {
   else fn();
 }
 
+/**
+ * Idempotence guard for initialisers.
+ *
+ * `initUi()` and `initForms()` run twice by design: every core module boots
+ * itself on DOMContentLoaded (so it also works when a page imports only that
+ * module) and `main.js` calls them again to pin the boot order. Without this
+ * guard the *delegated* listeners they install are registered twice — harmless
+ * for setters (tabs, tooltips) and fatal for toggles: the password eye flipped
+ * to `text` and straight back to `password`, an accordion opened and closed in
+ * the same click, and a stepper jumped by two.
+ *
+ * Returns `true` only the first time it sees a (key, root) pair.
+ */
+const onceSeen = new WeakMap();
+export function once(key, root = document) {
+  const seen = onceSeen.get(root) ?? new Set();
+  onceSeen.set(root, seen);
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
+}
+
 export function on(target, type, handler, options) {
   if (!target) return () => {};
   const types = type.split(' ');

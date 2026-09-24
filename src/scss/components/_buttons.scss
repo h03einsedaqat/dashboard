@@ -422,3 +422,40 @@
     animation-duration: 2s;
   }
 }
+
+/* ---------------------------------------------------------- light on colour */
+/* Outline button for tinted or dark panels (the landing CTA, the preview
+   header). Written against the tokens so it flips with the theme for free. */
+.btn-outline-light {
+  --nv-btn-outline-color: var(--nv-heading);
+  --nv-btn-outline-border: var(--nv-border-strong);
+
+  color: var(--nv-btn-outline-color);
+  background: transparent;
+  border: 1px solid var(--nv-btn-outline-border);
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--nv-primary-contrast, #fff);
+    background: rgba(255, 255, 255, 0.86);
+    border-color: transparent;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+/* On a saturated panel the light outline reads better than the token colour. */
+.landing-cta .btn-outline-light,
+.landing-hero .btn-outline-light,
+.section--brand .btn-outline-light {
+  --nv-btn-outline-color: rgba(255, 255, 255, 0.92);
+  --nv-btn-outline-border: rgba(255, 255, 255, 0.4);
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--nv-primary);
+    background: #fff;
+  }
+}

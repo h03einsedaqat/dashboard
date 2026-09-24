@@ -144,4 +144,44 @@ export function observeLinks(root = document.body) {
 /** Convenience for controllers: `href="crm/contacts.html"` → correct URL. */
 export const url = (path) => resolveUrl(path);
 
-export default { fixLinks, observeLinks, resolveUrl, basePrefix, pageDepth, url };
+/** Fully resolved URL for the current page — safe for `location` writes. */
+export function absolute(path, { prefix = basePrefix() } = {}) {
+  const resolved = resolveUrl(path, { prefix });
+  try {
+    return new URL(resolved, window.location.href).href;
+  } catch {
+    return resolved;
+  }
+}
+
+/**
+ * Programmatic navigation that survives the one-folder-deep page layout.
+ *
+ * `window.location.assign('dashboards/analytics.html')` looks harmless, but from
+ * `/auth/login.html` it points at `/auth/dashboards/analytics.html` — a path that
+ * does not exist, so the dev server falls back to `index.html` and the user is
+ * dumped on the landing page. Every controller redirect goes through here so the
+ * depth prefix is always applied.
+ *
+ * @param {string} path template-relative path (`users/list.html`) or absolute URL
+ * @param {{replace?: boolean, query?: Record<string, string|number>}} [options]
+ */
+export function goTo(path, { replace = false, query } = {}) {
+  let target = absolute(path);
+  if (query && Object.keys(query).length) {
+    const [base, hash = ''] = target.split('#');
+    const [stem, search = ''] = base.split('?');
+    const params = new URLSearchParams(search);
+    Object.entries(query).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      params.set(key, String(value));
+    });
+    const suffix = params.toString();
+    target = `${stem}${suffix ? `?${suffix}` : ''}${hash ? `#${hash}` : ''}`;
+  }
+  if (replace) window.location.replace(target);
+  else window.location.assign(target);
+  return target;
+}
+
+export default { fixLinks, observeLinks, resolveUrl, absolute, goTo, basePrefix, pageDepth, url };

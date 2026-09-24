@@ -25,6 +25,7 @@ import { relativeTime } from './jalali.js';
 import { searchService, commandService, settingsService, notificationService, demoService } from '../../services/index.js';
 import { config } from '../../config/config.js';
 import { createSortable } from './dragdrop.js';
+import { goTo } from './links.js';
 
 const state = {
   paletteOpen: false,
@@ -178,7 +179,7 @@ async function runCommandAction(action) {
       break;
     case 'logout': {
       const ok = await modal.confirm({ title: 'خروج از حساب', text: 'از حساب کاربری خود خارج می‌شوید؟', tone: 'danger', confirmText: 'خروج' });
-      if (ok) window.location.assign('auth/login.html');
+      if (ok) goTo('auth/login.html');
       break;
     }
     default:
@@ -203,7 +204,7 @@ function initPalette() {
       const label = item.querySelector('.command-item__text')?.firstChild?.textContent?.trim() ?? '';
       if (item.dataset.commandUrl) {
         rememberSearch({ url: item.dataset.commandUrl, title: label });
-        window.location.href = item.dataset.commandUrl;
+        goTo(item.dataset.commandUrl);
       } else if (item.dataset.commandAction) {
         runCommandAction(item.dataset.commandAction);
         closePalette();
@@ -255,7 +256,7 @@ function initPalette() {
     if (!form) return;
     event.preventDefault();
     const value = $('input', form)?.value.trim();
-    if (value) window.location.href = `search.html?q=${encodeURIComponent(value)}`;
+    if (value) goTo(`search.html?q=${encodeURIComponent(value)}`);
   });
 
   const params = new URLSearchParams(window.location.search);
@@ -519,7 +520,7 @@ async function initDemoSwitcher() {
     event.preventDefault();
     const index = config.demos.findIndex((demo) => demo.id === current);
     const target = config.demos[(index + 1 + config.demos.length) % config.demos.length];
-    window.location.href = `dashboards/${target.id}.html`;
+    goTo(`dashboards/${target.id}.html`);
   });
 }
 

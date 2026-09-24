@@ -20,11 +20,36 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--nv-space-7);
+  gap: clamp(var(--nv-space-5), 3.2vh, var(--nv-space-8));
   padding: clamp(2rem, 4vw, 4rem);
-  background: linear-gradient(160deg, var(--nv-primary-soft), transparent 55%), var(--nv-surface);
+  background:
+    radial-gradient(120% 60% at 85% -10%, rgba(var(--nv-primary-rgb), 0.22), transparent 60%),
+    linear-gradient(160deg, var(--nv-primary-soft), transparent 55%),
+    var(--nv-surface);
   border-inline-end: 1px solid var(--nv-border);
-  overflow: hidden;
+  /* The panel is content-rich (preview + proof row); on short viewports it
+     scrolls instead of clipping the quote. */
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.auth-headline h2 {
+  letter-spacing: -0.015em;
+
+  em {
+    font-style: normal;
+    background: linear-gradient(120deg, var(--nv-primary), var(--nv-info, #0ea5e9));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.auth-features li span {
+  color: var(--nv-text-2);
 }
 
 .auth-page__aside::after {
@@ -535,5 +560,645 @@
   .auth-tools {
     inset-block-start: auto;
     inset-block-end: var(--nv-space-4);
+  }
+}
+
+/* ==========================================================================
+   Marketing panel — decoration layer, product preview, proof row
+   --------------------------------------------------------------------------
+   Everything here sits behind `.auth-page__aside`'s content; the content is
+   lifted with one rule so no element needs its own z-index bookkeeping.
+   ========================================================================== */
+
+.auth-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.auth-page__aside > :not(.auth-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-bg__glow {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.7;
+  will-change: transform;
+  animation: auth-drift 22s var(--nv-ease) infinite alternate;
+
+  &--a {
+    inset-block-start: -6rem;
+    inset-inline-end: -4rem;
+    width: 22rem;
+    height: 22rem;
+    background: radial-gradient(circle at 30% 30%, rgba(var(--nv-primary-rgb), 0.5), transparent 68%);
+  }
+
+  &--b {
+    inset-block-end: 18%;
+    inset-inline-start: -7rem;
+    width: 20rem;
+    height: 20rem;
+    background: radial-gradient(circle at 60% 40%, rgba(var(--nv-info-rgb, 14, 165, 233), 0.34), transparent 66%);
+    animation-duration: 28s;
+    animation-delay: -6s;
+  }
+
+  &--c {
+    inset-block-start: 42%;
+    inset-inline-end: 12%;
+    width: 14rem;
+    height: 14rem;
+    background: radial-gradient(circle at center, rgba(var(--nv-success-rgb, 16, 185, 129), 0.26), transparent 66%);
+    animation-duration: 34s;
+    animation-delay: -12s;
+  }
+}
+
+/* Hairline grid that fades out towards the middle of the panel. */
+.auth-bg__grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--nv-divider) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--nv-divider) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse at 30% 20%, #000 0%, transparent 72%);
+}
+
+.auth-bg__ring {
+  position: absolute;
+  inset-block-start: 14%;
+  inset-inline-start: -6rem;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--nv-primary-rgb), 0.22);
+  box-shadow: 0 0 0 26px rgba(var(--nv-primary-rgb), 0.06);
+}
+
+@keyframes auth-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(2.4rem, -1.8rem, 0) scale(1.12);
+  }
+}
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.32rem 0.72rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: 600;
+}
+
+.auth-badge__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--nv-success);
+  box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0.55);
+  animation: auth-pulse 2.4s var(--nv-ease) infinite;
+}
+
+@keyframes auth-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 0.55rem rgba(var(--nv-success-rgb, 16, 185, 129), 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0);
+  }
+}
+
+/* ------------------------------------------------------------ device preview */
+
+.auth-device {
+  margin: 0;
+  display: grid;
+  gap: var(--nv-space-3);
+}
+
+.auth-device__frame {
+  position: relative;
+  display: block;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-lg);
+  overflow: hidden;
+  transform: perspective(1400px) rotateY(-6deg) rotateX(2deg);
+  transition: transform var(--nv-dur-slow) var(--nv-ease-out), box-shadow var(--nv-dur) var(--nv-ease);
+}
+
+.auth-page__aside:hover .auth-device__frame {
+  transform: perspective(1400px) rotateY(0deg) rotateX(0deg) translateY(-2px);
+  box-shadow: var(--nv-shadow-lg), 0 0 0 1px rgba(var(--nv-primary-rgb), 0.16);
+}
+
+.auth-device__bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  inline-size: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--nv-surface-2);
+  border-block-end: 1px solid var(--nv-border);
+
+  i {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--nv-border-strong);
+
+    &:first-child {
+      background: var(--nv-danger);
+    }
+
+    &:nth-child(2) {
+      background: var(--nv-warning);
+    }
+
+    &:nth-child(3) {
+      background: var(--nv-success);
+    }
+  }
+
+  b {
+    margin-inline-start: auto;
+    font-size: var(--nv-text-micro);
+    font-weight: 700;
+    color: var(--nv-text-muted);
+    letter-spacing: 0.02em;
+  }
+}
+
+.auth-device__shot {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 8 / 5;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.auth-device__caption {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+/* If the generated preview art is missing the panel must not show a hole. */
+.auth-device.is-missing .auth-device__frame {
+  min-block-size: 9rem;
+  background: linear-gradient(150deg, var(--nv-primary-soft), transparent 60%), var(--nv-surface-2);
+}
+
+.auth-device.is-missing .auth-device__shot,
+.auth-device.is-missing .auth-device__bar {
+  display: none;
+}
+
+/* ----------------------------------------------------------------- proof row */
+
+.auth-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-3);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: color-mix(in srgb, var(--nv-surface) 78%, transparent);
+}
+
+.auth-stats__item {
+  display: grid;
+  gap: 0.1rem;
+
+  strong {
+    font-size: var(--nv-text-h4);
+    font-weight: 800;
+    color: var(--nv-heading);
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    font-size: var(--nv-text-caption);
+    color: var(--nv-text-muted);
+  }
+}
+
+/* -------------------------------------------------------------- the card itself */
+
+.auth-page__stack > .auth-card,
+.auth-page__stack > [data-auth] > .auth-card {
+  position: relative;
+  border: 1px solid var(--nv-border);
+  box-shadow: var(--nv-shadow-lg);
+
+  /* A thin light strip on the top edge reads as a premium card in both themes. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    block-size: 3px;
+    border-radius: var(--nv-radius-lg) var(--nv-radius-lg) 0 0;
+    background: linear-gradient(90deg, transparent, var(--nv-primary), transparent);
+    opacity: 0.85;
+  }
+}
+
+.auth-card .form-control:focus {
+  box-shadow: var(--nv-shadow-focus);
+}
+
+.auth-submit .bi-arrow-left {
+  transition: transform var(--nv-dur) var(--nv-ease);
+}
+
+.auth-submit:hover:not(:disabled) .bi-arrow-left,
+.auth-card:hover .auth-submit:not(:disabled) .bi-arrow-left {
+  transform: translateX(-3px);
+}
+
+/* The reveal button lives inside the input group: give it a real hit area. */
+.input-group--icon-end > .input-group__icon[data-password-toggle] {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--nv-radius-sm);
+  pointer-events: auto;
+
+  &:hover,
+  &:focus-visible,
+  &.is-active {
+    background: var(--nv-primary-soft);
+    color: var(--nv-primary);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .auth-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .auth-page__aside {
+    display: none;
+  }
+  .auth-card__brand {
+    display: flex;
+    justify-content: center;
+  }
+  .auth-tools {
+    inset-block-start: auto;
+    inset-block-end: var(--nv-space-4);
+  }
+}
+
+/* ==========================================================================
+   Marketing panel — decoration layer, product preview, proof row
+   --------------------------------------------------------------------------
+   Everything here sits behind `.auth-page__aside`'s content; the content is
+   lifted with one rule so no element needs its own z-index bookkeeping.
+   ========================================================================== */
+
+.auth-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.auth-page__aside > :not(.auth-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-bg__glow {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.7;
+  will-change: transform;
+  animation: auth-drift 22s var(--nv-ease) infinite alternate;
+
+  &--a {
+    inset-block-start: -6rem;
+    inset-inline-end: -4rem;
+    width: 22rem;
+    height: 22rem;
+    background: radial-gradient(circle at 30% 30%, rgba(var(--nv-primary-rgb), 0.5), transparent 68%);
+  }
+
+  &--b {
+    inset-block-end: 18%;
+    inset-inline-start: -7rem;
+    width: 20rem;
+    height: 20rem;
+    background: radial-gradient(circle at 60% 40%, rgba(var(--nv-info-rgb, 14, 165, 233), 0.34), transparent 66%);
+    animation-duration: 28s;
+    animation-delay: -6s;
+  }
+
+  &--c {
+    inset-block-start: 42%;
+    inset-inline-end: 12%;
+    width: 14rem;
+    height: 14rem;
+    background: radial-gradient(circle at center, rgba(var(--nv-success-rgb, 16, 185, 129), 0.26), transparent 66%);
+    animation-duration: 34s;
+    animation-delay: -12s;
+  }
+}
+
+/* Hairline grid that fades out towards the middle of the panel. */
+.auth-bg__grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--nv-divider) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--nv-divider) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse at 30% 20%, #000 0%, transparent 72%);
+}
+
+.auth-bg__ring {
+  position: absolute;
+  inset-block-start: 14%;
+  inset-inline-start: -6rem;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--nv-primary-rgb), 0.22);
+  box-shadow: 0 0 0 26px rgba(var(--nv-primary-rgb), 0.06);
+}
+
+@keyframes auth-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(2.4rem, -1.8rem, 0) scale(1.12);
+  }
+}
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.32rem 0.72rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: 600;
+}
+
+.auth-badge__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--nv-success);
+  box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0.55);
+  animation: auth-pulse 2.4s var(--nv-ease) infinite;
+}
+
+@keyframes auth-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 0.55rem rgba(var(--nv-success-rgb, 16, 185, 129), 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-success-rgb, 16, 185, 129), 0);
+  }
+}
+
+/* ------------------------------------------------------------ device preview */
+
+.auth-device {
+  margin: 0;
+  display: grid;
+  gap: var(--nv-space-3);
+}
+
+.auth-device__frame {
+  position: relative;
+  display: block;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-lg);
+  overflow: hidden;
+  transform: perspective(1400px) rotateY(-6deg) rotateX(2deg);
+  transition: transform var(--nv-dur-slow) var(--nv-ease-out), box-shadow var(--nv-dur) var(--nv-ease);
+}
+
+.auth-page__aside:hover .auth-device__frame {
+  transform: perspective(1400px) rotateY(0deg) rotateX(0deg) translateY(-2px);
+  box-shadow: var(--nv-shadow-lg), 0 0 0 1px rgba(var(--nv-primary-rgb), 0.16);
+}
+
+.auth-device__bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  inline-size: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--nv-surface-2);
+  border-block-end: 1px solid var(--nv-border);
+
+  i {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--nv-border-strong);
+
+    &:first-child {
+      background: var(--nv-danger);
+    }
+
+    &:nth-child(2) {
+      background: var(--nv-warning);
+    }
+
+    &:nth-child(3) {
+      background: var(--nv-success);
+    }
+  }
+
+  b {
+    margin-inline-start: auto;
+    font-size: var(--nv-text-micro);
+    font-weight: 700;
+    color: var(--nv-text-muted);
+    letter-spacing: 0.02em;
+  }
+}
+
+.auth-device__shot {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 8 / 5;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.auth-device__caption {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+
+/* If the generated preview art is missing the panel must not show a hole. */
+.auth-device.is-missing .auth-device__frame {
+  min-block-size: 9rem;
+  background: linear-gradient(150deg, var(--nv-primary-soft), transparent 60%), var(--nv-surface-2);
+}
+
+.auth-device.is-missing .auth-device__shot,
+.auth-device.is-missing .auth-device__bar {
+  display: none;
+}
+
+/* ----------------------------------------------------------------- proof row */
+
+.auth-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: var(--nv-space-2);
+  padding: var(--nv-space-3);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-md);
+  background: color-mix(in srgb, var(--nv-surface) 78%, transparent);
+}
+
+.auth-stats__item {
+  display: grid;
+  gap: 0.1rem;
+
+  strong {
+    font-size: var(--nv-text-h4);
+    font-weight: 800;
+    color: var(--nv-heading);
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    font-size: var(--nv-text-caption);
+    color: var(--nv-text-muted);
+  }
+}
+
+/* -------------------------------------------------------------- the card itself */
+
+.auth-page__stack > .auth-card,
+.auth-page__stack > [data-auth] > .auth-card {
+  position: relative;
+  border: 1px solid var(--nv-border);
+  box-shadow: var(--nv-shadow-lg);
+
+  /* A thin light strip on the top edge reads as a premium card in both themes. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    block-size: 3px;
+    border-radius: var(--nv-radius-lg) var(--nv-radius-lg) 0 0;
+    background: linear-gradient(90deg, transparent, var(--nv-primary), transparent);
+    opacity: 0.85;
+  }
+}
+
+.auth-card .form-control:focus {
+  box-shadow: var(--nv-shadow-focus);
+}
+
+.auth-submit .bi-arrow-left {
+  transition: transform var(--nv-dur) var(--nv-ease);
+}
+
+.auth-submit:hover:not(:disabled) .bi-arrow-left,
+.auth-card:hover .auth-submit:not(:disabled) .bi-arrow-left {
+  transform: translateX(-3px);
+}
+
+/* The reveal button lives inside the input group, so it needs a real hit area
+   and an icon that actually changes with the state. */
+.input-group--icon-end > .input-group__icon[data-password-toggle] {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--nv-radius-sm);
+  pointer-events: auto;
+
+  &::before {
+    content: '\F33F'; /* bi-eye */
+  }
+
+  &:hover,
+  &.is-active {
+    background: var(--nv-primary-soft);
+    color: var(--nv-primary);
+  }
+
+  &:has(+ .form-control.is-revealed)::before,
+  &.is-active::before {
+    content: '\F33E'; /* bi-eye-slash */
+  }
+}
+
+@media (max-width: 991.98px) {
+  .auth-device {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-bg__glow,
+  .auth-badge__dot {
+    animation: none;
+  }
+
+  .auth-device__frame,
+  .auth-card .form-control:focus {
+    transition: none;
+  }
+}
+
+/* The demo box gains a one-click sign-in after it fills the fields. */
+.auth-demo__go {
+  margin-block-start: var(--nv-space-2);
+}
+
+/* The brand row is the anchor of the panel; keep it clear of the glow layer. */
+.auth-brand {
+  align-self: flex-start;
+
+  .brand__name {
+    font-size: var(--nv-text-h5);
   }
 }

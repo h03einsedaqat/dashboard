@@ -370,9 +370,20 @@ class Text {
   constructor(value) {
     this.nodeType = 3;
     this.textContent = String(value);
+    this.parentElement = null;
+  }
+  get nodeValue() {
+    return this.textContent;
+  }
+  set nodeValue(value) {
+    this.textContent = String(value);
     this.value = this.textContent;
   }
+  get data() {
+    return this.textContent;
+  }
 }
+Text.prototype.value = '';
 
 /* -------------------------------------------------------- tiny CSS matcher -- */
 
@@ -527,6 +538,35 @@ function buildDocument(html) {
     },
     createDocumentFragment: () => new Fragment(),
     createTextNode: (text) => new Text(text),
+    /**
+     * Text-walking is how the phrase book translates late-rendered copy, so the
+     * harness needs a walker that really enumerates text nodes (in document
+     * order) and lets them be written back.
+     */
+    createTreeWalker: (root, whatToShow) => {
+      const nodes = [];
+      const collect = (node) => {
+        (node?.children ?? []).forEach((child) => {
+          if (child instanceof Text) nodes.push(child);
+          else if (child instanceof Element || child instanceof Fragment) collect(child);
+        });
+      };
+      if (root instanceof Text) nodes.push(root);
+      else collect(root ?? documentElement);
+      let index = -1;
+      return {
+        get currentNode() {
+          return nodes[index] ?? null;
+        },
+        nextNode() {
+          index += 1;
+          return index < nodes.length ? nodes[index] : null;
+        },
+        parentNode() {
+          return this.currentNode?.parentElement ?? null;
+        },
+      };
+    },
     getElementById: (id) => descendants(documentElement).find((node) => node.getAttribute('id') === id) ?? null,
     querySelector: (selector) => documentElement.querySelector(selector),
     querySelectorAll: (selector) => documentElement.querySelectorAll(selector),
@@ -665,7 +705,18 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
   const win = {
     document,
     localStorage,
-    location: { origin: 'http://localhost', href: 'http://localhost/index.html', search: '', hash: '', pathname: '/index.html', assign() {}, replace() {} },
+    location: {
+      origin: 'http://localhost',
+      href: 'http://localhost/index.html',
+      search: '',
+      hash: '',
+      pathname: '/index.html',
+      /* The app reloads on a language change; a headless boot must observe the
+         state the controllers already applied instead of exiting. */
+      assign(target) { this.href = String(target ?? this.href); },
+      replace(target) { this.href = String(target ?? this.href); },
+      reload() {},
+    },
     navigator: { userAgent: 'node', platform: 'Linux', language: 'fa-IR', languages: ['fa-IR'], clipboard: { writeText: async () => {} }, onLine: true },
     innerWidth: 1440,
     innerHeight: 900,
@@ -754,6 +805,13 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
   globalThis.HTMLInputElement = Element;
   globalThis.HTMLFormElement = Element;
   globalThis.Node = Element;
+  /* `translate.js` reads `NodeFilter.SHOW_TEXT` and `Node.TEXT_NODE` off the
+     globals; without them the phrase walker throws and every page measures
+     empty, which hides the very regressions this harness exists to find. */
+  globalThis.NodeFilter = { SHOW_TEXT: 4, SHOW_ELEMENT: 1, SHOW_ALL: -1 };
+  Element.TEXT_NODE = 3;
+  Element.ELEMENT_NODE = 1;
+  Element.nodeType = 1;
   globalThis.Text = Text;
   // Never assign `undefined` over a Node global: the harness only replaces what
   // it actually implements (`new CustomEvent` is used by toasts and events).
@@ -1116,11 +1174,17 @@ function judgePage(url, m) {
 
 const ALL_PAGES = [...walkPages(PAGE_DIR), ...(fs.existsSync(path.join(ROOT, 'index.html')) ? ['index.html'] : [])].sort();
 const allMode = process.argv.includes('--all');
-const filterTerm = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
+const ARGV = process.argv.slice(2);
+/** `--selector <css>` takes a value, so it must not be mistaken for a page filter. */
+const filterTerm = ARGV.find((arg, index) => !arg.startsWith('--') && ARGV[index - 1] !== '--selector');
+/* Root-level marketing pages live outside `src/pages`, so they are not part of
+   the curated scenario list; `--dump`/`--filter` still has to be able to reach
+   them (`node tools/smoke.mjs --dump --selector '[data-landing-demos]' index.html`). */
+const FILTER_POOL = [...SCENARIOS, ...ALL_PAGES.filter((url) => !SCENARIOS.includes(url))];
 const selected = allMode
   ? ALL_PAGES.filter((url) => !filterTerm || url.includes(filterTerm))
   : filterTerm
-    ? SCENARIOS.filter((url) => url.includes(filterTerm))
+    ? FILTER_POOL.filter((url) => url.includes(filterTerm))
     : SCENARIOS;
 let failures = 0;
 const thin = [];
@@ -1129,13 +1193,41 @@ const totals = { kpi: 0, charts: 0, rows: 0 };
 /** Machine-readable per-page records (`--json`), used by `tools/qa-toggles.mjs`. */
 const records = [];
 
+/**
+ * `--dump [selector]` prints what a page actually rendered. Booting a page in
+ * the shim is the only way to see the output of a controller without a browser,
+ * so this doubles as the debugging aid for "the section renders empty" reports.
+ */
+const DUMP = process.argv.includes('--dump');
+const DUMP_SELECTOR = ARGV[ARGV.indexOf('--selector') + 1] ?? '[data-app]';
+/** Printed after the scenario because `console` is patched while a page boots. */
+const dumpLines = [];
+const dumpOut = (...lines) => dumpLines.push(...lines);
+const dumpInspector = (document) => {
+  const summary = measure(document);
+  dumpOut(`    blocks: kpi:${summary.kpi} charts:${summary.charts} rows:${summary.rows} cards:${summary.cards} items:${summary.items} fields:${summary.fields} text:${summary.textLength}`);
+  const heads = [...document.querySelectorAll('#main-content h1, #main-content h2, #main-content h3')]
+    .map((node) => node.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 14);
+  if (heads.length) dumpOut(`    headings: ${heads.join(' · ')}`);
+  DUMP_SELECTOR.split(',').forEach((selector) => {
+    const nodes = [...document.querySelectorAll(selector.trim())];
+    nodes.forEach((node) => {
+      const html = String(node.innerHTML).replace(/\s+/g, ' ').trim();
+      dumpOut(`    ${selector.trim()} → ${html.length} chars: ${html.slice(0, 420)}${html.length > 420 ? '…' : ''}`);
+    });
+  });
+  return summary;
+};
+
 for (const url of selected) {
   const html = pageHtml(url);
   if (!html) {
     console.log(`• ${url}: SKIPPED (page not generated yet)`);
     continue;
   }
-  const result = await bootScenario(html, url, allMode ? measure : null, allMode ? 1500 : 1200);
+  const result = await bootScenario(html, url, allMode || DUMP ? dumpInspector : null, allMode ? 1500 : 1200);
   const status = result.error ? '✖' : '✔';
   if (result.error) failures += 1;
 
@@ -1172,6 +1264,10 @@ for (const url of selected) {
   }
 
   console.log(`${status} ${url}`);
+  if (DUMP) {
+    dumpLines.forEach((line) => console.log(line));
+    dumpLines.length = 0;
+  }
   if (result.error) console.log(`    error: ${result.error.message}\n${String(result.error.stack).split('\n').slice(1, 4).join('\n')}`);
   (result.shimIssues ?? []).slice(0, 2).forEach((line) => console.log(`    dom: ${line.slice(0, 170)}`));
   result.errors.slice(0, 3).forEach((line) => console.log(`    console.error: ${line.slice(0, 160)}`));

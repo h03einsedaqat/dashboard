@@ -29,7 +29,9 @@ import { initKanban } from './js/core/kanban.js';
 import { exportable } from './js/pages/kit.js';
 import { initCalendar } from './js/core/calendar.js';
 import { storage } from './js/core/storage.js';
-import { fixLinks, observeLinks, resolveUrl } from './js/core/links.js';
+import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './js/core/load.js';
+import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
+import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { initDashboard, initDashboardTables } from './js/pages/dashboards.js';
 import { config } from './config/config.js';
@@ -132,29 +134,21 @@ function initMisc() {
       const ok = await modal.confirm({ title: 'خروج از حساب', text: 'از حساب کاربری خود خارج می‌شوید؟', tone: 'danger', confirmText: 'خروج' });
       if (!ok) return;
       toast.info('خروج انجام شد', 'در حال انتقال به صفحه ورود…');
-      setTimeout(() => window.location.assign('auth/login.html'), 900);
+      setTimeout(() => goTo('auth/login.html'), 700);
     }),
   );
 
-  // Network status → offline banner
-  const offlineMarkup = `<div class="alert alert--warning alert--outline" data-offline-banner hidden>
-      <span class="alert__icon"><i class="bi bi-wifi-off"></i></span>
-      <div class="alert__body"><p class="alert__title">اتصال اینترنت قطع است</p><p>تا برقراری اتصال، ممکن است برخی داده‌ها به‌روزرسانی نشوند.</p></div>
-    </div>`;
-  const host = $('[data-page-head]') ?? $('.app-content .container-fluid') ?? $('.app-content');
-  if (host) {
-    host.insertAdjacentHTML('afterbegin', offlineMarkup);
-    const banner = $('[data-offline-banner]', host);
-    const sync = () => {
-      if (banner) banner.hidden = navigator.onLine;
-    };
-    window.addEventListener('online', () => {
-      sync();
-      toast.success('اتصال برقرار شد', 'همگام‌سازی داده‌ها ادامه یافت.');
-    });
-    window.addEventListener('offline', sync);
-    sync();
-  }
+  /**
+   * Network status → a quiet pill, not an alert banner.
+   *
+   * The banner used to be injected at the top of the content area, so a three
+   * second proxy hiccup pushed the whole page down and looked like a connection
+   * failure of the application itself. `initConnectivity()` waits out short
+   * blips, never moves the layout, and re-syncs charts and tables on its own
+   * when the link comes back.
+   */
+  initConnectivity();
+  initKeepAlive();
 
   // Header search trigger already opens the palette through data-command-open
   $$('[data-sidebar-close]').forEach((button) => on(button, 'click', () => layout.closeDrawer()));
@@ -167,6 +161,37 @@ function initMisc() {
       toast.info('نمایشی', 'این پیوند در نسخه نمایشی مقصدی ندارد.');
     }
   });
+}
+
+/* ------------------------------------------------------- routing resilience */
+
+/** `Failed to fetch dynamically imported module` — the bundler restarted. */
+function isChunkLoadFailure(error) {
+  const message = String(error?.message ?? error ?? '');
+  return /dynamically imported module|Importing a module script failed|error loading dynamically/i.test(message);
+}
+
+/**
+ * Last-resort body state. The page keeps its header, sidebar and every other
+ * panel; only the content slot explains what happened and offers a retry.
+ */
+function renderRouteFailure(error) {
+  const target = $('[data-app]') ?? $('.page-body') ?? $('.app-content');
+  if (!target) {
+    toast.danger('خطا در بارگذاری صفحه', 'کنترل‌کننده این صفحه با خطا مواجه شد.');
+    return;
+  }
+  target.innerHTML = `<div class="state-panel state-panel--error" role="alert">
+      <span class="state-panel__icon"><i class="bi bi-plugin" aria-hidden="true"></i></span>
+      <p class="state-panel__title">این بخش بارگذاری نشد</p>
+      <p class="state-panel__text">ماژول این صفحه با خطا مواجه شد. با «تلاش دوباره» دوباره امتحان کنید؛ بقیه صفحات بدون مشکل کار می‌کنند.</p>
+      <div class="state-panel__actions">
+        <button class="btn btn-primary btn-sm" type="button" data-route-retry><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تلاش دوباره</button>
+        <a class="btn btn-light btn-sm" href="./"><i class="bi bi-house-door" aria-hidden="true"></i> خانه</a>
+      </div>
+    </div>`;
+  on($('[data-route-retry]', target), 'click', () => window.location.reload());
+  toast.warning('بارگذاری کامل نشد', 'بخش میانی صفحه با خطا مواجه شد.');
 }
 
 /* ------------------------------------------------------------- page router */
@@ -287,18 +312,49 @@ async function boot() {
   initMisc();
   exposeApi();
 
-  // Page controllers run first: when they render an authored body they mark the
-  // placeholder as claimed, and the generic renderer only fills what is left.
+  /**
+   * Page controllers run first: when they render an authored body they mark the
+   * placeholder as claimed, and the generic renderer only fills what is left.
+   *
+   * The whole routing phase is wrapped in the top progress bar plus a guarded
+   * boundary: a controller that throws (or a lazy chunk that fails to load
+   * after a dev-server restart) leaves the chrome intact, shows a readable
+   * inline state and offers a retry instead of a blank screen.
+   */
+  const stopProgress = beginProgress();
   try {
     await route();
   } catch (error) {
+    if (isChunkLoadFailure(error)) {
+      /**
+       * A stale dynamic import after the bundler restarted is not an
+       * application error: reload once and it resolves itself.
+       */
+      if (!sessionStorage.getItem('nova:chunk-reloaded')) {
+        sessionStorage.setItem('nova:chunk-reloaded', '1');
+        window.location.reload();
+        return;
+      }
+    }
     reportError(error);
-    toast.danger('خطا در بارگذاری صفحه', 'کنترل‌کننده این صفحه با خطا مواجه شد.');
+    renderRouteFailure(error);
+  } finally {
+    endProgress();
+    stopProgress();
   }
 
-  await renderGenericApps();
-  initDataTables();
-  exportable(document);
+  const stopPaint = beginProgress();
+  try {
+    await renderGenericApps();
+    initDataTables();
+    exportable(document);
+    reconcilePageHeads();
+  } catch (error) {
+    reportError(error);
+  } finally {
+    endProgress();
+    stopPaint();
+  }
 
   // Pages live one folder deep, so links written as `users/list.html` must be
   // normalised for the current depth. The observer keeps later injections
@@ -315,11 +371,19 @@ async function boot() {
   settlePendingCharts(document);
   /** Late content (tables, footers, badges) gets the active language too. */
   applyPhrases(document.body);
+  /** Header dedup: the controller's own header card is folded into the page
+      head so a screen opens with one toolbar instead of two. */
+  observePageHeads(document.body);
   $$('[data-kanban]').forEach((node) => initKanban(node));
   $$('[data-calendar]').forEach((node) => initCalendar(node));
 
   // Late panels (opened from the header) also need the small UI behaviours.
-  bus.on(EVENTS.dataChanged, () => initUi());
+  /*
+   * `initUi()` binds at document level and is idempotent per root, so a second
+   * call here would only ever double-register the same delegated listeners.
+   * Widgets that genuinely need per-node setup are initialised by the controller
+   * that paints them.
+   */
 
   /**
    * Language change → re-render the page.
@@ -338,7 +402,12 @@ async function boot() {
     if (window.__novaLanguageReload) return;
     window.__novaLanguageReload = true;
     document.documentElement.classList.add('is-switching-language');
-    window.setTimeout(() => window.location.reload(), 80);
+    window.setTimeout(() => {
+      /* Some embedded webviews expose a `location` without `reload`; a plain
+         navigation to the same URL is an equivalent, safe fallback. */
+      if (typeof window.location.reload === 'function') window.location.reload();
+      else window.location.assign(window.location.href);
+    }, 80);
   });
   document.documentElement.classList.add('app-ready');
   bus.emit('app:ready', { page: document.body.dataset.page });

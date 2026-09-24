@@ -384,25 +384,51 @@ const AUTH_MINIMAL = new Set(['auth-login-minimal']);
  * into `[data-auth]`.
  */
 function authAside(page) {
+  const shot = (mode) => `${href('assets/img/previews/')}analytics-${mode}.svg`;
   return `<aside class="auth-page__aside">
-      <a class="brand" href="${href('index.html')}" aria-label="{{APP_NAME}}">
+      <div class="auth-bg" aria-hidden="true">
+        <span class="auth-bg__glow auth-bg__glow--a"></span>
+        <span class="auth-bg__glow auth-bg__glow--b"></span>
+        <span class="auth-bg__glow auth-bg__glow--c"></span>
+        <span class="auth-bg__grid"></span>
+        <span class="auth-bg__ring"></span>
+      </div>
+
+      <a class="brand auth-brand" href="${href('index.html')}" aria-label="{{APP_NAME}}">
         <img class="brand__mark" src="${href('assets/logo-mark.svg')}" alt="" width="34" height="34">
         <span class="brand__text"><span class="brand__name">{{APP_NAME}}</span><span class="brand__tag">{{TAGLINE}}</span></span>
       </a>
 
       <div class="auth-headline">
-        <h2>{{APP_NAME}} — قالب مدیریت فارسی‌محور</h2>
-        <p class="auth-lead">۱۰ داشبورد تخصصی، کارگاه هوش مصنوعی، تقویم شمسی و پشتیبانی کامل RTL؛ آماده برای پروژه بعدی شما.</p>
+        <span class="auth-badge"><span class="auth-badge__dot"></span> نسخه {{VERSION}} · با تقویم شمسی و RTL کامل</span>
+        <h2>پنل مدیریتى که <em>واقعاً</em> تحویل داده می‌شود</h2>
+        <p class="auth-lead">۱۰ داشبورد تخصصی، کارگاه هوش مصنوعی، لایه داده‌ای مستقل و سه زبان — همه در یک بستر HTML که بدون بک‌اند هم بالا می‌آید.</p>
         <ul class="auth-features">
-          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> ۲۰۶ صفحه مستقل HTML با ساختار واقعی</li>
-          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> سه زبان کامل: فارسی، انگلیسی، عربی</li>
-          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> تم روشن، تاریک و شش پالت رنگی</li>
-          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> مستندات ۲۳ موضوعی درون قالب</li>
+          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> <span>۲۰۶ صفحه مستقل با ساختار واقعی و بدون وابستگی</span></li>
+          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> <span>لایه داده قابل تعویض؛ یک قرارداد برای همه سرویس‌ها</span></li>
+          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> <span>تم روشن/تاریک، شش پالت رنگ و شش چیدمان زنده</span></li>
+          <li><i class="bi bi-check2-circle" aria-hidden="true"></i> <span>مستندات ۲۳ موضوعی و الگوهای قابل کپی</span></li>
         </ul>
       </div>
 
+      <figure class="auth-device">
+        <div class="auth-device__frame">
+          <span class="auth-device__bar"><i></i><i></i><i></i><b>{{APP_NAME}}</b></span>
+          <img class="auth-device__shot" data-auth-shot="light" src="${shot('light')}" alt="پیش‌نمایش داشبورد تحلیل در تم روشن" width="1200" height="750" loading="lazy" decoding="async">
+          <img class="auth-device__shot" data-auth-shot="dark" src="${shot('dark')}" alt="پیش‌نمایش داشبورد تحلیل در تم تاریک" width="1200" height="750" loading="lazy" decoding="async" hidden>
+        </div>
+        <figcaption class="auth-device__caption">همین داشبورد، دو تم — با کلید بالای همین پنل جابه‌جا شوید</figcaption>
+      </figure>
+
+      <div class="auth-stats">
+        <span class="auth-stats__item"><strong class="numeric">۲۰۶</strong><small>صفحه آماده</small></span>
+        <span class="auth-stats__item"><strong class="numeric">۱۰</strong><small>داشبورد تخصصی</small></span>
+        <span class="auth-stats__item"><strong class="numeric">۳</strong><small>زبان کامل</small></span>
+        <span class="auth-stats__item"><strong class="numeric">۶</strong><small>حالت چیدمان</small></span>
+      </div>
+
       <blockquote class="auth-page__quote">
-        <p>«ساخت پنل داخلی که قبلاً دو هفته طول می‌کشید، با NOVAADMIN در دو روز تحویل شد.»</p>
+        <p>«ساخت پنل داخلی که قبلاً دو هفته طول می‌کشید، با {{APP_NAME}} در دو روز تحویل شد.»</p>
         <footer class="auth-page__quote-author"><img class="avatar avatar--sm" src="${href('assets/img/avatars/avatar-11.svg')}" alt="" width="32" height="32"><span>مهدی رضایی — مدیر فنی</span></footer>
       </blockquote>
     </aside>`;
@@ -483,7 +509,7 @@ function main() {
   <!-- @include head.html -->
   <title>${esc(page.label.fa)} | {{APP_NAME}}</title>
 </head>
-<body class="landing-body" data-page="${page.url}" data-section="${page.section ?? 'landing'}" data-kind="${page.kind}">
+<body class="landing landing-body" data-page="${page.url}" data-section="${page.section ?? 'landing'}" data-kind="${page.kind}">
   <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
 ${body}
   <!-- @include overlays.html -->
