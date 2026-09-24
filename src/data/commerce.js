@@ -150,7 +150,7 @@ export const orders = Array.from({ length: 64 }).map((_, i) => {
     sku: p.sku,
     price: p.finalPrice,
     qty: int(1, 4),
-  }));
+  })).map((it) => ({ ...it, quantity: it.qty }));
   const subtotal = itemsList.reduce((sum, it) => sum + it.price * it.qty, 0);
   const discount = pick([0, 0, 0, Math.round(subtotal * 0.05), Math.round(subtotal * 0.1)]);
   const tax = Math.round((subtotal - discount) * 0.09);

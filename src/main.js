@@ -287,7 +287,33 @@ function exposeApi() {
 
 /* ---------------------------------------------------------------- start up */
 
+/** Login-first demo flow: panel pages require a (mock) session. */
+function authGuard() {
+  const body = document.body;
+  const page = body?.dataset.page ?? '';
+  const kind = body?.dataset.kind ?? '';
+  const isPublic =
+    !page || page === 'index.html' || page === 'preview.html' || kind === 'auth' || kind === 'landing' || /^(auth|system|docs)\//.test(page) || body?.dataset.section === 'landing';
+  if (isPublic || config.authGuard === false) {
+    document.documentElement.classList.remove('is-guarded');
+    return true;
+  }
+  let session = null;
+  try {
+    session = window.localStorage.getItem('nova:session') || window.sessionStorage.getItem('nova:session');
+  } catch {
+    session = '1';
+  }
+  if (session) {
+    document.documentElement.classList.remove('is-guarded');
+    return true;
+  }
+  goTo(`auth/login.html?next=${encodeURIComponent(page)}`, { replace: true });
+  return false;
+}
+
 async function boot() {
+  if (!authGuard()) return;
   /**
    * The phrase book is registered *before* i18n boots so a stored language is
    * reflected on the very first paint (see `core/translate.js`).
@@ -330,8 +356,12 @@ async function boot() {
        * A stale dynamic import after the bundler restarted is not an
        * application error: reload once and it resolves itself.
        */
-      if (!sessionStorage.getItem('nova:chunk-reloaded')) {
-        sessionStorage.setItem('nova:chunk-reloaded', '1');
+      /* The flag used to live for the whole session, so after the first
+         dev-server hiccup every later one ended on the error panel until the
+         browser was restarted. It is now a short time window instead. */
+      const last = Number(sessionStorage.getItem('nova:chunk-reloaded') ?? 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem('nova:chunk-reloaded', String(Date.now()));
         window.location.reload();
         return;
       }

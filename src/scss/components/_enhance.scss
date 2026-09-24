@@ -1,0 +1,124 @@
+/* ==========================================================================
+   NOVAADMIN — enhancement layer
+   --------------------------------------------------------------------------
+   Styles added during the QA pass: record sheets, table chips, and shared
+   polish used by several reworked pages. Kept in one file so the original
+   component sheets stay untouched and easy to diff.
+   ========================================================================== */
+
+/* ---------------------------------------------------------- record sheet */
+.record-form .form-grid,
+.record-sheet__grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+.record-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+}
+.record-sheet__hero {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-4);
+  border-radius: var(--nv-radius-xl);
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--nv-primary) 22%, transparent), transparent 60%),
+    linear-gradient(135deg, var(--nv-primary-soft), var(--nv-surface-2));
+  border: 1px solid color-mix(in srgb, var(--nv-primary) 18%, var(--nv-border));
+}
+.record-sheet__avatar {
+  inline-size: 4rem;
+  block-size: 4rem;
+  border-radius: var(--nv-radius-lg);
+  object-fit: cover;
+  flex: none;
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-md);
+}
+.record-sheet__avatar--icon {
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  color: var(--nv-primary);
+}
+.record-sheet__id { min-inline-size: 0; }
+.record-sheet__title {
+  margin: 0;
+  font-size: var(--nv-text-h4);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  overflow-wrap: anywhere;
+}
+.record-sheet__sub {
+  margin: .25rem 0 0;
+  color: var(--nv-text-muted);
+  font-size: var(--nv-text-body-sm);
+}
+.record-sheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .6rem;
+}
+.record-sheet__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--nv-space-3);
+}
+.record-sheet__stat {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  padding: var(--nv-space-3);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface-2);
+  border: 1px solid var(--nv-border);
+  span { color: var(--nv-text-muted); font-size: var(--nv-text-caption); }
+  strong { font-size: 1.05rem; color: var(--nv-heading); }
+}
+.record-sheet__grid {
+  display: grid;
+  gap: 0 var(--nv-space-5);
+  margin: 0;
+}
+.record-sheet__row {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .7rem 0;
+  border-bottom: 1px dashed var(--nv-divider);
+  min-inline-size: 0;
+  dt { font-size: var(--nv-text-caption); color: var(--nv-text-muted); font-weight: var(--nv-fw-medium); }
+  dd { margin: 0; color: var(--nv-text); overflow-wrap: anywhere; }
+}
+
+/* ---------------------------------------------------------- table chips */
+.color-dot {
+  display: inline-block;
+  inline-size: .85rem;
+  block-size: .85rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 8%, transparent), inset 0 0 0 1px rgba(0, 0, 0, .08);
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .7rem;
+  border-radius: var(--nv-radius-pill);
+  font-weight: var(--nv-fw-semibold);
+  font-size: var(--nv-text-body-sm);
+  color: var(--chip, var(--nv-primary));
+  background: color-mix(in srgb, var(--chip, var(--nv-primary)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip, var(--nv-primary)) 25%, transparent);
+}
+.table__clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-inline-size: 22rem;
+  white-space: normal;
+  color: var(--nv-text-2);
+}

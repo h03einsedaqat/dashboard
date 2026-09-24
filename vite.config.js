@@ -44,7 +44,8 @@ export default defineConfig({
     preprocessorOptions: {
       scss: {
         api: 'modern-compiler',
-        silenceDeprecations: ['mixed-decls', 'color-functions', 'global-builtin', 'import'],
+        silenceDeprecations: ['color-functions', 'global-builtin', 'import', 'if-function'],
+        quietDeps: true,
       },
     },
   },
@@ -56,13 +57,26 @@ export default defineConfig({
    * explains the state to the user) and the keep-alive tick is answered by the
    * dev server itself, so the proxy keeps seeing traffic.
    */
+  /**
+   * Pre-bundle every runtime dependency up front. Without this, Vite found
+   * `apexcharts`, `sortablejs` and `sweetalert2` lazily — the first time a page
+   * with a chart/kanban/dialog was opened — re-optimised, and invalidated the
+   * chunks the open tab was using. The result was the «page suddenly errors
+   * and nothing works until I restart» experience while clicking around.
+   */
+  optimizeDeps: {
+    entries: ['index.html', 'src/pages/**/*.html'],
+    include: ['apexcharts', 'sortablejs', 'sweetalert2', 'dayjs', 'jalaali-js'],
+    holdUntilCrawlEnd: true,
+  },
+
   server: {
     host: '0.0.0.0',
     port: 5173,
     strictPort: false,
     allowedHosts: true,
     fs: { strict: false },
-    warmup: { clientFiles: ['./src/main.js'] },
+    warmup: { clientFiles: ['./src/main.js', './src/js/pages/*.js', './src/js/core/*.js'] },
     hmr: { overlay: false },
   },
 

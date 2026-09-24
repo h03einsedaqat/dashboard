@@ -115,7 +115,7 @@ export async function initLanding() {
 
 /** Preview picture for a dashboard, in the theme the visitor is looking at. */
 function previewSrc(id, mode = landingMode()) {
-  return `assets/img/previews/${id}-${mode}.svg`;
+  return `assets/img/shots/${id}-${mode}.jpg`;
 }
 
 function landingMode() {
@@ -325,7 +325,7 @@ function initHeroShowcase(node) {
         const first = (kpis ?? [])[0];
         const chip = $('[data-showcase-delta]', shell);
         if (chip && first) {
-          chip.textContent = `${first.delta >= 0 ? '+' : '−'}${toDigits(Math.abs(first.delta))}٪ ${escapeHtml(first.label)}`;
+          chip.textContent = `${first.delta >= 0 ? '+' : '−'}${toDigits(Math.abs(first.delta))}٪`;
         }
       })
       ?.catch(() => {});
@@ -347,8 +347,7 @@ function initHeroShowcase(node) {
     mediaHost.classList.add('is-swapping');
     const id = `showcase-${item.id}-${Date.now()}`;
     const picture = `<picture>
-        <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(item.id))}" />
-        <img id="${id}" data-preview-id="${escapeHtml(item.id)}" src="${escapeHtml(previewSrc(item.id))}" width="1600" height="1000" alt="پیش‌نمایش ${escapeHtml(item.title)} در ${config.appName}" decoding="async" />
+        <img id="${id}" data-preview-id="${escapeHtml(item.id)}" src="${escapeHtml(previewSrc(item.id))}" width="1440" height="900" alt="پیش‌نمایش ${escapeHtml(item.title)} در ${config.appName}" decoding="async" />
       </picture>`;
     const fallback = () => {
       render(
@@ -446,16 +445,17 @@ async function landingDemos() {
     ?.catch(() => []);
   const extras = new Map((pagesByDemo ?? []).map((row) => [row.id, row]));
   return demos
-    .map((demo) => {
+    .map((demo, position) => {
       const meta = SHOWCASE.find((entry) => entry.id === demo.id) ?? {};
       const extra = extras.get(demo.id) ?? {};
       const label = demo.label?.fa ?? demo.id;
-      return `<div class="col-sm-6 col-xl-4">
+      /* 10 demos: two rows of three, then one row of four — no orphan card. */
+      const cols = demos.length === 10 && position >= 6 ? 'col-sm-6 col-xl-3' : 'col-sm-6 col-xl-4';
+      return `<div class="${cols}">
         <article class="landing-demo-card" data-reveal>
           <a class="landing-demo-card__media" href="${escapeHtml(demo.url ?? `dashboards/${demo.id}.html`)}" aria-label="باز کردن داشبورد ${escapeHtml(label)}">
             <picture>
-              <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(demo.id))}" />
-              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1600" height="1000" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(label)} — ${escapeHtml(meta.text ?? '')}" />
+              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1440" height="900" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(label)} — ${escapeHtml(meta.text ?? '')}" />
             </picture>
             <span class="landing-demo-card__open"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> باز کردن دمو</span>
           </a>
@@ -607,20 +607,20 @@ function planView(plan) {
 async function landingPricing() {
   const plans = (await services.contentService.pricing()) ?? [];
   return plans
-    .map((raw) => {
+    .map((raw, index) => {
       const plan = planView(raw);
       /* `price: 0` means free, `price: null` means "ask us" — the two must not read
          the same way. */
-      const price =
-        plan.price > 0
-          ? `${formatNumber(plan.price)} <span class="landing-plan__unit">تومان</span>`
-          : plan.raw?.price == null
-            ? escapeHtml(plan.period || 'تماس بگیرید')
-            : 'رایگان';
+      const custom = !(plan.price > 0) && plan.raw?.price == null;
+      const amount = plan.price > 0 ? formatNumber(plan.price) : custom ? 'تماس بگیرید' : 'رایگان';
+      const unit = plan.price > 0 ? 'تومان' : '';
+      const period = plan.price > 0 ? plan.period || 'پرداخت یک‌باره' : custom ? 'قیمت‌گذاری اختصاصی' : 'برای همیشه';
+      const icons = ['rocket-takeoff', 'person-workspace', 'briefcase', 'buildings'];
       return `<article class="landing-plan${plan.featured ? ' landing-plan--featured' : ''}">
-        ${plan.badge ? `<span class="landing-plan__flag">${escapeHtml(plan.badge)}</span>` : ''}
-        <header><h3 class="landing-plan__name">${escapeHtml(plan.name)}</h3><p class="landing-plan__tagline">${escapeHtml(plan.description)}</p></header>
-        <p class="landing-plan__price">${price}${plan.price !== 0 && plan.period ? `<small>${escapeHtml(plan.period)}</small>` : ''}</p>
+        ${plan.badge ? `<span class="landing-plan__flag"><i class="bi bi-star-fill" aria-hidden="true"></i> ${escapeHtml(plan.badge)}</span>` : ''}
+        <header class="landing-plan__head"><span class="landing-plan__icon"><i class="bi bi-${icons[index % icons.length]}" aria-hidden="true"></i></span><div><h3 class="landing-plan__name">${escapeHtml(plan.name)}</h3><p class="landing-plan__tagline">${escapeHtml(plan.description)}</p></div></header>
+        <div class="landing-plan__price${custom ? ' landing-plan__price--text' : ''}"><span class="landing-plan__amount">${amount}</span>${unit ? `<span class="landing-plan__unit">${unit}</span>` : ''}</div>
+        <p class="landing-plan__period"><i class="bi bi-clock-history" aria-hidden="true"></i> ${escapeHtml(period)}</p>
         <ul class="landing-plan__list">${plan.features
           .map(
             (feature) => `<li${feature.included ? '' : ' class="is-excluded"'}><i class="bi ${feature.included ? 'bi-check2' : 'bi-x-lg'}" aria-hidden="true"></i> ${escapeHtml(feature.text)}${
@@ -1325,8 +1325,7 @@ export async function initPreview() {
         (demo) => `<div class="col-sm-6 col-xl-4"><article class="landing-demo-card">
           <a class="landing-demo-card__media" href="dashboards/${demo.id}.html" aria-label="باز کردن داشبورد ${escapeHtml(demo.label.fa)}">
             <picture>
-              <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(demo.id))}" />
-              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1600" height="1000" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(demo.label.fa)}" />
+              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1440" height="900" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(demo.label.fa)}" />
             </picture>
             <span class="landing-demo-card__open"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> باز کردن</span>
           </a>
@@ -1483,6 +1482,18 @@ export async function initAuth() {
   // Pages carry `data-resource="auth-…"`; keying off that instead of the file
   // path keeps every variation (split, minimal, 2FA, lock…) working.
   const page = document.querySelector('[data-resource^="auth-"]')?.dataset.resource ?? kit.pageId();
+  if (page === 'auth-login') {
+    const { initLoginPro } = await import('./login.js');
+    if (initLoginPro()) return;
+  }
+  if (page === 'auth-logout' || page === 'auth-lock') {
+    try {
+      window.localStorage.removeItem('nova:session');
+      window.sessionStorage.removeItem('nova:session');
+    } catch {
+      /* ignore */
+    }
+  }
 
   /** Per-page copy and layout. `variation` drives the visual differences. */
   const specs = {

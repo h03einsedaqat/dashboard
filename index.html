@@ -146,7 +146,7 @@
       <span class="landing-hero__grid" aria-hidden="true"></span>
       <div class="container-xxl">
         <div class="row align-items-center g-5">
-          <div class="col-lg-6" data-reveal>
+          <div class="col-lg-5" data-reveal>
             <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> نسخه <span data-app-version>۱٫۰٫۰</span> — آماده انتشار</span>
             <h1 class="landing-hero__title">
               یک <span class="text-gradient">پنل مدیریت</span> که مثل محصول واقعی ساخته شده، نه مثل دمو
@@ -182,15 +182,19 @@
             </ul>
           </div>
 
-          <div class="col-lg-6" data-reveal>
-            <div class="landing-hero__preview">
-              <!-- Live product preview: images generated from the real dashboard data. -->
+          <div class="col-lg-7" data-reveal>
+            <div class="hero-stage">
+              <span class="hero-stage__orb hero-stage__orb--a" aria-hidden="true"></span>
+              <span class="hero-stage__orb hero-stage__orb--b" aria-hidden="true"></span>
+              <figure class="hero-stage__back" aria-hidden="true">
+                <img src="./assets/img/shots/ai-studio-dark.jpg" alt="" width="1440" height="900" loading="eager" decoding="async" />
+              </figure>
+              <!-- Live product preview: real screenshots of every dashboard, in the visitor's theme. -->
               <div class="landing-device" id="showcase" data-showcase>
                 <div class="landing-device__bar">
                   <span class="landing-device__dots" aria-hidden="true"><i></i><i></i><i></i></span>
                   <span class="landing-device__url"><i class="bi bi-lock-fill" aria-hidden="true"></i> novaadmin.app/dashboards/<b data-showcase-slug>analytics</b>.html</span>
                   <span class="landing-device__chips">
-                    <span class="landing-device__chip"><i class="bi bi-arrow-up-right" aria-hidden="true"></i> <b data-showcase-delta>+۲۴٪</b></span>
                     <span class="landing-device__chip" data-live><i class="bi bi-circle-fill" aria-hidden="true"></i> زنده</span>
                   </span>
                 </div>
@@ -198,15 +202,38 @@
                   <div class="landing-device__skeleton" data-showcase-loading aria-hidden="true">
                     <span></span><span></span><span></span><span></span>
                   </div>
-                  <!-- Filled by initLanding → renderShowcase() with the generated SVG previews. -->
                   <div class="landing-device__media" data-showcase-media></div>
                   <span class="landing-device__glare" aria-hidden="true"></span>
                 </div>
                 <div class="landing-device__tabs" role="tablist" aria-label="انتخاب داشبورد برای پیش‌نمایش" data-showcase-tabs></div>
-                <p class="landing-device__caption" data-showcase-caption>داشبورد تحلیلی — ۴ شاخص کلیدی، نمودار درآمد، قیف تبدیل و نقشه بازدیدها</p>
-                <div class="landing-device__metrics" data-showcase-metrics></div>
+                <p class="landing-device__caption visually-hidden" data-showcase-caption>داشبورد تحلیلی</p>
+                <div class="landing-device__metrics d-none" data-showcase-metrics></div>
               </div>
-              <div class="landing-device__shadow" aria-hidden="true"></div>
+
+              <div class="hero-float hero-float--revenue" aria-hidden="true">
+                <span class="hero-float__icon hero-float__icon--success"><i class="bi bi-graph-up-arrow"></i></span>
+                <div><small>درآمد امروز</small><strong>۱٫۳ میلیارد <em>ریال</em></strong></div>
+                <span class="hero-float__delta" data-showcase-delta>+۱۲٪</span>
+                <svg class="hero-float__spark" viewBox="0 0 120 36" preserveAspectRatio="none"><defs><linearGradient id="hs-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#10b981" stop-opacity=".35"/><stop offset="1" stop-color="#10b981" stop-opacity="0"/></linearGradient></defs><path d="M0 30 L12 26 L24 28 L36 20 L48 22 L60 14 L72 17 L84 9 L96 12 L108 5 L120 7 L120 36 L0 36Z" fill="url(#hs-g)"/><path d="M0 30 L12 26 L24 28 L36 20 L48 22 L60 14 L72 17 L84 9 L96 12 L108 5 L120 7" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+
+              <div class="hero-float hero-float--ai" aria-hidden="true">
+                <span class="hero-float__icon hero-float__icon--ai"><i class="bi bi-stars"></i></span>
+                <div><small>دستیار هوشمند</small><strong>گزارش فروش هفته آماده شد</strong><span class="hero-float__typing"><i></i><i></i><i></i></span></div>
+              </div>
+
+              <div class="hero-float hero-float--goal" aria-hidden="true">
+                <span class="hero-float__ring" style="--p:78"><b>۷۸٪</b></span>
+                <div><small>هدف فصلی</small><strong>۷۸ از ۱۰۰</strong></div>
+              </div>
+
+              <div class="hero-float hero-float--team" aria-hidden="true">
+                <span class="hero-float__avatars">
+                  <img src="./assets/img/avatars/avatar-01.svg" alt="" /><img src="./assets/img/avatars/avatar-04.svg" alt="" /><img src="./assets/img/avatars/avatar-07.svg" alt="" /><img src="./assets/img/avatars/avatar-10.svg" alt="" />
+                </span>
+                <div><small>آنلاین در پنل</small><strong>۱۲۸ کاربر</strong></div>
+                <span class="hero-float__pulse"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -362,13 +389,24 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
             </div>
           </div>
           <div class="col-lg-6 order-lg-1" data-reveal>
-            <div class="landing-shot" data-shot="ai">
-              <picture>
-                <source media="(prefers-color-scheme: dark)" srcset="./assets/img/previews/ai-dark.svg" />
-                <img src="./assets/img/previews/ai-light.svg" alt="پیش‌نمایش کارگاه هوش مصنوعی: محاوره، ساخت پرامپت، کتابخانه و تحلیل مصرف" loading="lazy" width="1600" height="1000" />
-              </picture>
-              <span class="landing-shot__frame" aria-hidden="true"></span>
-              <a class="btn btn-primary landing-shot__cta" href="ai/chat.html"><i class="bi bi-chat-heart" aria-hidden="true"></i> باز کردن محاوره</a>
+            <div class="ai-collage">
+              <span class="ai-collage__glow" aria-hidden="true"></span>
+              <figure class="ai-collage__main">
+                <span class="ai-collage__bar" aria-hidden="true"><i></i><i></i><i></i><b>ai/dashboard.html</b></span>
+                <img src="./assets/img/shots/ai-studio-light.jpg" alt="داشبورد کارگاه هوش مصنوعی: مصرف توکن، هزینه و مدل‌ها" width="1440" height="900" loading="lazy" decoding="async" />
+              </figure>
+              <figure class="ai-collage__second">
+                <span class="ai-collage__bar" aria-hidden="true"><i></i><i></i><i></i><b>ai/images.html</b></span>
+                <img src="./assets/img/shots/ai-images-dark.jpg" alt="استودیو تصویر هوش مصنوعی" width="1440" height="900" loading="lazy" decoding="async" />
+              </figure>
+              <img class="ai-collage__art ai-collage__art--1" src="./assets/img/ai/gen-05.jpg" alt="" width="200" height="200" loading="lazy" />
+              <img class="ai-collage__art ai-collage__art--2" src="./assets/img/ai/gen-06.jpg" alt="" width="200" height="200" loading="lazy" />
+              <img class="ai-collage__art ai-collage__art--3" src="./assets/img/ai/gen-02.jpg" alt="" width="200" height="200" loading="lazy" />
+              <div class="ai-collage__chat" aria-hidden="true">
+                <div class="ai-collage__msg ai-collage__msg--user">یک کمپین نوروزی برای فروشگاه بنویس</div>
+                <div class="ai-collage__msg ai-collage__msg--bot"><i class="bi bi-stars"></i> سه ایده با شعار، کانال و بودجه پیشنهادی آماده شد ✨</div>
+              </div>
+              <a class="btn btn-primary ai-collage__cta" href="ai/chat.html"><i class="bi bi-chat-heart" aria-hidden="true"></i> باز کردن محاوره</a>
             </div>
           </div>
         </div>
@@ -495,7 +533,7 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
       <div class="container-xxl">
         <div class="section-head section-head--center" data-reveal>
           <span class="eyebrow"><i class="bi bi-tag" aria-hidden="true"></i> قیمت</span>
-          <h2 class="section-title">سه پلن، بدون اشتراک اجباری</h2>
+          <h2 class="section-title">چهار پلن، بدون اشتراک اجباری</h2>
           <p class="section-subtitle">یک‌بار بخرید، سورس کامل را بگیرید و روی پروژه خودتان استفاده کنید.</p>
         </div>
         <div class="landing-pricing" data-landing-pricing data-reveal>
@@ -587,7 +625,8 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
             <p class="landing-cta__note">با عضویت، ایمیل‌های اطلاع‌رسانی نسخه را دریافت می‌کنید؛ هر زمان می‌توانید لغو کنید.</p>
           </div>
           <div class="landing-cta__art" aria-hidden="true">
-            <span></span><span></span><span></span>
+            <img class="landing-cta__shot landing-cta__shot--back" src="./assets/img/shots/finance-light.jpg" alt="" loading="lazy" width="1440" height="900" />
+            <img class="landing-cta__shot" src="./assets/img/shots/analytics-dark.jpg" alt="" loading="lazy" width="1440" height="900" />
           </div>
         </div>
       </div>

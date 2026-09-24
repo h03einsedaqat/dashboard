@@ -62,11 +62,15 @@
 @import 'components/ai';
 @import 'components/composition';
 @import 'components/demo';
+@import 'components/enhance';
 
 /* 7 -------------------------------------------------------------- pages */
 @import 'pages/landing';
+@import 'pages/landing-pro';
+@import 'layout/login-pro';
 @import 'pages/invoice';
 @import 'pages/dashboard';
+@import 'pages/ai-studio';
 
 /* 8 ---------------------------------------------------------- utilities */
 @import 'utilities/helpers';

@@ -3,7 +3,7 @@
  */
 import { createResourceService } from './resource.js';
 import { call } from './client.js';
-import { tickets, agents, knowledgeBase, ticketStats, satisfactionSeries, TICKET_STATUSES, TICKET_PRIORITIES } from '../data/support.js';
+import { tickets, agents, knowledgeBase, kbArticles, ticketStats, satisfactionSeries, TICKET_STATUSES, TICKET_PRIORITIES } from '../data/support.js';
 
 export const ticketService = createResourceService({
   name: 'tickets',
@@ -71,12 +71,15 @@ export const agentService = {
 };
 
 export const knowledgeBaseService = {
+  async articles() {
+    return call('list', 'kb/articles', { resolver: () => kbArticles });
+  },
   async list() {
     return call('list', 'kb', { resolver: () => knowledgeBase });
   },
   async search(term) {
     return call('list', 'kb/search', {
-      resolver: () => knowledgeBase.filter((k) => `${k.title} ${k.category}`.includes(term ?? '')),
+      resolver: () => kbArticles.filter((k) => `${k.title} ${k.excerpt}`.includes(term ?? '')),
     });
   },
 };

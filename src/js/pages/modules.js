@@ -400,17 +400,18 @@ async function initCrm() {
               tag: stage.label,
             })),
           }))
-        : board.columns.map((column) => ({
+        : (Array.isArray(board) ? board : board.columns ?? []).map((column) => ({
             id: column.id,
             label: column.label ?? column.title,
             tone: column.tone,
-            items: (column.tasks ?? column.items ?? []).map((task) => ({
+            items: (column.cards ?? column.tasks ?? column.items ?? []).slice(0, 10).map((task) => ({
               id: task.id,
               title: task.title,
+              text: task.project,
               meta: task.assignee,
               avatar: task.assigneeAvatar,
               progress: task.progress,
-              tone: task.priorityTone ?? 'primary',
+              tone: { urgent: 'danger', high: 'warning', medium: 'info', low: 'neutral' }[task.priority] ?? 'primary',
               tag: task.priorityLabel ?? 'تسک',
             })),
           }));
@@ -422,7 +423,7 @@ async function initCrm() {
             title: isCrm ? 'قیف فروش' : 'کانبان پروژه',
             subtitle: isCrm ? 'کارت‌ها را بین مراحل جابجا کنید — تغییر مرحله واقعی است و در حافظه مرورگر نگه داشته می‌شود.' : 'جابجایی کارت‌ها وضعیت تسک را تغییر می‌دهد.',
             icon: 'kanban',
-            badges: [statusBadge(`مجموع: ${formatCurrency(columns.reduce((sum, c) => sum + c.items.reduce((s, i) => s + (i.value ?? 0), 0), 0), 'IRR', { compact: true })}`, 'primary')],
+            badges: [isCrm ? statusBadge(`مجموع: ${formatCurrency(columns.reduce((sum, c) => sum + c.items.reduce((s, i) => s + (i.value ?? 0), 0), 0), 'IRR', { compact: true })}`, 'primary') : statusBadge(`${toDigits(columns.reduce((sum, c) => sum + c.items.length, 0))} تسک در ${toDigits(columns.length)} ستون`, 'primary')],
             actions: toolButtons({ create: isCrm ? 'معامله جدید' : 'تسک جدید' }),
           })}
           ${kanbanMarkup({ columns })}
@@ -430,7 +431,8 @@ async function initCrm() {
       );
 
       initKanban($('[data-kanban]', node));
-      bus.once('kanban:move', async ({ id, status, previous }) => {
+      if (window.__novaKanbanOff) window.__novaKanbanOff();
+      window.__novaKanbanOff = bus.on('kanban:move', async ({ id, status, previous }) => {
         try {
           if (isCrm) await services.pipelineService.move(id, status, 0);
           else await services.kanbanService.move(id, status, previous);
@@ -843,6 +845,9 @@ function invoiceMarkup(invoice) {
 async function initProjects() {
   const page = kit.pageId();
   switch (page) {
+    case 'projects/kanban.html':
+      return initCrm();
+
     case 'projects/details.html': {
       const id = queryParam('id');
       const node = host();
@@ -852,67 +857,185 @@ async function initProjects() {
         render(node, kit.errorState('پروژه مورد نظر پیدا نشد'));
         return;
       }
-      const [activity, members, files, workload] = await Promise.all([
+      const [activity, members, files, milestonesAll, taskPage] = await Promise.all([
         services.projectFeedService.activity(project.id),
         services.projectFeedService.members(project.id),
         services.projectFeedService.files(project.id),
-        services.projectFeedService.workload(project.id),
+        services.milestones.list(project.id),
+        services.taskService.list({ perPage: 200 }),
       ]);
+      const allTasks = asRows(taskPage);
+      let tasks = allTasks.filter((t) => t.projectId === project.id);
+      if (tasks.length < 6) tasks = [...tasks, ...allTasks.filter((t) => t.projectId !== project.id).slice(0, 8 - tasks.length)];
+      const statusMeta = [
+        ['backlog', 'بک‌لاگ', '#94a3b8'], ['todo', 'برای انجام', '#0ea5e9'], ['in-progress', 'در حال انجام', '#6366f1'], ['review', 'بازبینی', '#f59e0b'], ['done', 'انجام شده', '#10b981'],
+      ];
+      const start = new Date(project.startDate);
+      const due = new Date(project.dueDate);
+      const totalDays = Math.max(1, Math.round((due - start) / 86400000));
+      const passed = Math.min(totalDays, Math.max(0, Math.round((Date.now() - start) / 86400000)));
+      const left = Math.max(0, Math.round((due - Date.now()) / 86400000));
+      const spentPct = Math.round((project.spent / Math.max(1, project.budget)) * 100);
+      const health = { good: ['success', 'سالم'], 'at-risk': ['warning', 'در معرض ریسک'], critical: ['danger', 'بحرانی'] }[project.health] ?? ['success', 'سالم'];
+      const weeks = 12;
+      const ideal = Array.from({ length: weeks }, (_, i) => Math.round(project.tasksTotal * (1 - i / (weeks - 1))));
+      const doneRatio = project.progress / 100;
+      const actual = Array.from({ length: weeks }, (_, i) => {
+        const t = i / (weeks - 1);
+        if (t > passed / totalDays + 0.001) return null;
+        return Math.round(project.tasksTotal * (1 - doneRatio * Math.pow(t / Math.max(0.05, passed / totalDays), 1.15)));
+      });
+      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+      const planned = months.map((_, i) => Math.round((project.budget / 6 / 1_000_000) * (0.8 + ((i * 37) % 5) / 10)));
+      const real = planned.map((v, i) => Math.round(v * (spentPct / 100) * (0.85 + ((i * 53) % 4) / 10)));
+      const workload = members.map((m, i) => ({ name: m.name, open: 3 + ((i * 7) % 6), done: 4 + ((i * 5) % 9) }));
+      const projectMilestones = milestonesAll.length ? milestonesAll : [];
+      const extraMilestones = [
+        { title: 'شروع پروژه و جلسه آغاز', dueDate: project.startDate, status: 'done' },
+        { title: 'تحویل طراحی و معماری', dueDate: new Date(start.getTime() + totalDays * 0.3 * 86400000).toISOString(), status: project.progress > 30 ? 'done' : 'in-progress' },
+        { title: 'نسخه بتا برای مشتری', dueDate: new Date(start.getTime() + totalDays * 0.65 * 86400000).toISOString(), status: project.progress > 65 ? 'done' : project.progress > 40 ? 'in-progress' : 'planned' },
+        { title: 'انتشار نهایی', dueDate: project.dueDate, status: project.progress === 100 ? 'done' : 'planned' },
+      ];
+      const ms = [...extraMilestones, ...projectMilestones.filter((m) => m.project === project.name)].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+      const msTone = (st) => (st === 'done' ? 'success' : st === 'in-progress' ? 'primary' : st === 'late' ? 'danger' : 'neutral');
+      const msLabel = (st) => ({ done: 'انجام شد', 'in-progress': 'در جریان', planned: 'برنامه‌ریزی‌شده', late: 'با تأخیر' })[st] ?? st;
+
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({
-            title: project.name,
-            subtitle: `${project.client ?? ''} • مدیر پروژه: ${project.owner ?? '—'}`,
-            icon: 'kanban',
-            badges: [statusBadge(project.statusLabel ?? project.status, 'primary'), statusBadge(`پیشرفت ${toDigits(project.progress)}٪`, 'success')],
-            actions: '<a class="btn btn-light" href="projects/kanban.html"><i class="bi bi-kanban"></i> تابلوی کانبان</a><a class="btn btn-primary" href="projects/tasks.html"><i class="bi bi-list-task"></i> مدیریت تسک‌ها</a>',
-          })}
-          ${statsFrom({ budget: project.budget, spent: project.spent, tasks: project.tasksCount ?? 0, members: members.length }, [
-            ['budget', 'بودجه', 'currency', 'primary', 'wallet2'],
-            ['spent', 'هزینه‌شده', 'currency', 'warning', 'cash-coin'],
-            ['tasks', 'تسک‌ها', 'number', 'info', 'list-check'],
-            ['members', 'اعضای تیم', 'number', 'success', 'people'],
-          ])}
-          <div class="widget-grid">
-            ${card({ span: 4, title: 'پیشرفت انجام کار', body: `<div class="chart" data-chart="radialBar" data-chart-height="300" data-chart-series='${JSON.stringify([project.progress ?? 0])}' data-chart-labels='["پیشرفت پروژه"]'></div>` })}
-            ${card({ span: 8, title: 'توزیع بار کاری تیم', body: `<div class="chart" data-chart="bar" data-chart-height="300" data-chart-series='${JSON.stringify([{ name: 'تسک‌های باز', data: workload.map((row) => row.open ?? 0) }])}' data-chart-labels='${JSON.stringify(workload.map((row) => row.name))}'></div>` })}
+        `<div class="ais">
+          <section class="pj-hero">
+            <div class="pj-hero__main">
+              <div class="d-flex flex-wrap gap-2 mb-2">${statusBadge(project.statusLabel ?? ({ active: 'فعال', planning: 'برنامه‌ریزی', 'on-hold': 'متوقف', completed: 'تکمیل‌شده' }[project.status] ?? project.status), 'primary')}${statusBadge(health[1], health[0])}${(project.tags ?? []).map((t) => `<span class="badge badge--soft-neutral">${escapeHtml(t)}</span>`).join('')}</div>
+              <h2 class="pj-hero__title">${escapeHtml(project.name)}</h2>
+              <p class="pj-hero__text">${escapeHtml(project.description ?? '')}</p>
+              <div class="pj-hero__facts">
+                <span><i class="bi bi-building"></i> ${escapeHtml(project.client ?? '—')}</span>
+                <span><i class="bi bi-person-badge"></i> ${escapeHtml(project.owner ?? '—')}</span>
+                <span><i class="bi bi-people"></i> ${escapeHtml(project.team ?? '')}</span>
+                <span><i class="bi bi-calendar-event"></i> ${formatDate(project.startDate, { format: 'medium' })} تا ${formatDate(project.dueDate, { format: 'medium' })}</span>
+              </div>
+              <div class="pj-hero__progress"><div class="d-flex justify-content-between mb-1"><span>پیشرفت کلی</span><strong>${toDigits(project.progress)}٪</strong></div><div class="ais-bar"><span style="width:${project.progress}%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)"></span></div></div>
+            </div>
+            <div class="pj-hero__side">
+              <div class="pj-stack">${members.slice(0, 6).map((m) => `<img src="${escapeHtml(m.avatar)}" alt="${escapeHtml(m.name)}" title="${escapeHtml(m.name)}">`).join('')}${members.length > 6 ? `<span>+${toDigits(members.length - 6)}</span>` : ''}</div>
+              <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <a class="btn btn-light btn-sm" href="projects/kanban.html"><i class="bi bi-kanban"></i> کانبان</a>
+                <a class="btn btn-light btn-sm" href="projects/timeline.html"><i class="bi bi-calendar-range"></i> زمان‌بندی</a>
+                <button class="btn btn-primary btn-sm" type="button" data-add-task><i class="bi bi-plus-lg"></i> تسک جدید</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="ais-kpis">
+            <article class="ais-kpi ais-kpi--primary"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-wallet2"></i></span><span class="ais-kpi__label">بودجه کل</span></div><p class="ais-kpi__value">${formatCurrency(project.budget, 'IRR', { compact: true })}</p><div class="ais-kpi__meta">تأییدشده در قرارداد</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--${spentPct > 100 ? 'danger' : spentPct > 85 ? 'warning' : 'success'}"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-cash-coin"></i></span><span class="ais-kpi__label">هزینه‌شده</span></div><p class="ais-kpi__value">${formatCurrency(project.spent, 'IRR', { compact: true })}</p><div class="ais-kpi__meta">${toDigits(spentPct)}٪ از بودجه</div><div class="ais-bar" style="margin:.5rem 0 .8rem"><span style="width:${Math.min(100, spentPct)}%"></span></div></article>
+            <article class="ais-kpi ais-kpi--info"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-list-check"></i></span><span class="ais-kpi__label">تسک‌های انجام‌شده</span></div><p class="ais-kpi__value">${toDigits(project.tasksDone)} / ${toDigits(project.tasksTotal)}</p><div class="ais-kpi__meta">${toDigits(project.tasksTotal - project.tasksDone)} تسک باقی‌مانده</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--${left < 10 ? 'danger' : 'violet'}"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-hourglass-split"></i></span><span class="ais-kpi__label">زمان باقی‌مانده</span></div><p class="ais-kpi__value">${toDigits(left)} روز</p><div class="ais-kpi__meta">${toDigits(passed)} روز از ${toDigits(totalDays)} روز سپری شده</div><div style="height:10px"></div></article>
           </div>
-          ${tabs([
-            { id: 'team', label: 'تیم', icon: 'people', body: card({ flush: true, body: `<ul class="list-group">${members.map((member) => `<li class="list-item"><img class="avatar avatar--sm" src="${escapeHtml(member.avatar)}" alt=""><span class="list-item__title">${escapeHtml(member.name)}<span class="list-item__sub">${escapeHtml(member.role ?? '')}</span></span><span class="list-item__meta">${toDigits(member.tasks ?? 0)} تسک</span></li>`).join('')}</ul>` }) },
-            { id: 'activity', label: 'فعالیت‌ها', icon: 'activity', body: card({ body: timeline(activity.slice(0, 8).map((item) => ({ title: item.title, text: item.text, time: relativeTime(item.at), tone: item.tone ?? 'primary', icon: item.icon ?? 'dot' }))) }) },
-            { id: 'files', label: 'فایل‌ها', icon: 'folder2-open', body: card({ flush: true, body: `<ul class="list-group">${files.map((file) => `<li class="list-item"><span class="file-card__icon"><i class="bi bi-file-earmark"></i></span><span class="list-item__title">${escapeHtml(file.name)}<span class="list-item__sub">${escapeHtml(file.size ?? '')}</span></span><span class="list-item__meta">${relativeTime(file.at)}</span></li>`).join('')}</ul>` }) },
-            { id: 'milestones', label: 'نقاط عطف', icon: 'flag', body: card({ body: milestoneList(project.id) }) },
-          ])}
+
+          <div class="ais-grid">
+            ${card({ title: 'نمودار برن‌داون', subtitle: 'تسک‌های باقی‌مانده — برنامه در برابر واقعی', icon: 'graph-down-arrow', body: '<div class="chart" data-chart-owner="controller" data-pj="burn" style="min-height:300px"></div>' }).replace('<section class="card', '<section data-col="8" class="card')}
+            ${card({ title: 'وضعیت تسک‌ها', icon: 'pie-chart', body: '<div class="chart" data-chart-owner="controller" data-pj="status" style="min-height:300px"></div>' }).replace('<section class="card', '<section data-col="4" class="card')}
+          </div>
+          <div class="ais-grid">
+            ${card({ title: 'بودجه برنامه‌ریزی‌شده و واقعی', subtitle: 'میلیون ریال در ماه', icon: 'bar-chart', body: '<div class="chart" data-chart-owner="controller" data-pj="budget" style="min-height:280px"></div>' }).replace('<section class="card', '<section data-col="6" class="card')}
+            ${card({ title: 'بار کاری اعضای تیم', subtitle: 'تسک باز و انجام‌شده', icon: 'people', body: '<div class="chart" data-chart-owner="controller" data-pj="work" style="min-height:280px"></div>' }).replace('<section class="card', '<section data-col="6" class="card')}
+          </div>
+
+          <div class="ais-grid">
+            <div data-col="8">${tabs([
+              {
+                id: 'tasks', label: 'تسک‌ها', icon: 'list-task', badge: toDigits(tasks.length),
+                body: card({ flush: true, body: `<div class="ais-table-wrap"><table class="ais-table"><thead><tr><th>تسک</th><th>مسئول</th><th>وضعیت</th><th>اولویت</th><th>موعد</th><th style="min-width:120px">پیشرفت</th></tr></thead><tbody>${tasks
+                  .map((t) => `<tr><td><div class="ais-name"><span class="ais-name__icon ais-tone--${t.status === 'done' ? 'success' : 'primary'}"><i class="bi bi-${t.status === 'done' ? 'check2-circle' : 'circle'}"></i></span><div><strong>${escapeHtml(t.title)}</strong><small>${toDigits(t.comments ?? 0)} نظر • ${toDigits(t.attachments ?? 0)} پیوست</small></div></div></td>
+                    <td><div class="d-flex align-items-center gap-2"><img class="avatar avatar--xs" src="${escapeHtml(t.assigneeAvatar)}" alt="">${escapeHtml(t.assignee)}</div></td>
+                    <td>${statusBadge(t.statusLabel, { done: 'success', review: 'warning', 'in-progress': 'primary', todo: 'info' }[t.status] ?? 'neutral')}</td>
+                    <td>${statusBadge(t.priorityLabel, { urgent: 'danger', high: 'warning', medium: 'info' }[t.priority] ?? 'neutral')}</td>
+                    <td class="num ${t.overdue ? 'text-danger' : ''}">${formatDate(t.dueDate, { format: 'short' })}</td>
+                    <td><div class="d-flex align-items-center gap-2"><div class="ais-bar" style="flex:1;margin:0"><span style="width:${t.progress}%"></span></div><span class="num">${toDigits(t.progress)}٪</span></div></td></tr>`)
+                  .join('')}</tbody></table></div>` }),
+              },
+              { id: 'team', label: 'تیم', icon: 'people', badge: toDigits(members.length), body: card({ body: `<div class="pj-team">${members.map((m, i) => `<div class="pj-member"><img src="${escapeHtml(m.avatar)}" alt=""><strong>${escapeHtml(m.name)}</strong><small>${['مدیر فنی', 'توسعه‌دهنده ارشد', 'طراح محصول', 'تحلیلگر', 'توسعه‌دهنده', 'تستر'][i % 6]}</small><div class="pj-member__stats"><span><b>${toDigits(workload[i]?.open ?? 0)}</b> باز</span><span><b>${toDigits(workload[i]?.done ?? 0)}</b> انجام</span></div></div>`).join('')}</div>` }) },
+              { id: 'files', label: 'فایل‌ها', icon: 'folder2-open', badge: toDigits(files.length), body: card({ flush: true, body: files.map((f) => { const ic = { figma: ['vector-pen', 'violet'], pdf: ['file-earmark-pdf', 'danger'], sheet: ['file-earmark-spreadsheet', 'success'], image: ['file-earmark-image', 'info'], doc: ['file-earmark-word', 'primary'], video: ['file-earmark-play', 'warning'] }[f.type] ?? ['file-earmark', 'neutral']; return `<div class="kb-article"><span class="ais-name__icon ais-tone--${ic[1]}"><i class="bi bi-${ic[0]}"></i></span><span class="kb-article__body"><strong>${escapeHtml(f.name)}</strong><small>${escapeHtml(f.owner)} • ${escapeHtml(f.size)}</small></span><span class="kb-article__meta">${relativeTime(f.at)}<a class="icon-btn icon-btn--sm" href="#" title="دانلود"><i class="bi bi-download"></i></a></span></div>`; }).join('') }) },
+            ])}</div>
+            <div data-col="4" class="d-flex flex-column" style="gap:var(--nv-card-gap,1.25rem)">
+              ${card({ title: 'نقاط عطف', icon: 'flag', body: `<ul class="ais-feed">${ms.map((m) => `<li class="is-${msTone(m.status)}"><span class="ais-feed__icon"><i class="bi bi-${m.status === 'done' ? 'check-lg' : 'flag'}"></i></span><div><div class="ais-feed__title">${escapeHtml(m.title)}</div><div class="ais-feed__meta">${formatDate(m.dueDate, { format: 'medium' })} • ${msLabel(m.status)}</div></div></li>`).join('')}</ul>` })}
+              ${card({ title: 'فعالیت‌های اخیر', icon: 'activity', body: `<ul class="ais-feed">${activity.slice(0, 6).map((a) => `<li class="is-primary"><span class="ais-feed__icon" style="padding:0;overflow:hidden"><img src="${escapeHtml(a.avatar)}" alt="" style="width:100%;height:100%"></span><div><div class="ais-feed__title">${escapeHtml(a.text)}</div><div class="ais-feed__meta">${escapeHtml(a.actor)} • ${relativeTime(a.at)}</div></div></li>`).join('')}</ul>` })}
+            </div>
+          </div>
         </div>`,
       );
-      initCharts(node);
+      const counts = statusMeta.map(([sid]) => tasks.filter((t) => t.status === sid).length);
+      await Promise.all([
+        chart($('[data-pj="burn"]', node), { type: 'line', height: 300, labels: Array.from({ length: weeks }, (_, i) => `هفته ${toDigits(i + 1)}`), series: [{ name: 'برنامه', data: ideal }, { name: 'واقعی', data: actual }], colors: ['#cbd5e1', '#6366f1'], extra: { stroke: { width: [2, 3], dashArray: [6, 0], curve: 'smooth' }, markers: { size: [0, 4] } } }),
+        chart($('[data-pj="status"]', node), { type: 'donut', height: 300, series: counts, labels: statusMeta.map((r) => r[1]), colors: statusMeta.map((r) => r[2]) }),
+        chart($('[data-pj="budget"]', node), { type: 'column', height: 280, labels: months, series: [{ name: 'برنامه', data: planned }, { name: 'واقعی', data: real }], colors: ['#c7d2fe', '#6366f1'] }),
+        chart($('[data-pj="work"]', node), { type: 'bar', height: 280, labels: workload.map((w) => w.name), series: [{ name: 'باز', data: workload.map((w) => w.open) }, { name: 'انجام‌شده', data: workload.map((w) => w.done) }], colors: ['#f59e0b', '#10b981'], extra: { chart: { stacked: true } } }),
+      ]);
+      on($('[data-add-task]', node), 'click', () => openRecordForm({ resource: 'tasks', title: 'افزودن تسک', fields: crudFields('tasks'), onSaved: () => toast.success('تسک افزوده شد', 'تسک جدید به پروژه اضافه شد.') }));
       return;
     }
 
     case 'projects/timeline.html': {
       const node = host();
-      const { items } = await services.projects.list({ perPage: 12 });
+      const { items } = await services.projects.list({ perPage: 14 });
+      const DAY = 86400000;
+      const starts = items.map((p) => new Date(p.startDate).getTime());
+      const ends = items.map((p) => new Date(p.dueDate).getTime());
+      const min = new Date(Math.min(...starts));
+      min.setDate(1);
+      const maxDate = new Date(Math.max(...ends));
+      const range = Math.max(DAY, maxDate.getTime() + 15 * DAY - min.getTime());
+      const pos = (t) => ((t - min.getTime()) / range) * 100;
+      const monthTicks = [];
+      const cursor = new Date(min);
+      while (cursor.getTime() < min.getTime() + range) {
+        monthTicks.push({ left: pos(cursor.getTime()), label: formatDate(cursor.toISOString(), { format: 'medium' }).split(' ').slice(1).join(' ') || formatDate(cursor.toISOString(), { format: 'short' }) });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      const today = pos(Date.now());
+      const toneOf = (p) => (p.status === 'completed' ? 'success' : p.health === 'critical' ? 'danger' : p.health === 'at-risk' ? 'warning' : p.status === 'on-hold' ? 'neutral' : 'primary');
+      const stat = (st) => items.filter((p) => p.status === st).length;
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'زمان‌بندی پروژه‌ها', subtitle: 'نمای گانت بر پایه تاریخ شروع و پایان هر پروژه', icon: 'calendar-range', actions: toolButtons({}) })}
-          ${card({
-            flush: true,
-            body: `<div class="gantt">${items
-              .map((project) => {
-                const start = new Date(project.startDate ?? project.createdAt ?? Date.now());
-                const end = new Date(project.dueDate ?? Date.now());
-                const span = Math.max(1, Math.round((end - start) / 86400000));
-                const offset = Math.max(0, Math.min(80, new Date(project.startDate ?? Date.now()).getDate()));
-                return `<div class="gantt__row"><span class="gantt__label">${escapeHtml(project.name)}</span>
-                  <div class="gantt__track"><div class="gantt__bar gantt__bar--${project.progress > 70 ? 'success' : project.progress > 40 ? 'primary' : 'warning'}" style="inset-inline-start:${offset}%;width:${Math.min(100 - offset, Math.max(8, span / 2))}%"><span>${toDigits(project.progress ?? 0)}٪</span></div></div>
-                  <span class="gantt__dates numeric">${formatDate(start, { format: 'short' })} — ${formatDate(end, { format: 'short' })}</span></div>`;
-              })
-              .join('')}</div>`,
-          })}
+        `<div class="ais">
+          <div class="ais-kpis">
+            <article class="ais-kpi ais-kpi--primary"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-kanban"></i></span><span class="ais-kpi__label">پروژه‌های فعال</span></div><p class="ais-kpi__value">${toDigits(stat('active'))}</p><div class="ais-kpi__meta">از ${toDigits(items.length)} پروژه</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--success"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-check2-circle"></i></span><span class="ais-kpi__label">تکمیل‌شده</span></div><p class="ais-kpi__value">${toDigits(stat('completed'))}</p><div class="ais-kpi__meta">تحویل به مشتری</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--warning"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-exclamation-triangle"></i></span><span class="ais-kpi__label">در معرض ریسک</span></div><p class="ais-kpi__value">${toDigits(items.filter((p) => p.health !== 'good').length)}</p><div class="ais-kpi__meta">نیازمند توجه</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--info"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-speedometer2"></i></span><span class="ais-kpi__label">میانگین پیشرفت</span></div><p class="ais-kpi__value">${toDigits(Math.round(items.reduce((s, p) => s + p.progress, 0) / items.length))}٪</p><div class="ais-kpi__meta">همه پروژه‌ها</div><div style="height:10px"></div></article>
+          </div>
+          <section class="card">
+            <header class="card__head"><span class="card__icon"><i class="bi bi-calendar-range"></i></span><div><h2 class="card__title">نمای گانت پروژه‌ها</h2><p class="card__subtitle">مدت هر پروژه، پیشرفت و خط امروز</p></div>
+              <div class="card__actions pj-legend"><span><i class="ais-dot ais-dot--primary"></i> در جریان</span><span><i class="ais-dot ais-dot--success"></i> تکمیل</span><span><i class="ais-dot ais-dot--warning"></i> ریسک</span><span><i class="ais-dot ais-dot--danger"></i> بحرانی</span></div></header>
+            <div class="card__body"><div class="pj-gantt">
+              <div class="pj-gantt__head"><div class="pj-gantt__label">پروژه</div><div class="pj-gantt__scale">${monthTicks.map((m, i) => (monthTicks.length > 8 && i % 2 ? '' : `<span style="inset-inline-start:${m.left}%">${escapeHtml(m.label)}</span>`)).join('')}</div></div>
+              ${items
+                .map((p) => {
+                  const l = pos(new Date(p.startDate).getTime());
+                  const w = Math.max(3, pos(new Date(p.dueDate).getTime()) - l);
+                  return `<div class="pj-gantt__row">
+                    <a class="pj-gantt__label" href="projects/details.html?id=${escapeHtml(p.id)}"><img src="${escapeHtml(p.ownerAvatar)}" alt=""><span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.owner)}</small></span></a>
+                    <div class="pj-gantt__track">
+                      ${monthTicks.map((m) => `<i class="pj-gantt__grid" style="inset-inline-start:${m.left}%"></i>`).join('')}
+                      <div class="pj-gantt__bar ais-tone--${toneOf(p)}" style="inset-inline-start:${l}%;width:${w}%" title="${escapeHtml(p.name)}"><span class="pj-gantt__fill" style="width:${p.progress}%"></span><b>${toDigits(p.progress)}٪</b></div>
+                    </div>
+                  </div>`;
+                })
+                .join('')}
+              <div class="pj-gantt__today" style="--today:${today.toFixed(2)}"><span>امروز</span></div>
+            </div></div>
+          </section>
+          <div class="ais-grid">
+            ${card({ title: 'پیشرفت پروژه‌ها', icon: 'bar-chart', body: '<div class="chart" data-chart-owner="controller" data-tl="progress" style="min-height:340px"></div>' }).replace('<section class="card', '<section data-col="8" class="card')}
+            ${card({ title: 'وضعیت سلامت', icon: 'heart-pulse', body: '<div class="chart" data-chart-owner="controller" data-tl="health" style="min-height:340px"></div>' }).replace('<section class="card', '<section data-col="4" class="card')}
+          </div>
         </div>`,
       );
+      await Promise.all([
+        chart($('[data-tl="progress"]', node), { type: 'bar', height: 340, labels: items.map((p) => p.name.split(' — ')[0]), series: [{ name: 'پیشرفت ٪', data: items.map((p) => p.progress) }, { name: 'زمان سپری‌شده ٪', data: items.map((p) => { const a = new Date(p.startDate).getTime(); const b = new Date(p.dueDate).getTime(); return Math.max(0, Math.min(100, Math.round(((Date.now() - a) / Math.max(1, b - a)) * 100))); }) }], colors: ['#6366f1', '#cbd5e1'] }),
+        chart($('[data-tl="health"]', node), { type: 'donut', height: 340, labels: ['سالم', 'در معرض ریسک', 'بحرانی'], series: ['good', 'at-risk', 'critical'].map((h) => items.filter((p) => p.health === h).length), colors: ['#10b981', '#f59e0b', '#ef4444'] }),
+      ]);
       return;
     }
 
@@ -1084,95 +1207,137 @@ async function initSupport() {
 
     case 'support/knowledge-base.html': {
       const node = host();
-      const paint = async () => {
-        const [topics, satisfaction] = await Promise.all([services.knowledgeBaseService.list(), services.supportStatsService.satisfaction()]);
-        const articles = topics.reduce((sum, topic) => sum + (topic.articles ?? 0), 0);
-        const views = topics.reduce((sum, topic) => sum + (topic.views ?? 0), 0);
-        const read = [...topics].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
-        const labels = topics.map((topic) => topic.category);
-        return `<div class="dashboard-shell">
-          ${pageHeader({
-            title: 'پایگاه دانش',
-            subtitle: `${toDigits(topics.length)} دسته و ${toDigits(articles)} مقاله — آخرین به‌روزرسانی ${escapeHtml(relativeTime(read[0]?.updatedAt ?? new Date()))}`,
-            icon: 'book',
-            actions: toolButtons({ create: 'مقاله جدید', exportResource: 'knowledge-base' }),
-          })}
-          ${statsFrom({ articles, views, csat: satisfaction.csat, volume: satisfaction.volume }, [
-            ['articles', 'مقاله‌ها', 'number', 'primary', 'journal-bookmark'],
-            ['views', 'بازدید کل', 'number', 'info', 'eye'],
-            ['csat', 'رضایت از مقالات', 'percent', 'success', 'emoji-smile'],
-            ['volume', 'پاسخ‌های هفته', 'number', 'warning', 'chat-dots'],
-          ])}
-          <div class="widget-grid">
-            ${card({
-              span: 8,
-              title: 'جستجو',
-              subtitle: 'با تایید، فهرست روی همان عبارت فیلتر می‌شود',
-              body: `<div class="d-flex gap-2">
-                  <input class="form-control" type="search" placeholder="عنوان یا دسته‌بندی را بنویسید…" data-kb-search aria-label="جستجو در مقاله‌ها">
-                  <button class="btn btn-primary" type="button" data-kb-submit><i class="bi bi-search" aria-hidden="true"></i> جستجو</button>
-                </div>
-                <div class="filter-bar" data-kb-chips>
-                  <button class="chip chip--filter is-active" type="button" data-kb-topic="">همه</button>
-                  ${topics.map((topic) => `<button class="chip chip--filter" type="button" data-kb-topic="${escapeHtml(topic.title)}">${escapeHtml(topic.category)}</button>`).join('')}
-                </div>
-                <div class="grid grid--cards" data-kb-list>${kbCards(topics)}</div>`,
-            })}
-            ${card({
-              span: 4,
-              title: 'پربازدیدترین‌ها',
-              subtitle: 'سهم بازدید هر دسته از کل',
-              body: `<div class="chart" data-chart="donut" data-chart-height="220" data-chart-series='${JSON.stringify(read.map((topic) => topic.views ?? 0))}' data-chart-labels='${JSON.stringify(labels)}'></div>
-                <ul class="list-group">${read
-                  .slice(0, 4)
-                  .map(
-                    (topic) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(topic.title)}</span>
-                      <span class="list-item__meta"><strong class="numeric">${formatNumber(topic.views ?? 0, { compact: true })}</strong> بازدید</span></li>`,
-                  )
-                  .join('')}</ul>`,
-            })}
-            ${card({
-              span: 12,
-              title: 'مقایسه مقاله‌ها',
-              subtitle: 'بازدید در برابر تعداد مقاله‌های هر دسته',
-              body: `<div class="chart" data-chart="bar" data-chart-height="260" data-chart-series='${JSON.stringify([
-                { name: 'بازدید (هزار)', data: topics.map((topic) => Math.round((topic.views ?? 0) / 1000)) },
-                { name: 'مقاله', data: topics.map((topic) => topic.articles ?? 0) },
-              ])}' data-chart-labels='${JSON.stringify(labels)}'></div>`,
-            })}
-          </div>
-        </div>`;
+      const [topics, articles, satisfaction] = await Promise.all([services.knowledgeBaseService.list(), services.knowledgeBaseService.articles(), services.supportStatsService.satisfaction()]);
+      const tones = ['primary', 'violet', 'success', 'info', 'warning', 'danger'];
+      const topicOf = (id) => topics.find((t) => t.id === id) ?? {};
+      const totalArticles = topics.reduce((sum, t) => sum + (t.articles ?? 0), 0);
+      const totalViews = topics.reduce((sum, t) => sum + (t.views ?? 0), 0);
+      const articleRow = (a) => {
+        const t = topicOf(a.topic);
+        return `<a class="kb-article" href="#" data-article="${escapeHtml(a.id)}" data-topic="${escapeHtml(a.topic)}">
+          <span class="ais-name__icon ais-tone--${tones[topics.indexOf(t) % tones.length]}"><i class="bi bi-${escapeHtml(t.icon ?? 'journal-text')}"></i></span>
+          <span class="kb-article__body"><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.excerpt)}</small></span>
+          <span class="kb-article__meta"><span><i class="bi bi-clock"></i> ${toDigits(a.minutes)} دقیقه</span><span><i class="bi bi-eye"></i> ${formatNumber(a.views)}</span><span><i class="bi bi-hand-thumbs-up"></i> ${toDigits(a.helpful)}</span></span>
+        </a>`;
       };
-      await withState(node, paint, { skeleton: 'chart', title: 'پایگاه دانش', onData: (target) => initCharts(target) });
+      render(
+        node,
+        `<div class="ais">
+          <section class="kb-hero">
+            <span class="ais-hero__eyebrow"><i class="bi bi-book"></i> مرکز راهنما</span>
+            <h2>چطور می‌توانیم کمکتان کنیم؟</h2>
+            <p>${toDigits(totalArticles)} مقاله در ${toDigits(topics.length)} دسته — پاسخ بیشتر سؤال‌ها همین‌جاست.</p>
+            <label class="kb-search"><i class="bi bi-search"></i><input type="search" placeholder="مثلاً: اتصال درگاه پرداخت، وب‌هوک، نقش‌ها…" data-kb-search aria-label="جستجو در پایگاه دانش"><kbd>Enter</kbd></label>
+            <div class="kb-popular">جستجوهای پرتکرار: ${['درگاه پرداخت', 'API', 'نقش‌ها', 'فاکتور'].map((t) => `<button type="button" data-kb-term="${t}">${t}</button>`).join('')}</div>
+          </section>
+          <div class="ais-kpis">
+            <article class="ais-kpi ais-kpi--primary"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-journal-bookmark"></i></span><span class="ais-kpi__label">مقاله‌ها</span></div><p class="ais-kpi__value">${toDigits(totalArticles)}</p><div class="ais-kpi__meta">${toDigits(topics.length)} دسته‌بندی</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--info"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-eye"></i></span><span class="ais-kpi__label">بازدید کل</span></div><p class="ais-kpi__value">${formatNumber(totalViews)}</p><div class="ais-kpi__meta">۳۰ روز اخیر</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--success"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-emoji-smile"></i></span><span class="ais-kpi__label">رضایت از مقالات</span></div><p class="ais-kpi__value">${formatNumber(satisfaction.csat, { decimals: 1 })}٪</p><div class="ais-kpi__meta">بر اساس رأی کاربران</div><div style="height:10px"></div></article>
+            <article class="ais-kpi ais-kpi--warning"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-life-preserver"></i></span><span class="ais-kpi__label">تیکت‌های کاهش‌یافته</span></div><p class="ais-kpi__value">${formatNumber(Math.round(satisfaction.volume * 0.34))}</p><div class="ais-kpi__meta">حل‌شده با سلف‌سرویس</div><div style="height:10px"></div></article>
+          </div>
+          <div class="kb-topics">${topics
+            .map(
+              (t, i) => `<button type="button" class="kb-topic ais-tone--${tones[i % tones.length]}" data-kb-topic="${escapeHtml(t.id)}">
+                <span class="kb-topic__icon"><i class="bi bi-${escapeHtml(t.icon ?? 'journal')}"></i></span>
+                <strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category)}</small>
+                <span class="kb-topic__meta"><span>${toDigits(t.articles)} مقاله</span><span>${formatNumber(t.views)} بازدید</span></span>
+              </button>`,
+            )
+            .join('')}</div>
+          <div class="ais-grid">
+            <section data-col="8" class="card">
+              <header class="card__head"><span class="card__icon"><i class="bi bi-journal-text"></i></span><div><h2 class="card__title" data-kb-heading>همه مقاله‌ها</h2><p class="card__subtitle"><span data-kb-count>${toDigits(articles.length)}</span> مقاله</p></div>
+                <div class="card__actions"><button type="button" class="btn btn-light btn-sm" data-kb-reset hidden><i class="bi bi-x-lg"></i> حذف فیلتر</button><button type="button" class="btn btn-primary btn-sm" data-create><i class="bi bi-plus-lg"></i> مقاله جدید</button></div></header>
+              <div class="card__body card__body--flush" data-kb-list>${articles.map(articleRow).join('')}</div>
+            </section>
+            <div data-col="4" class="d-flex flex-column" style="gap:var(--nv-card-gap,1.25rem)">
+              ${card({ title: 'سهم بازدید دسته‌ها', icon: 'pie-chart', body: '<div class="chart" data-chart-owner="controller" data-kb-chart="share" style="min-height:260px"></div>' })}
+              ${card({ title: 'رضایت ماهانه', icon: 'graph-up', body: '<div class="chart" data-chart-owner="controller" data-kb-chart="csat" style="min-height:200px"></div>' })}
+              <section class="card kb-contact"><div class="card__body"><span class="kb-topic__icon ais-tone--primary"><i class="bi bi-headset"></i></span><h3>پاسخ خود را پیدا نکردید؟</h3><p>کارشناسان ما به‌طور میانگین در ۱۲ دقیقه پاسخ می‌دهند.</p><a class="btn btn-primary w-100" href="support/tickets.html"><i class="bi bi-chat-dots"></i> ثبت تیکت پشتیبانی</a></div></section>
+            </div>
+          </div>
+        </div>`,
+      );
+      const byViews = [...topics].sort((a, b) => b.views - a.views);
+      await Promise.all([
+        chart($('[data-kb-chart="share"]', node), { type: 'donut', height: 260, series: byViews.map((t) => t.views), labels: byViews.map((t) => t.category) }),
+        chart($('[data-kb-chart="csat"]', node), { type: 'area', height: 200, series: [{ name: 'رضایت ٪', data: satisfaction.series.map((r) => r.csat) }], labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'], colors: ['#10b981'] }),
+      ]);
 
-      /* One delegated handler for search, Enter and the category chips. */
+      const list = $('[data-kb-list]', node);
+      const show = (items, heading) => {
+        $('[data-kb-heading]', node).textContent = heading;
+        $('[data-kb-count]', node).textContent = toDigits(items.length);
+        $('[data-kb-reset]', node).hidden = items.length === articles.length;
+        render(list, items.length ? items.map(articleRow).join('') : emptyState({ title: 'مقاله‌ای پیدا نشد', text: 'عبارت کوتاه‌تر یا نام دسته‌بندی را امتحان کنید.', icon: 'search' }));
+      };
       let timer = null;
-      on(node, 'input', '[data-kb-search]', async (event) => {
+      on($('[data-kb-search]', node), 'input', (event) => {
         window.clearTimeout(timer);
-        const term = event.target.value;
+        const term = event.target.value.trim();
         timer = window.setTimeout(async () => {
+          if (!term) return show(articles, 'همه مقاله‌ها');
           const found = await services.knowledgeBaseService.search(term);
-          render($('[data-kb-list]', node), kbCards(term.trim() ? (found.length ? found : []) : (await services.knowledgeBaseService.list())));
-          if (term.trim() && !found.length) render($('[data-kb-list]', node), emptyState({ title: 'مقاله‌ای با این عبارت پیدا نشد', text: 'املای کوتاه‌تر یا نام دسته‌بندی را امتحان کنید.', icon: 'search' }));
+          show(found, `نتایج «${term}»`);
         }, 180);
       });
-      on(node, 'keydown', '[data-kb-search]', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          event.target.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      });
       on(node, 'click', async (event) => {
-        const chip = event.target.closest('[data-kb-topic]');
-        if (chip) {
-          $$('[data-kb-topic]', node).forEach((item) => item.classList.toggle('is-active', item === chip));
-          const all = await services.knowledgeBaseService.list();
-          const wanted = chip.dataset.kbTopic;
-          render($('[data-kb-list]', node), kbCards(wanted ? all.filter((topic) => topic.title === wanted) : all));
+        const term = event.target.closest('[data-kb-term]');
+        if (term) {
+          const input = $('[data-kb-search]', node);
+          input.value = term.dataset.kbTerm;
+          input.dispatchEvent(new Event('input'));
           return;
         }
-        if (event.target.closest('[data-kb-submit]')) $('[data-kb-search]', node)?.focus();
-        if (event.target.closest('[data-create]')) toast.info('ساخت مقاله', 'برای ساخت مقاله، فرم CMS را در بخش محتوا استفاده کنید.');
+        const topic = event.target.closest('[data-kb-topic]');
+        if (topic) {
+          $$('[data-kb-topic]', node).forEach((t) => t.classList.toggle('is-active', t === topic));
+          const t = topicOf(topic.dataset.kbTopic);
+          show(articles.filter((a) => a.topic === t.id), t.title);
+          list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        if (event.target.closest('[data-kb-reset]')) {
+          $$('[data-kb-topic]', node).forEach((t) => t.classList.remove('is-active'));
+          $('[data-kb-search]', node).value = '';
+          return show(articles, 'همه مقاله‌ها');
+        }
+        const article = event.target.closest('[data-article]');
+        if (article) {
+          event.preventDefault();
+          const a = articles.find((x) => x.id === article.dataset.article);
+          const t = topicOf(a.topic);
+          modal.open({
+            title: a.title,
+            subtitle: `${t.title} • ${toDigits(a.minutes)} دقیقه مطالعه`,
+            size: 'lg',
+            content: `<div class="kb-read"><p class="lead">${escapeHtml(a.excerpt)}</p>
+              <h4>گام ۱ — آماده‌سازی</h4><p>ابتدا از بخش تنظیمات، دسترسی‌های لازم را بررسی کنید و مطمئن شوید نقش شما مجوز ویرایش این بخش را دارد.</p>
+              <h4>گام ۲ — پیکربندی</h4><p>مقادیر مورد نیاز را وارد کرده و با دکمه «آزمایش» صحت اتصال را بسنجید. در صورت خطا، پیام راهنما مسیر رفع مشکل را نشان می‌دهد.</p>
+              <pre class="ais-code">npm install\nnpm run dev</pre>
+              <h4>گام ۳ — بررسی نتیجه</h4><p>تغییرات بلافاصله اعمال می‌شوند و در گزارش فعالیت‌ها ثبت خواهند شد.</p>
+              <div class="ais-alert ais-alert--info mt-3"><i class="bi bi-lightbulb"></i><div><strong>نکته</strong><p>برای محیط تولید، همیشه ابتدا تغییرات را در محیط آزمایشی امتحان کنید.</p></div></div></div>`,
+            footer: '<span class="me-auto text-muted fs-caption">این مقاله مفید بود؟</span><button type="button" class="btn btn-light" data-modal-close><i class="bi bi-hand-thumbs-down"></i></button><button type="button" class="btn btn-soft-primary" data-modal-close><i class="bi bi-hand-thumbs-up"></i> بله</button>',
+          });
+          return;
+        }
+        if (event.target.closest('[data-create]')) {
+          openRecordForm({
+            resource: 'kb',
+            title: 'مقاله جدید',
+            fields: [
+              { name: 'title', label: 'عنوان', required: true },
+              { name: 'topic', label: 'دسته‌بندی', type: 'select', options: topics.map((t) => ({ value: t.id, label: t.title })) },
+              { name: 'excerpt', label: 'خلاصه', type: 'textarea', col: 2, rows: 3 },
+            ],
+            onSaved: (saved) => {
+              const item = { id: `art-${Date.now()}`, topic: saved?.topic ?? topics[0].id, title: saved?.title ?? 'مقاله جدید', excerpt: saved?.excerpt ?? '', minutes: 3, views: 0, helpful: 0 };
+              articles.unshift(item);
+              show(articles, 'همه مقاله‌ها');
+            },
+          });
+        }
       });
       return;
     }

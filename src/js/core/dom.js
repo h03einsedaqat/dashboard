@@ -37,6 +37,16 @@ export function once(key, root = document) {
 
 export function on(target, type, handler, options) {
   if (!target) return () => {};
+  /* Delegated form: on(root, 'click', '[data-x]', handler) */
+  if (typeof handler === 'string' && typeof options === 'function') {
+    const selector = handler;
+    const fn = options;
+    return on(target, type, (event) => {
+      const match = event.target?.closest?.(selector);
+      if (match && target.contains(match)) fn(event, match);
+    });
+  }
+  if (typeof handler !== 'function') return () => {};
   const types = type.split(' ');
   types.forEach((t) => target.addEventListener(t, handler, options));
   return () => types.forEach((t) => target.removeEventListener(t, handler, options));

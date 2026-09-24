@@ -60,7 +60,7 @@ export const invoices = Array.from({ length: 34 }).map((_, i) => {
         { title: 'استقرار روی سرور مشتری', price: 28_000_000 },
       ],
       3,
-    ).map((item) => ({ ...item, qty: int(1, 3) })),
+    ).map((item) => { const qty = int(1, 3); return { ...item, qty, quantity: qty }; }),
     project: pick(['مهاجرت ابری', 'پیاده‌سازی CRM', 'فروشگاه سازمانی', 'پورتال مشتریان', 'داشبورد مدیریتی']),
     notes: 'مبلغ فاکتور بر اساس قرارداد شماره ۱۴۰۲/۸۸ محاسبه شده است. تسویه تا ۳۰ روز.',
     paymentMethod: pick(['انتقال بانکی', 'کارت اعتباری', 'چک', 'کیف پول سازمانی']),
