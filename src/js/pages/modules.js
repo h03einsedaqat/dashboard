@@ -16,7 +16,7 @@ import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { modal } from '../core/modal.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
-import { formatDate, relativeTime } from '../core/jalali.js';
+import { formatDate, relativeTime, monthNames } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
@@ -538,36 +538,133 @@ async function initFinance() {
   switch (page) {
     case 'finance/overview.html': {
       const node = host();
-      render(node, `<div class="dashboard-shell">${kit.skeleton(4, 'card')}</div>`);
-      const [cashFlow, balance, aging] = await Promise.all([
-        services.financeReportsService.cashFlow(),
-        services.financeReportsService.balanceSheet(),
-        services.financeReportsService.aging(),
-      ]);
-      render(
-        node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'نمای کلی مالی', subtitle: 'جریان نقدی، ترازنامه و مطالبات', icon: 'cash-stack', actions: toolButtons({ exportResource: 'transactions' }) })}
-          ${statsFrom({ inflow: cashFlow.inflow, outflow: cashFlow.outflow, net: cashFlow.net, outstanding: aging.total ?? 0 }, [
-            ['inflow', 'ورودی دوره', 'currency', 'success', 'arrow-down-circle'],
-            ['outflow', 'خروجی دوره', 'currency', 'danger', 'arrow-up-circle'],
-            ['net', 'خالص', 'currency', 'primary', 'activity'],
-            ['outstanding', 'مطالبات باز', 'currency', 'warning', 'hourglass-split'],
-          ])}
+      /**
+       * `financeReportsService` answers with the shapes the data layer keeps —
+       * cash flow as twelve `{ month, inflow, outflow }` buckets, the balance
+       * sheet as `rows`, and receivables as a *plain array* of buckets. Every
+       * number on this page is read from those fields; the ageing percentages
+       * are derived here rather than expected from the service.
+       */
+      const paint = async () => {
+        const [cashFlow, balance, aging, profit] = await Promise.all([
+          services.financeReportsService.cashFlow(),
+          services.financeReportsService.balanceSheet(),
+          services.financeReportsService.aging(),
+          services.financeReportsService.profitAndLoss(),
+        ]);
+        const months = cashFlow.series ?? [];
+        const JALALI = monthNames().jalali;
+        const labels = months.map((row) => JALALI[row.month % 12] ?? `ماه ${row.month + 1}`);
+        const buckets = Array.isArray(aging) ? aging : (aging?.buckets ?? []);
+        const outstanding = buckets.reduce((sum, bucket) => sum + (bucket.amount ?? 0), 0);
+        const peak = Math.max(1, ...buckets.map((bucket) => bucket.amount ?? 0));
+        const assets = (balance.rows ?? []).filter((row) => row.value > 0);
+        const liabilities = (balance.rows ?? []).filter((row) => row.value <= 0);
+        return `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'نمای کلی مالی',
+            subtitle: 'جریان نقدی دوازده ماه، ترازنامه و مطالبات باز — همه از همان لایه سرویس',
+            icon: 'cash-stack',
+            actions: toolButtons({ create: 'ثبت دستی', exportResource: 'transactions' }),
+          })}
+          ${statsFrom(
+            { inflow: cashFlow.inflow, outflow: cashFlow.outflow, net: cashFlow.net, outstanding },
+            [
+              ['inflow', 'ورودی دوره', 'currency', 'success', 'arrow-down-circle'],
+              ['outflow', 'خروجی دوره', 'currency', 'danger', 'arrow-up-circle'],
+              ['net', 'خالص دوره', 'currency', 'primary', 'activity'],
+              ['outstanding', 'مطالبات باز', 'currency', 'warning', 'hourglass-split'],
+            ],
+          )}
           <div class="widget-grid">
-            ${card({ span: 8, title: 'جریان نقدی', subtitle: 'شش ماه گذشته', body: `<div class="chart" data-chart="area" data-chart-height="320" data-chart-key="cashflow"></div>` })}
-            ${card({ span: 4, title: 'ساختار درآمد', body: `<div class="chart" data-chart="donut" data-chart-height="320" data-chart-key="income-split"></div>` })}
+            ${card({
+              span: 8,
+              title: 'جریان نقدی دوازده ماه',
+              subtitle: 'ستون‌های ورودی و خروجی از رکوردهای واقعی ماه‌به‌ماه ساخته شده‌اند',
+              body: `<div class="chart" data-chart-key="cashflow" data-chart="bar" data-chart-height="320" data-chart-series='${JSON.stringify([
+                { name: 'ورودی', data: months.map((row) => row.inflow) },
+                { name: 'خروجی', data: months.map((row) => row.outflow) },
+              ])}' data-chart-labels='${JSON.stringify(labels)}'></div>`,
+              foot: `<span class="fs-caption text-muted">بیشترین ورودی: <strong class="numeric">${escapeHtml(
+                formatCurrency(Math.max(0, ...months.map((row) => row.inflow)), 'IRR', { compact: true }),
+              )}</strong> · کمترین خالص ماهانه: <strong class="numeric">${escapeHtml(
+                formatCurrency(Math.min(...months.map((row) => row.inflow - row.outflow)), 'IRR', { compact: true }),
+              )}</strong></span>`,
+            })}
+            ${card({
+              span: 4,
+              title: 'ترکیب ترازنامه',
+              subtitle: `${toDigits(assets.length)} دارایی در برابر ${toDigits(liabilities.length)} بدهی`,
+              body: `<div class="chart" data-chart-key="balance" data-chart="donut" data-chart-height="220" data-chart-series='${JSON.stringify(
+                assets.map((row) => row.value),
+              )}' data-chart-labels='${JSON.stringify(assets.map((row) => row.label))}'></div>
+                ${infoRows(
+                  [...assets, ...liabilities].map((row) => [
+                    row.label,
+                    `<span class="numeric ${row.value > 0 ? 'text-success' : 'text-danger'}">${escapeHtml(formatCurrency(row.value, 'IRR', { compact: true }))}</span>`,
+                  ]),
+                )}`,
+            })}
+            ${card({
+              span: 4,
+              title: 'صورت سود و زیان',
+              subtitle: `حاشیه سود ${toDigits(profit.margin ?? 0)}٪`,
+              body: `<ul class="list-group list-group--flush">${(profit.lines ?? [])
+                .map(
+                  (line) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(line.label)}</span><span class="list-item__meta numeric text-${line.tone ?? 'default'}">${escapeHtml(
+                    formatCurrency(line.value, 'IRR', { compact: true }),
+                  )}</span></li>`,
+                )
+                .join('')}</ul>`,
+            })}
+            ${card({
+              span: 8,
+              title: 'گزارش سنی مطالبات',
+              subtitle: `${toDigits(buckets.reduce((sum, bucket) => sum + (bucket.count ?? 0), 0))} فاکتور تسویه‌نشده بر اساس روزهای گذشته از سررسید`,
+              flush: (buckets ?? []).length > 0,
+              body: (buckets ?? []).length
+                ? `<div class="table-wrap"><table class="table table--hover table--compact"><thead><tr><th>بازه</th><th class="text-center">فاکتور</th><th class="text-end">مبلغ باز</th><th>سهم از کل</th></tr></thead><tbody>${buckets
+                    .map(
+                      (bucket) => `<tr>
+                        <th scope="row">${escapeHtml(bucket.label)}</th>
+                        <td class="text-center numeric">${toDigits(bucket.count ?? 0)}</td>
+                        <td class="text-end numeric">${escapeHtml(formatCurrency(bucket.amount ?? 0, 'IRR'))}</td>
+                        <td><div class="progress progress--sm"><div class="progress-bar progress-bar--${bucket.days > 60 ? 'danger' : bucket.days > 30 ? 'warning' : 'primary'}" style="width:${Math.round(
+                          ((bucket.amount ?? 0) / peak) * 100,
+                        )}%"></div></div></td>
+                      </tr>`,
+                    )
+                    .join('')}</tbody></table></div>`
+                : emptyState({ title: 'فاکتور تسویه‌نشده‌ای وجود ندارد', text: 'همه فاکتورهای این دوره پرداخت شده‌اند.', icon: 'check2-circle' }),
+            })}
+            ${card({
+              span: 12,
+              title: 'ریتم ماهانه',
+              subtitle: 'همان اعداد نمودار، به‌صورت جدول — برای مغایرت‌گیری و پیوست گزارش',
+              flush: true,
+              body: `<div class="table-wrap"><table class="table table--hover table--compact"><thead><tr><th>ماه</th><th class="text-end">ورودی</th><th class="text-end">خروجی</th><th class="text-end">خالص</th><th class="text-end">نرخ پوشش</th></tr></thead><tbody>${months
+                .map((row, index) => {
+                  const net = row.inflow - row.outflow;
+                  const cover = row.outflow ? Math.round((row.inflow / row.outflow) * 100) : 0;
+                  return `<tr><th scope="row">${escapeHtml(labels[index] ?? '')}</th>
+                    <td class="text-end numeric">${escapeHtml(formatCurrency(row.inflow, 'IRR', { compact: true }))}</td>
+                    <td class="text-end numeric">${escapeHtml(formatCurrency(row.outflow, 'IRR', { compact: true }))}</td>
+                    <td class="text-end numeric ${net >= 0 ? 'text-success' : 'text-danger'}">${escapeHtml(formatCurrency(net, 'IRR', { compact: true }))}</td>
+                    <td class="text-end numeric">${toDigits(cover)}٪</td></tr>`;
+                })
+                .join('')}</tbody></table></div>`,
+            })}
           </div>
-          ${card({ title: 'گزارش سنی مطالبات', flush: true, body: `<table class="table"><thead><tr><th>بازه</th><th>مبلغ</th><th>سهم</th></tr></thead><tbody>${(aging.buckets ?? [])
-            .map((bucket) => `<tr><td>${escapeHtml(bucket.label)}</td><td class="numeric">${formatCurrency(bucket.total, 'IRR')}</td><td><div class="progress progress--sm"><div class="progress-bar progress-bar--${bucket.tone ?? 'primary'}" style="width:${bucket.percent}%"></div></div></td></tr>`)
-            .join('')}</tbody></table>` })}
-        </div>`,
-      );
-      await Promise.all([
-        chart($('[data-chart-key="cashflow"]', node), { type: 'area', series: cashFlow.series, labels: cashFlow.labels }),
-        chart($('[data-chart-key="income-split"]', node), { type: 'donut', series: (balance.assets ?? []).map((row) => row.value), labels: (balance.assets ?? []).map((row) => row.label) }),
-      ]);
-      exportable(node, 'transactions');
+        </div>`;
+      };
+      await withState(node, paint, {
+        skeleton: 'chart',
+        title: 'نمای کلی مالی',
+        onData: (target) => {
+          initCharts(target);
+          exportable(target, 'transactions');
+        },
+      });
       return;
     }
 
@@ -1548,7 +1645,7 @@ async function initReports() {
           title: 'جدول تفصیلی',
           subtitle: `${toDigits((report.rows ?? []).length)} رکورد — قابل مرتب‌سازی و خروجی`,
           flush: true,
-          body: reportTable(report),
+          body: `<div data-export-table>${reportTable(report)}</div>`,
           actions: `<button class="btn btn-light btn-sm" type="button" data-report-copy><i class="bi bi-clipboard" aria-hidden="true"></i> کد جدول</button>
             <button class="btn btn-light btn-sm" type="button" data-report-print><i class="bi bi-printer" aria-hidden="true"></i> چاپ</button>`,
         })}
@@ -1557,6 +1654,7 @@ async function initReports() {
   };
 
   await withState(node, load, { skeleton: 'chart', title: 'گزارش', keepLast: false, onData: paintCharts });
+  exportable(node, type);
 
   on(node, 'click', async (event) => {
     const preset = event.target.closest('[data-range]');

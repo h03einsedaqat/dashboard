@@ -353,18 +353,39 @@ export function kpiValue(kpi) {
  * Wires `[data-export="csv|excel|print"]` buttons to the DataTable export API
  * and `[data-print]` buttons to the browser print dialog.
  */
+/**
+ * Wires the header's export menu for a page.
+ *
+ * It prefers the real data table (so the file matches the current search,
+ * filters, sorting and page), and falls back to the largest plain table on the
+ * page — which is what report, finance and matrix pages show. Guarded per
+ * scope, because a page that repaints (a new report range, a saved record)
+ * must not end up with two listeners and two downloads per click.
+ */
 export function exportable(scope = document, resource = null) {
+  if (scope?.dataset?.exportBound === '1') return;
+  if (scope?.dataset) scope.dataset.exportBound = '1';
   on(scope, 'click', async (event) => {
     const button = event.target.closest('[data-export]');
     if (!button) return;
     event.preventDefault();
     const kind = button.dataset.export || 'csv';
     const node = (resource && $(`[data-datatable][data-resource="${resource}"]`, scope)) || $('[data-datatable]', scope);
-    if (!node) {
-      toast.warning('خروجی در دسترس نیست', 'در این صفحه جدول داده‌ای پیدا نشد.');
+    if (node) {
+      createDataTable(node).export?.(kind);
       return;
     }
-    createDataTable(node).export?.(kind);
+    if (kind === 'print') {
+      window.print();
+      return;
+    }
+    const tables = $$('table', scope);
+    const table = $('[data-export-table] table', scope) ?? (tables.length ? tables.sort((a, b) => b.querySelectorAll('tr').length - a.querySelectorAll('tr').length)[0] : null);
+    if (!table) {
+      toast.warning('خروجی در دسترس نیست', 'در این صفحه جدولی برای خروجی گرفتن پیدا نشد.');
+      return;
+    }
+    downloadTable(table, kind, scope.querySelector?.('[data-export-resource]')?.dataset.exportResource ?? resource ?? 'export');
   });
 
   on(scope, 'click', (event) => {
@@ -374,6 +395,30 @@ export function exportable(scope = document, resource = null) {
     setTimeout(() => document.body.classList.remove('is-printing'), 400);
   });
 }
+
+/** Turns any rendered table into a CSV/XLS download — the fallback when a page has no data table. */
+function downloadTable(table, format, name) {
+  const rows = [...table.querySelectorAll('tr')].map((row) =>
+    [...row.children]
+      .map((cell) => cell.textContent.replace(/\s+/g, ' ').replace(/^\s*[▲▼]\s*/, '').trim())
+      .map((value) => `"${value.replace(/"/g, '""')}"`)
+      .join(','),
+  );
+  if (rows.length < 2) {
+    toast.warning('خروجی گرفته نشد', 'جدول این صفحه ردیفی برای ذخیره ندارد.');
+    return;
+  }
+  const csv = (format === 'excel' ? '\ufeff' : '') + rows.join('\n');
+  const blob = new Blob([csv], { type: format === 'excel' ? 'application/vnd.ms-excel;charset=utf-8' : 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = create('a', { href: url, download: `${name}-${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'xls' : 'csv'}` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  toast.success('فایل خروجی آماده شد', `${toDigits(rows.length - 1)} ردیف از جدول همین صفحه ذخیره شد.`);
+}
+
 
 
 
@@ -385,13 +430,13 @@ export const statusBadge = (label, tone = 'neutral') => `<span class="badge badg
 /** Primary action toolbar: create button + export dropdown. */
 export function toolButtons({ create = null, exportResource = null, extra = '' } = {}) {
   return `${extra}${create ? `<button type="button" class="btn btn-primary" data-create><i class="bi bi-plus-lg"></i> ${escapeHtml(create)}</button>` : ''}
-    <div class="dropdown"><button class="btn btn-light" type="button" data-dropdown-toggle="true" aria-expanded="false"><i class="bi bi-download"></i> خروجی</button>
+    <div class="dropdown"${exportResource ? ` data-export-resource="${escapeHtml(String(exportResource))}"` : ''}><button class="btn btn-light" type="button" data-dropdown-toggle="true" aria-expanded="false"><i class="bi bi-download"></i> خروجی</button>
       <ul class="dropdown-menu dropdown-menu-end" data-dropdown-menu>
         <li><button class="dropdown-item" type="button" data-export="csv"><i class="bi bi-filetype-csv"></i> CSV</button></li>
         <li><button class="dropdown-item" type="button" data-export="excel"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</button></li>
         <li><button class="dropdown-item" type="button" data-export="print"><i class="bi bi-printer"></i> چاپ</button></li>
       </ul>
-    </div>${exportResource ? '' : ''}`;
+    </div>`;
 }
 
 /** KPI strip from a service `summary` object: [key, label, format, tone, icon][]. */
