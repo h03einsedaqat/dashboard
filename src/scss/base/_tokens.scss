@@ -110,6 +110,7 @@
   --nv-control-h-lg: 2.875rem;
   --nv-control-pad-x: 0.875rem;
   --nv-card-pad: 1.375rem;
+  --nv-cta-pad: clamp(1.25rem, 3vw, 2.5rem); /* hero / CTA inner padding (marketing pages only) */
   --nv-card-gap: 1.5rem;
   --nv-cell-pad-y: 0.8125rem;
   --nv-cell-pad-x: 1rem;

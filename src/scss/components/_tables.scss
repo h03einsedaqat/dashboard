@@ -279,3 +279,15 @@
 .table-toolbar {
   background: var(--nv-surface-2);
 }
+
+/* ------------------------------------------------------------------- compact */
+/** Tighter rows for the dense report and matrix tables. */
+.table--compact {
+  --nv-table-cell-pad: 0.3rem 0.55rem;
+
+  th,
+  td {
+    padding: var(--nv-table-cell-pad);
+    font-size: var(--nv-text-caption);
+  }
+}

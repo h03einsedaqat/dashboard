@@ -136,6 +136,16 @@ export default {
     totalItems: 'کل موارد',
     showing: 'نمایش',
     results: 'نتیجه',
+    series: 'سری داده',
+  },
+
+  /** Labels rendered by the chart engine itself (legend, heat shades, errors). */
+  charts: {
+    total: 'مجموع',
+    low: 'کم',
+    medium: 'متوسط',
+    high: 'زیاد',
+    renderFailed: 'نمایش نمودار ممکن نشد — داده یا کتابخانه در دسترس نیست.',
   },
 
   header: {
@@ -324,6 +334,7 @@ export default {
   },
 
   auth: {
+    title: 'حساب کاربری',
     phone: 'شماره موبایل',
     secureNote: 'اتصال شما رمزنگاری\u200cشده است؛ اطلاعات ورود روی سرور ذخیره نمی\u200cشود.',
     demoEmail: 'ایمیل آزمایشی',
@@ -732,6 +743,7 @@ export default {
   },
 
   footer: {
+    tagline: 'قالب حرفه‌ای داشبورد فارسی',
     product: 'محصول',
     resources: 'منابع',
     legal: 'قوانین',

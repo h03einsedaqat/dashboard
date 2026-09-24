@@ -646,3 +646,20 @@ textarea.form-control {
 .form-inline .form-group {
   min-width: 10rem;
 }
+
+/* ------------------------------------------------------------- size variants */
+/* Bootstrap's size modifiers are not in this bundle (only the grid, utilities
+   and the four JS components are imported), so the two the template uses are
+   declared here against the same tokens as `.form-control` itself. */
+.form-control-lg {
+  padding: 0.85rem 1rem;
+  font-size: var(--nv-text-body);
+  line-height: 1.5;
+  border-radius: var(--nv-radius-md);
+}
+
+.form-control-sm {
+  padding: 0.28rem 0.55rem;
+  font-size: var(--nv-text-caption);
+  border-radius: var(--nv-radius-xs);
+}

@@ -20,6 +20,8 @@ import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
+import { goTo } from '../core/links.js';
+import { withState } from '../core/load.js';
 import * as kit from './kit.js';
 
 const {
@@ -364,7 +366,7 @@ async function ecommerceProductForm() {
       if (id) await services.productService.update(id, payload);
       else await services.productService.create(payload);
       toast.success('ذخیره شد', 'فهرست محصولات به‌روزرسانی شد.');
-      setTimeout(() => window.location.assign('ecommerce/products.html'), 900);
+      setTimeout(() => goTo('ecommerce/products.html'), 900);
     } finally {
       button.classList.remove('is-loading');
     }
@@ -575,7 +577,7 @@ async function initFinance() {
       const invoice = await loadRecord('invoices', id);
       if (!invoice) {
         render(node, kit.errorState('فاکتور مورد نظر پیدا نشد'));
-        on($('[data-retry]', node), 'click', () => (window.location.href = 'finance/invoices.html'));
+        on($('[data-retry]', node), 'click', () => goTo('finance/invoices.html'));
         return;
       }
       render(
@@ -703,7 +705,7 @@ async function initFinance() {
         const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
         await services.invoiceService.create({ ...values, items, subtotal, tax: Math.round(subtotal * 0.09), total: Math.round(subtotal * 1.09), status: 'unpaid' });
         toast.success('فاکتور ثبت شد', 'شماره فاکتور جدید در فهرست قابل مشاهده است.');
-        setTimeout(() => window.location.assign('finance/invoices.html'), 900);
+        setTimeout(() => goTo('finance/invoices.html'), 900);
       });
       return;
     }
@@ -985,20 +987,96 @@ async function initSupport() {
 
     case 'support/knowledge-base.html': {
       const node = host();
-      const topics = await services.knowledgeBaseService.list();
-      render(
-        node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'پایگاه دانش', subtitle: 'مقاله‌های آماده برای پاسخ سریع به مشتریان', icon: 'book', actions: toolButtons({ create: 'مقاله جدید' }) })}
-          <div class="search-overlay__head" style="position:static;border:1px solid var(--nv-border);border-radius:var(--nv-radius-lg)"><i class="bi bi-search"></i><input class="form-control" type="search" placeholder="جستجو در مقاله‌ها…" data-kb-search></div>
-          <div class="grid grid--cards" data-kb-list>${kbCards(topics)}</div>
-        </div>`,
-      );
-      on($('[data-kb-search]', node), 'input', async (event) => {
-        const found = await services.knowledgeBaseService.search(event.target.value);
-        render($('[data-kb-list]', node), kbCards(found.length ? found : topics));
+      const paint = async () => {
+        const [topics, satisfaction] = await Promise.all([services.knowledgeBaseService.list(), services.supportStatsService.satisfaction()]);
+        const articles = topics.reduce((sum, topic) => sum + (topic.articles ?? 0), 0);
+        const views = topics.reduce((sum, topic) => sum + (topic.views ?? 0), 0);
+        const read = [...topics].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+        const labels = topics.map((topic) => topic.category);
+        return `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'پایگاه دانش',
+            subtitle: `${toDigits(topics.length)} دسته و ${toDigits(articles)} مقاله — آخرین به‌روزرسانی ${escapeHtml(relativeTime(read[0]?.updatedAt ?? new Date()))}`,
+            icon: 'book',
+            actions: toolButtons({ create: 'مقاله جدید', exportResource: 'knowledge-base' }),
+          })}
+          ${statsFrom({ articles, views, csat: satisfaction.csat, volume: satisfaction.volume }, [
+            ['articles', 'مقاله‌ها', 'number', 'primary', 'journal-bookmark'],
+            ['views', 'بازدید کل', 'number', 'info', 'eye'],
+            ['csat', 'رضایت از مقالات', 'percent', 'success', 'emoji-smile'],
+            ['volume', 'پاسخ‌های هفته', 'number', 'warning', 'chat-dots'],
+          ])}
+          <div class="widget-grid">
+            ${card({
+              span: 8,
+              title: 'جستجو',
+              subtitle: 'با تایید، فهرست روی همان عبارت فیلتر می‌شود',
+              body: `<div class="d-flex gap-2">
+                  <input class="form-control" type="search" placeholder="عنوان یا دسته‌بندی را بنویسید…" data-kb-search aria-label="جستجو در مقاله‌ها">
+                  <button class="btn btn-primary" type="button" data-kb-submit><i class="bi bi-search" aria-hidden="true"></i> جستجو</button>
+                </div>
+                <div class="filter-bar" data-kb-chips>
+                  <button class="chip chip--filter is-active" type="button" data-kb-topic="">همه</button>
+                  ${topics.map((topic) => `<button class="chip chip--filter" type="button" data-kb-topic="${escapeHtml(topic.title)}">${escapeHtml(topic.category)}</button>`).join('')}
+                </div>
+                <div class="grid grid--cards" data-kb-list>${kbCards(topics)}</div>`,
+            })}
+            ${card({
+              span: 4,
+              title: 'پربازدیدترین‌ها',
+              subtitle: 'سهم بازدید هر دسته از کل',
+              body: `<div class="chart" data-chart="donut" data-chart-height="220" data-chart-series='${JSON.stringify(read.map((topic) => topic.views ?? 0))}' data-chart-labels='${JSON.stringify(labels)}'></div>
+                <ul class="list-group">${read
+                  .slice(0, 4)
+                  .map(
+                    (topic) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(topic.title)}</span>
+                      <span class="list-item__meta"><strong class="numeric">${formatNumber(topic.views ?? 0, { compact: true })}</strong> بازدید</span></li>`,
+                  )
+                  .join('')}</ul>`,
+            })}
+            ${card({
+              span: 12,
+              title: 'مقایسه مقاله‌ها',
+              subtitle: 'بازدید در برابر تعداد مقاله‌های هر دسته',
+              body: `<div class="chart" data-chart="bar" data-chart-height="260" data-chart-series='${JSON.stringify([
+                { name: 'بازدید (هزار)', data: topics.map((topic) => Math.round((topic.views ?? 0) / 1000)) },
+                { name: 'مقاله', data: topics.map((topic) => topic.articles ?? 0) },
+              ])}' data-chart-labels='${JSON.stringify(labels)}'></div>`,
+            })}
+          </div>
+        </div>`;
+      };
+      await withState(node, paint, { skeleton: 'chart', title: 'پایگاه دانش', onData: (target) => initCharts(target) });
+
+      /* One delegated handler for search, Enter and the category chips. */
+      let timer = null;
+      on(node, 'input', '[data-kb-search]', async (event) => {
+        window.clearTimeout(timer);
+        const term = event.target.value;
+        timer = window.setTimeout(async () => {
+          const found = await services.knowledgeBaseService.search(term);
+          render($('[data-kb-list]', node), kbCards(term.trim() ? (found.length ? found : []) : (await services.knowledgeBaseService.list())));
+          if (term.trim() && !found.length) render($('[data-kb-list]', node), emptyState({ title: 'مقاله‌ای با این عبارت پیدا نشد', text: 'املای کوتاه‌تر یا نام دسته‌بندی را امتحان کنید.', icon: 'search' }));
+        }, 180);
       });
-      on($('[data-create]', node), 'click', () => toast.info('ساخت مقاله', 'برای ساخت مقاله، فرم CMS را در بخش محتوا استفاده کنید.'));
+      on(node, 'keydown', '[data-kb-search]', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          event.target.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+      on(node, 'click', async (event) => {
+        const chip = event.target.closest('[data-kb-topic]');
+        if (chip) {
+          $$('[data-kb-topic]', node).forEach((item) => item.classList.toggle('is-active', item === chip));
+          const all = await services.knowledgeBaseService.list();
+          const wanted = chip.dataset.kbTopic;
+          render($('[data-kb-list]', node), kbCards(wanted ? all.filter((topic) => topic.title === wanted) : all));
+          return;
+        }
+        if (event.target.closest('[data-kb-submit]')) $('[data-kb-search]', node)?.focus();
+        if (event.target.closest('[data-create]')) toast.info('ساخت مقاله', 'برای ساخت مقاله، فرم CMS را در بخش محتوا استفاده کنید.');
+      });
       return;
     }
 
@@ -1356,54 +1434,233 @@ async function initLogistics() {
 
 /* =================================================================== Reports */
 
+const REPORT_RANGES = [
+  { value: '7d', label: '۷ روز' },
+  { value: '30d', label: '۳۰ روز' },
+  { value: '90d', label: '۹۰ روز' },
+  { value: '12m', label: '۱۲ ماه' },
+];
+
+/** Charts have to be (re)drawn every time a report paints — including retries. */
+function paintCharts(target) {
+  initCharts(target);
+}
+
+/** Cell renderer for a report table: types come from the service contract. */
+function reportCell(value, type) {
+  if (value === null || value === undefined || value === '') return '<span class="text-muted">—</span>';
+  switch (type) {
+    case 'currency':
+      return `<span class="numeric">${escapeHtml(formatCurrency(value, 'IRR', { compact: true }))}</span>`;
+    case 'percent':
+      return `<span class="numeric">${escapeHtml(formatPercent(Number(value) > 1 ? value : value * 100, { decimals: 1 }))}</span>`;
+    case 'number':
+      return `<span class="numeric">${escapeHtml(formatNumber(value))}</span>`;
+    case 'delta': {
+      const number = Number(value);
+      const tone = number >= 0 ? 'success' : 'danger';
+      return `<span class="text-${tone} numeric">${number >= 0 ? '▲' : '▼'} ${escapeHtml(formatNumber(Math.abs(number)))}</span>`;
+    }
+    case 'date':
+      return `<span class="numeric">${escapeHtml(formatDate(value, { dateStyle: 'short' }))}</span>`;
+    case 'badge':
+      return statusBadge(String(value), badgeToneFor(String(value)));
+    default:
+      return escapeHtml(String(value));
+  }
+}
+
+/** Maps a status-ish label onto the template's badge tones. */
+function badgeToneFor(label) {
+  const text = String(label).toLowerCase();
+  if (/paid|delivered|won|active|resolved|completed|on-track|green|موفق|تکمیل|فعال|ارسال/.test(text)) return 'success';
+  if (/pending|processing|trial|open|todo|in-progress|review|at-risk|amber|در انتظار|در حال|بررسی/.test(text)) return 'warning';
+  if (/refund|cancel|overdue|lost|breach|delayed|terminated|unpaid|مرجوع|لغو|معوق|تأخیر|اخذ/.test(text)) return 'danger';
+  return 'neutral';
+}
+
 async function initReports() {
   const page = kit.pageId();
   const type = page.split('/').pop().replace('.html', '');
   const node = host();
   if (!node) return;
-  render(node, `<div class="dashboard-shell">${kit.skeleton(4, 'card')}</div>`);
 
-  const report = await services.analyticsService.report(type === 'finance' ? 'finance' : type);
-  const labels = report.labels ?? [];
-  const series = report.series ? [report.series] : report.seriesList ?? [];
+  let range = new URLSearchParams(window.location.search).get('range') ?? '30d';
 
-  render(
-    node,
-    `<div class="dashboard-shell">
+  const load = async () => {
+    const report = await services.analyticsService.report(type, { range });
+    const labels = report.labels ?? [];
+    const series = report.series ?? [];
+    const summary = report.totals ?? {};
+    const summaryKeys = Object.keys(summary);
+    return `<div class="dashboard-shell">
       ${pageHeader({
-        title: `${report.title ?? 'گزارش'} ${escapeHtml(type)}`,
-        subtitle: 'گزارش تعاملی با امکان تغییر بازه زمانی و خروجی گرفتن',
-        icon: 'bar-chart-line',
-        actions: `<div class="segmented" data-report-range>${['7d', '30d', '90d', '12m'].map((range) => `<button type="button" class="segmented__item ${range === '30d' ? 'is-active' : ''}" data-value="${range}">${range === '12m' ? '۱۲ ماه' : range === '90d' ? '۹۰ روز' : range === '30d' ? '۳۰ روز' : '۷ روز'}</button>`).join('')}</div>
+        title: report.title ?? 'گزارش',
+        subtitle: `${report.text ?? ''} — آخرین به‌روزرسانی ${escapeHtml(relativeTime(report.generatedAt ?? new Date()))}`,
+        icon: report.icon ?? 'bar-chart-line',
+        actions: `<div class="segmented" data-report-range>${REPORT_RANGES.map(
+          (item) => `<button type="button" class="segmented__item ${item.value === range ? 'is-active' : ''}" data-range="${item.value}">${item.label}</button>`,
+        ).join('')}</div>
           ${toolButtons({ exportResource: type })}`,
       })}
-      ${statsFrom(report.summary ?? {}, Object.entries(report.summary ?? {}).slice(0, 4).map(([key]) => [key, report.labelsFor?.[key] ?? key, typeof report.summary[key] === 'number' && report.summary[key] > 1000 ? 'number' : 'number', 'primary', 'graph-up']))}
+      ${summaryKeys.length
+        ? `<div class="kpi-row" data-reveal>${summaryKeys
+            .slice(0, 4)
+            .map((key, index) => {
+              const value = summary[key];
+              const isMoney = /revenue|inflow|outflow|net|ltv|average|fee|sold|stock/i.test(key);
+              const isPercent = /rate|csat|churn|progress|onTime/i.test(key);
+              const formatted = isMoney
+                ? formatCurrency(value, 'IRR', { compact: true })
+                : isPercent
+                  ? `${formatNumber(value, { decimals: Number(value) < 100 ? 1 : 0 })}٪`
+                  : formatNumber(value);
+              const tones = ['primary', 'success', 'info', 'warning'];
+              return `<article class="stat-card stat-card--${tones[index % 4]}">
+                <div class="stat-card__head">
+                  <span class="stat-card__label">${escapeHtml(reportLabels[key] ?? key)}</span>
+                  <span class="stat-card__icon stat-card__icon--${tones[index % 4]}"><i class="bi bi-${index % 2 ? 'graph-up-arrow' : 'clipboard-data'}" aria-hidden="true"></i></span>
+                </div>
+                <p class="stat-card__value">${escapeHtml(formatted)}</p>
+                <p class="stat-card__meta">در بازه انتخابی</p>
+              </article>`;
+            })
+            .join('')}</div>`
+        : ''}
+
       <div class="widget-grid">
-        ${card({ title: 'روند کلی', body: `<div class="chart" data-chart="${report.chartType ?? 'area'}" data-chart-height="340" data-chart-series='${JSON.stringify(series)}' data-chart-labels='${JSON.stringify(labels)}'></div>` })}
-        ${card({ title: 'سهم دسته‌ها', body: `<div class="chart" data-chart="donut" data-chart-height="340" data-chart-series='${JSON.stringify((report.breakdown ?? []).map((row) => row.value))}' data-chart-labels='${JSON.stringify((report.breakdown ?? []).map((row) => row.label))}'></div>` })}
+        ${card({
+          span: 8,
+          title: 'روند دوره',
+          subtitle: 'مقدار واقعی در برابر هدف — با تغییر بازه زمانی بالا به بالا به‌روز می‌شود',
+          body: `<div class="chart" data-chart="${report.chartType ?? 'area'}" data-chart-height="340" data-chart-series='${JSON.stringify(series)}' data-chart-labels='${JSON.stringify(labels)}'></div>`,
+        })}
+        ${card({
+          span: 4,
+          title: 'تفکیک',
+          subtitle: 'سهم هر گروه از کل',
+          body: (report.breakdown ?? []).length
+            ? `<div class="chart" data-chart="donut" data-chart-height="340" data-chart-series='${JSON.stringify((report.breakdown ?? []).map((row) => row.value))}' data-chart-labels='${JSON.stringify((report.breakdown ?? []).map((row) => row.label))}'></div>`
+            : emptyState({ title: 'تفکیکی برای این بازه نیست', text: 'بازه دیگری را امتحان کنید.', icon: 'pie-chart' }),
+        })}
+        ${card({
+          span: 12,
+          title: 'جدول تفصیلی',
+          subtitle: `${toDigits((report.rows ?? []).length)} رکورد — قابل مرتب‌سازی و خروجی`,
+          flush: true,
+          body: reportTable(report),
+          actions: `<button class="btn btn-light btn-sm" type="button" data-report-copy><i class="bi bi-clipboard" aria-hidden="true"></i> کد جدول</button>
+            <button class="btn btn-light btn-sm" type="button" data-report-print><i class="bi bi-printer" aria-hidden="true"></i> چاپ</button>`,
+        })}
       </div>
-      ${card({ title: 'جدول تفصیلی', flush: true, body: reportTable(report) })}
-    </div>`,
-  );
-  initCharts(node);
-  exportable(node, type);
-  on($('[data-report-range]', node), 'click', (event) => {
+    </div>`;
+  };
+
+  await withState(node, load, { skeleton: 'chart', title: 'گزارش', keepLast: false, onData: paintCharts });
+
+  on(node, 'click', async (event) => {
     const preset = event.target.closest('[data-range]');
-    if (!preset) return;
-    $$('[data-value]', preset.closest('[data-report-range]') ?? node).forEach((item) => item.classList.toggle('is-active', item === preset));
-    toast.info('بازه زمانی تغییر کرد', 'داده‌های گزارش با بازه جدید بازخوانی می‌شود.');
+    if (preset) {
+      range = preset.dataset.range;
+      /* The chosen range is kept in the URL so a report can be shared or reloaded. */
+      const url = new URL(window.location.href);
+      url.searchParams.set('range', range);
+      window.history.replaceState({}, '', url);
+      await withState(node, load, { skeleton: 'chart', keepLast: true, onData: paintCharts });
+      return;
+    }
+    if (event.target.closest('[data-report-print]')) {
+      window.print();
+      return;
+    }
+    if (event.target.closest('[data-report-copy]')) {
+      const table = $('table', node);
+      const text = table ? [...table.querySelectorAll('tr')].map((row) => [...row.children].map((cell) => cell.textContent.trim()).join('\t')).join('\n') : '';
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success('کپی شد', 'جدول گزارش با جداساز ستون در کلیپ‌بورد است.');
+      } catch {
+        toast.warning('کپی ممکن نشد', 'دستی انتخاب کنید — مرورگر اجازه دسترسی به کلیپ‌بورد نداد.');
+      }
+    }
   });
 }
 
+const reportLabels = {
+  revenue: 'درآمد',
+  orders: 'سفارش‌ها',
+  average: 'میانگین سبد',
+  returns: 'مرجوعی',
+  target: 'هدف',
+  best: 'بهترین دوره',
+  customers: 'مشتریان',
+  new: 'مشتری جدید',
+  ltv: 'ارزش هر مشتری',
+  churn: 'نرخ ریزش',
+  products: 'محصولات',
+  sold: 'فروش رفته',
+  stock: 'موجودی',
+  outOfStock: 'ناموجود',
+  inflow: 'واریز',
+  outflow: 'برداشت',
+  net: 'خالص',
+  fee: 'کارمزد',
+  projects: 'پروژه‌ها',
+  onTrack: 'در مسیر',
+  atRisk: 'در معرض خطر',
+  avgProgress: 'میانگین پیشرفت',
+  sessions: 'نشست‌ها',
+  peak: 'اوج',
+  pages: 'صفحه',
+  bounce: 'نرخ پرش',
+  volume: 'حجم تیکت',
+  open: 'باز',
+  breach: 'نقض SLA',
+  csat: 'رضایت مشتری',
+  shipments: 'محموله‌ها',
+  delivered: 'تحویل شده',
+  delayed: 'تأخیر',
+  onTime: 'تحویل به‌موقع',
+};
+
 function reportTable(report) {
-  const rows = report.table ?? report.rows ?? [];
+  const rows = report.rows ?? report.table ?? [];
   if (!rows.length) return emptyState({ title: 'داده تفصیلی برای این گزارش موجود نیست', text: 'برای مشاهده داده، بازه دیگری را انتخاب کنید.', icon: 'table' });
-  const keys = Object.keys(rows[0]);
-  return `<div class="table-wrap"><table class="table table--hover"><thead><tr>${keys.map((key) => `<th>${escapeHtml(key)}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map((row) => `<tr>${keys.map((key) => `<td class="${typeof row[key] === 'number' ? 'numeric' : ''}">${escapeHtml(String(row[key]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const columns = report.columns ?? Object.keys(rows[0]).map((key) => ({ key, label: reportLabels[key] ?? key }));
+  return `<div class="table-wrap"><table class="table table--hover table--compact"><thead><tr>${columns
+    .map((column) => `<th>${escapeHtml(column.label)}</th>`)
+    .join('')}</tr></thead><tbody>${rows
+    .map(
+      (row) => `<tr>${columns
+        .map((column) => `<td class="${column.type === 'text' ? '' : 'table__cell'}">${reportCell(row[column.key], column.type)}</td>`)
+        .join('')}</tr>`,
+    )
+    .join('')}</tbody></table></div>`;
 }
 
 /* ===================================================================== Users */
+
+/** Human labels for the permission verbs the matrix speaks. */
+const PERMISSION_LABELS = {
+  view: 'مشاهده',
+  create: 'ایجاد',
+  edit: 'ویرایش',
+  delete: 'حذف',
+  export: 'خروجی گرفتن',
+  approve: 'تأیید',
+  impersonate: 'ورود به‌عنوان کاربر',
+};
+
+/** One-line explanation shown on each capability card. */
+const PERMISSION_NOTES = {
+  view: 'نمایش فهرست و جزئیات؛ کم‌خطرترین مجوز.',
+  create: 'ساخت رکورد جدید در ماژول‌های مجاز.',
+  edit: 'ویرایش رکوردهای موجود — روی ماتریس به‌عنوان دسترسی نوشتن شمارش می‌شود.',
+  delete: 'حذف رکورد؛ در بیشتر نقش‌ها عمداً محدود شده است.',
+  export: 'دریافت خروجی CSV و چاپ گزارش.',
+  approve: 'تأیید درخواست‌ها (مرخصی، هزینه، بازگشت وجه).',
+  impersonate: 'فقط برای تیم پشتیبانی و با ثبت در گزارش فعالیت.',
+};
 
 async function initUsers() {
   const page = kit.pageId();
@@ -1448,7 +1705,7 @@ async function initUsers() {
         try {
           await services.userService.create({ ...values, status: 'invited' });
           toast.success('کاربر ایجاد شد', 'دعوت‌نامه به ایمیل کاربر ارسال شد.');
-          setTimeout(() => window.location.assign('users/list.html'), 900);
+          setTimeout(() => goTo('users/list.html'), 900);
         } finally {
           button.classList.remove('is-loading');
         }
@@ -1530,6 +1787,148 @@ async function initUsers() {
       const matrix = await services.roleService.matrix();
       const modules = matrix.modules.map((module) => (typeof module === 'string' ? { id: module, label: module } : module));
       const editable = ['view', 'create', 'edit'];
+
+      /*
+       * Two pages, two honest views of the same contract: `roles.html` answers
+       * “what may this role touch per module”, `permissions.html` answers
+       * “who holds this capability”. Rendering the same matrix twice would make
+       * one of them look like a copy-paste.
+       */
+      if (page === 'users/permissions.html') {
+        const permissions = matrix.permissions.map((permission) => (typeof permission === 'string' ? { id: permission, label: PERMISSION_LABELS[permission] ?? permission } : permission));
+        const holders = (permissionId) =>
+          matrix.roles
+            .map((role) => ({ role, modules: Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permissionId)).map(([id]) => id) }))
+            .filter((entry) => entry.modules.length);
+        const paint = () =>
+          render(
+            node,
+            `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'مجوزها',
+            subtitle: 'هر مجوز روی چه تعداد ماژول و به چه نقش‌هایی داده شده است',
+            icon: 'key',
+            actions: toolButtons({ create: 'مجوز سفارشی' }),
+          })}
+          ${statsFrom(
+            {
+              permissions: permissions.length,
+              roles: matrix.roles.length,
+              widest: permissions.length
+                ? Math.max(...permissions.map((permission) => holders(permission.id).reduce((sum, entry) => sum + entry.modules.length, 0)))
+                : 0,
+              unprotected: permissions.filter((permission) => !holders(permission.id).length).length,
+            },
+            [
+              ['permissions', 'مجوزها', 'number', 'primary', 'key'],
+              ['roles', 'نقش‌ها', 'number', 'info', 'people'],
+              ['widest', 'بیشترین کاربرد یک مجوز', 'number', 'success', 'award'],
+              ['unprotected', 'بدون دارنده', 'number', 'danger', 'shield-exclamation'],
+            ],
+          )}
+          ${card({
+            title: 'پوشش مجوزها',
+            subtitle: 'عدد هر خانه = تعداد ماژول‌هایی که این نقش با این مجوز می‌بیند',
+            flush: true,
+            body: `<div class="table-wrap"><table class="table table--hover table--bordered table--compact">
+              <thead><tr><th>نقش</th>${permissions
+                .map((permission) => `<th class="text-center">${escapeHtml(permission.label)}</th>`)
+                .join('')}<th class="text-center">مجموع</th></tr></thead>
+              <tbody>${matrix.roles
+                .map((role) => {
+                  const grantsByModule = Object.values(role.grants ?? {}).flat();
+                  const cells = permissions.map((permission) =>
+                    Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permission.id)).length,
+                  );
+                  const total = cells.reduce((sum, value) => sum + value, 0);
+                  return `<tr><th scope="row">${escapeHtml(role.label ?? role.id)}<span class="table__primary-sub">${toDigits(role.users ?? 0)} کاربر</span></th>${cells
+                    .map(
+                      (value) =>
+                        `<td class="text-center">${value ? `<span class="badge badge--soft-success rounded-pill">${toDigits(value)}</span>` : '<span class="text-muted">—</span>'}</td>`,
+                    )
+                    .join('')}<td class="text-center"><strong class="numeric">${toDigits(total)}</strong><span class="visually-hidden">از ${toDigits(grantsByModule.length)} grant</span></td></tr>`;
+                })
+                .join('')}</tbody></table></div>`,
+          })}
+          <div class="grid grid--cards">${permissions
+            .map((permission) => {
+              const owners = holders(permission.id);
+              const share = matrix.roles.length ? Math.round((owners.length / matrix.roles.length) * 100) : 0;
+              return `<article class="card" data-permission="${escapeHtml(permission.id)}">
+                <div class="card__head">
+                  <div><h3 class="card__title">${escapeHtml(permission.label)}</h3><p class="card__subtitle">${toDigits(owners.reduce((sum, entry) => sum + entry.modules.length, 0))} grant روی ${toDigits(new Set(owners.flatMap((entry) => entry.modules)).size)} ماژول</p></div>
+                  <span class="badge badge--soft-${share > 60 ? 'success' : share > 20 ? 'warning' : 'danger'} rounded-pill">${toDigits(share)}٪ نقش‌ها</span>
+                </div>
+                <div class="card__body">
+                  <div class="progress progress--sm"><div class="progress-bar progress-bar--primary" style="width:${share}%"></div></div>
+                  <p class="card__subtitle mt-3">${escapeHtml(permission.description ?? PERMISSION_NOTES[permission.id] ?? '')}</p>
+                  ${owners.length
+                    ? `<ul class="list-group list-group--flush mt-2">${owners
+                        .map(
+                          (entry) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta numeric">${toDigits(entry.modules.length)} ماژول</span></li>`,
+                        )
+                        .join('')}</ul>`
+                    : emptyState({ title: 'هیچ نقشی این مجوز را ندارد', text: 'برای ایمن‌سازی، این مجوز را به نقش مدیر بدهید.', icon: 'shield-exclamation' })}
+                </div>
+                <div class="card__foot">
+                  <button class="btn btn-light btn-sm" type="button" data-permission-grant="${escapeHtml(permission.id)}"><i class="bi bi-check2-all"></i> اعطا به همه نقش‌ها</button>
+                  <button class="btn btn-ghost btn-sm" type="button" data-permission-audit="${escapeHtml(permission.id)}"><i class="bi bi-search"></i> بررسی ماژول‌ها</button>
+                </div>
+              </article>`;
+            })
+            .join('')}</div>
+        </div>`,
+            );
+        paint();
+
+        on(node, 'click', async (event) => {
+          const grant = event.target.closest('[data-permission-grant]');
+          if (grant) {
+            const permissionId = grant.dataset.permissionGrant;
+            const missing = matrix.roles.filter((role) => !holders(permissionId).some((entry) => entry.role.id === role.id));
+            if (!missing.length) {
+              toast.info('نیازی به تغییر نیست', `همه نقش‌ها همین حالا «${PERMISSION_LABELS[permissionId] ?? permissionId}» را دارند.`);
+              return;
+            }
+            const ok = await modal.confirm({
+              title: 'اعطای گروهی مجوز',
+              text: `${toDigits(missing.length)} نقش این مجوز را ندارد. به همه اعطا شود؟`,
+              confirmText: 'اعطا کن',
+              tone: 'primary',
+            });
+            if (!ok) return;
+            missing.forEach((role) => {
+              role.grants = role.grants ?? {};
+              modules.forEach((module) => {
+                const list = role.grants[module.id] ?? (role.grants[module.id] = []);
+                if (!list.includes(permissionId)) list.push(permissionId);
+              });
+            });
+            paint();
+            toast.success('اعطا شد', `«${PERMISSION_LABELS[permissionId] ?? permissionId}» به ${toDigits(missing.length)} نقش افزوده شد.`);
+            return;
+          }
+          const audit = event.target.closest('[data-permission-audit]');
+          if (audit) {
+            const permissionId = audit.dataset.permissionAudit;
+            const owners = holders(permissionId);
+            modal.open({
+              title: `دارندگان مجوز «${PERMISSION_LABELS[permissionId] ?? permissionId}»`,
+              body: `<ul class="list-group">${owners
+                .map(
+                  (entry) =>
+                    `<li class="list-group__item"><span class="list-item__title">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta">${escapeHtml(
+                      entry.modules.map((id) => modules.find((module) => module.id === id)?.label ?? id).join('، '),
+                    )}</span></li>`,
+                )
+                .join('')}</ul>`,
+            });
+          }
+        });
+        exportable(node, 'permissions');
+        return;
+      }
+
       render(
         node,
         `<div class="dashboard-shell">

@@ -1,0 +1,292 @@
+/* ==========================================================================
+   NOVAADMIN — loading, busy and error states
+   --------------------------------------------------------------------------
+   Every async panel on the template renders through `core/load.js`, and the
+   three visual states it can produce are defined here:
+
+     .route-progress        hairline bar while a page or a data phase runs
+     .state-panel           the readable empty / error / success card
+     .connection-pill       a calm "we lost the network" chip
+     [aria-busy] / .is-busy the dim + shimmer a card wears while it loads
+
+   Rules use tokens only, so dark mode, all six palettes and the compact
+   density come along for free.
+   ========================================================================== */
+
+/* ------------------------------------------------------------ top progress */
+.route-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 2px;
+  z-index: calc(var(--nv-z-tooltip) + 10);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--nv-dur-fast) var(--nv-ease);
+}
+.route-progress.is-running {
+  opacity: 1;
+}
+.route-progress__bar {
+  display: block;
+  block-size: 100%;
+  inline-size: 34%;
+  border-radius: var(--nv-radius-pill);
+  background: linear-gradient(90deg, transparent, var(--nv-primary), var(--nv-primary-hover), transparent);
+  inline-size: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+[dir='rtl'] .route-progress__bar {
+  transform-origin: right center;
+}
+.route-progress.is-running .route-progress__bar {
+  animation: nv-progress-sweep 1.15s var(--nv-ease) infinite;
+}
+.route-progress.is-finishing .route-progress__bar {
+  animation: none;
+  transform: scaleX(1);
+  opacity: 0;
+  transition: transform var(--nv-dur) var(--nv-ease-out), opacity var(--nv-dur) var(--nv-ease);
+}
+
+@keyframes nv-progress-sweep {
+  0% {
+    transform: translateX(-100%) scaleX(0.35);
+  }
+  55% {
+    transform: translateX(20%) scaleX(0.8);
+  }
+  100% {
+    transform: translateX(105%) scaleX(0.35);
+  }
+}
+[dir='rtl'] .route-progress.is-running .route-progress__bar {
+  animation-name: nv-progress-sweep-rtl;
+}
+@keyframes nv-progress-sweep-rtl {
+  0% {
+    transform: translateX(100%) scaleX(0.35);
+  }
+  55% {
+    transform: translateX(-20%) scaleX(0.8);
+  }
+  100% {
+    transform: translateX(-105%) scaleX(0.35);
+  }
+}
+
+/* --------------------------------------------------------- busy containers */
+[aria-busy='true'] {
+  position: relative;
+}
+.card.is-busy,
+.stat-card.is-busy,
+[data-widget].is-busy {
+  border-color: color-mix(in oklab, var(--nv-primary) 28%, var(--nv-border));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--nv-primary) 8%, transparent);
+}
+.card.is-busy .card__body,
+.card.is-busy .card__head {
+  opacity: 0.85;
+}
+.is-busy::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--nv-primary), transparent);
+  animation: nv-busy-slide 1.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes nv-busy-slide {
+  0% {
+    transform: translateX(-60%);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(60%);
+    opacity: 0.2;
+  }
+}
+
+/* ------------------------------------------------------------ state panels */
+.state-panel {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--nv-space-2);
+  text-align: center;
+  padding: clamp(1.75rem, 4vw, 3rem) var(--nv-space-5);
+  border-radius: var(--nv-radius-lg);
+  border: 1px dashed var(--nv-border-strong);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-muted);
+  min-block-size: 12rem;
+}
+.state-panel__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: var(--nv-radius-pill);
+  font-size: 1.35rem;
+  background: var(--nv-surface-3);
+  color: var(--nv-text-2);
+  margin-block-end: var(--nv-space-1);
+}
+.state-panel__title {
+  margin: 0;
+  font-size: var(--nv-text-body);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+}
+.state-panel__text {
+  margin: 0;
+  max-inline-size: 46ch;
+  font-size: var(--nv-text-body-sm);
+  line-height: 1.8;
+}
+.state-panel__reason {
+  margin: 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  font-family: var(--nv-font-mono, ui-monospace, monospace);
+  opacity: 0.8;
+}
+.state-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-2);
+  justify-content: center;
+  margin-block-start: var(--nv-space-3);
+}
+.state-panel--error {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--nv-danger) 34%, var(--nv-border));
+  background: color-mix(in oklab, var(--nv-danger) 6%, var(--nv-surface-2));
+}
+.state-panel--error .state-panel__icon {
+  background: color-mix(in oklab, var(--nv-danger) 14%, transparent);
+  color: var(--nv-danger);
+}
+.state-panel--warning .state-panel__icon {
+  background: color-mix(in oklab, var(--nv-warning) 16%, transparent);
+  color: var(--nv-warning);
+}
+.state-panel--empty .state-panel__icon {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+
+/* Skeleton rows inside a panel: keep the rhythm of the real content. */
+.skeleton-row--line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-3) 0;
+  border-block-end: 1px solid var(--nv-divider);
+}
+.skeleton-stack--grow {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* ------------------------------------------------------------- offline pill */
+.connection-pill {
+  position: fixed;
+  inset-block-end: var(--nv-space-5);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--nv-z-toast) + 5);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nv-space-2);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--nv-radius-pill);
+  border: 1px solid color-mix(in oklab, var(--nv-warning) 40%, var(--nv-border));
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-md);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-medium);
+  animation: nv-pill-in var(--nv-dur) var(--nv-ease-out);
+  max-inline-size: min(92vw, 36rem);
+}
+.connection-pill[hidden] {
+  display: none;
+}
+.connection-pill i {
+  color: var(--nv-warning);
+}
+@keyframes nv-pill-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ------------------------------------------------------------ reveal safety */
+@media print {
+  .has-reveal [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .route-progress,
+  .connection-pill {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------- loading */
+/** The panel `withState()` shows while a section is fetching its data. */
+.state-panel--loading {
+  gap: var(--nv-space-3);
+  border-style: dashed;
+  animation: state-panel-breathe 1.6s var(--nv-ease) infinite alternate;
+}
+
+.state-panel--loading .state-panel__title {
+  color: var(--nv-text-2);
+}
+
+.state-panel__spinner {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  border: 2px solid var(--nv-border);
+  border-block-start-color: var(--nv-primary);
+  border-radius: 50%;
+  animation: state-panel-spin 0.8s linear infinite;
+}
+
+@keyframes state-panel-breathe {
+  from {
+    background: var(--nv-surface);
+  }
+
+  to {
+    background: var(--nv-surface-2);
+  }
+}
+
+@keyframes state-panel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-panel--loading {
+    animation: none;
+  }
+}

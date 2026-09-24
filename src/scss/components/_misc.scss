@@ -811,3 +811,27 @@ tr:hover .reveal-actions {
   gap: var(--nv-space-3);
   margin-block-start: var(--nv-space-3);
 }
+
+/* ------------------------------------------------------------ avatar stack */
+/** Overlapped avatars — used by the landing hero and the auth aside. */
+.avatar-stack {
+  display: inline-flex;
+  align-items: center;
+
+  .avatar {
+    margin-inline-start: calc(var(--nv-space-2) * -1);
+    border: 2px solid var(--nv-surface);
+    box-shadow: var(--nv-shadow-xs);
+    transition: transform var(--nv-dur) var(--nv-ease);
+
+    &:first-child {
+      margin-inline-start: 0;
+    }
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-2px);
+      z-index: 1;
+    }
+  }
+}

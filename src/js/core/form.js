@@ -13,7 +13,7 @@
  *   <input class="form-control" name="password" required data-rule="password" data-min="8" />
  *   <input class="form-control" name="confirm" data-match="password" />
  */
-import { $, $$, on, create, ready, escapeHtml } from './dom.js';
+import { $, $$, on, once, create, ready, escapeHtml } from './dom.js';
 import { toast } from './toast.js';
 import { formatNumber, parseNumber, toDigits, toLatinDigits } from './numbers.js';
 import { storage, KEYS } from './storage.js';
@@ -128,6 +128,8 @@ export function validateForm(form) {
 
 /** Live validation wiring for every form marked `data-validate`. */
 function initValidation(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Validation', root)) return;
   $$('form[data-validate]', root).forEach((form) => {
     if (form.dataset.validateReady === '1') return;
     form.dataset.validateReady = '1';
@@ -166,6 +168,8 @@ function initValidation(root = document) {
 
 /* --------------------------------------------------------------- file drops */
 function initFileDrops(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:FileDrops', root)) return;
   $$('[data-file-drop]', root).forEach((zone) => {
     if (zone.dataset.dropReady === '1') return;
     zone.dataset.dropReady = '1';
@@ -221,6 +225,8 @@ function initFileDrops(root = document) {
 
 /* -------------------------------------------------------------- tag inputs */
 function initTagInputs(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:TagInputs', root)) return;
   $$('[data-tag-input]', root).forEach((host) => {
     if (host.dataset.tagsReady === '1') return;
     host.dataset.tagsReady = '1';
@@ -284,37 +290,102 @@ function scorePassword(value) {
   return Math.min(4, Math.floor(score / 1.6));
 }
 
+/**
+ * The strength meter is delegated for the same reason the reveal button is (see
+ * below): the register screen, the security panel and every password modal are
+ * painted after boot, so a per-node binding never reaches them.
+ */
 function initPasswordMeters(root = document) {
+  /* The delegated listeners below live on `document`, so they are guarded
+     globally; the initial sweep still runs per root so a form painted into a
+     container shows its meter filled in. */
+  const bindGlobal = once('init:passwordMeters', document);
   const LABELS = ['ضعیف', 'ضعیف', 'متوسط', 'خوب', 'قوی'];
-  $$('[data-password-field]', root).forEach((input) => {
-    const meter = document.querySelector(input.dataset.passwordField) ?? input.parentElement?.querySelector('.password-meter');
+  const meterFor = (input) =>
+    (input.dataset.passwordField ? document.querySelector(input.dataset.passwordField) : null) ??
+    input.closest('.form-field, .form-grid, .stack, form')?.querySelector('.password-strength, .password-meter') ??
+    null;
+  const update = (input) => {
+    const meter = meterFor(input);
     if (!meter) return;
-    const update = () => {
-      const score = input.value ? scorePassword(input.value) : 0;
-      meter.dataset.score = String(input.value ? score : 0);
-      const label = $('[data-password-label]', meter);
-      if (label) label.textContent = input.value ? LABELS[score] : '';
-      $$('[data-password-bar]', meter).forEach((bar, index) => bar.classList.toggle('is-filled', input.value && index < score));
-    };
-    on(input, 'input', update);
-    update();
+    const score = input.value ? scorePassword(input.value) : 0;
+    meter.dataset.score = String(score);
+    const label = $('[data-password-label]', meter);
+    if (label) label.textContent = input.value ? (LABELS[score] ?? '') : '';
+    const bars = $$('[data-password-bar]', meter);
+    if (bars.length) bars.forEach((bar, index) => bar.classList.toggle('is-filled', Boolean(input.value) && index < score));
+  };
+  $$('[data-password-field]', root).forEach((input) => update(input));
+  if (!bindGlobal) return;
+  on(document, 'input', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    if (input.type !== 'password' && input.dataset.revealed !== '1') return;
+    update(input);
+  });
+  on(document, 'focusin', (event) => {
+    const input = event.target;
+    if (input instanceof HTMLInputElement && input.type === 'password') update(input);
   });
 
-  $$('[data-password-toggle]', root).forEach((button) => {
-    const input = document.querySelector(button.dataset.passwordToggle);
+  /**
+   * Password reveal is delegated, not bound per button.
+   *
+   * `initForms()` runs once during boot — long before the auth controllers and
+   * every record modal paint their markup — so a `$$('[data-password-toggle]')`
+   * binding at that moment never reaches the real inputs and the eye button
+   * silently does nothing. A delegated listener on the document covers markup
+   * that arrives later, including forms opened from a table row.
+   */
+  on(document, 'click', (event) => {
+    const button = event.target.closest('[data-password-toggle]');
+    if (!button) return;
+    const input = resolvePasswordInput(button);
     if (!input) return;
-    on(button, 'click', () => {
-      const showing = input.type === 'text';
-      input.type = showing ? 'password' : 'text';
-      button.setAttribute('aria-label', showing ? 'نمایش رمز عبور' : 'پنهان کردن رمز عبور');
-      const icon = button.querySelector('i');
-      if (icon) icon.className = `bi bi-${showing ? 'eye' : 'eye-slash'}`;
-    });
+    togglePasswordReveal(button, input);
   });
 }
 
+/** `[data-password-toggle]` accepts a selector, an id or nothing at all. */
+function resolvePasswordInput(button) {
+  const ref = button.dataset.passwordToggle || '';
+  if (ref) {
+    try {
+      const found = document.querySelector(ref) ?? document.getElementById(ref.replace(/^#/, ''));
+      if (found) return found;
+    } catch {
+      /* An invalid selector is a markup bug, not a runtime error. */
+    }
+  }
+  return button.closest('.input-group, .form-field, form')?.querySelector('input[type="password"], input[type="text"]') ?? null;
+}
+
+function togglePasswordReveal(button, input) {
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  input.dataset.revealed = showing ? '' : '1';
+  input.classList.toggle('is-revealed', !showing);
+  button.classList.toggle('is-active', !showing);
+  button.setAttribute('aria-pressed', String(!showing));
+  /* The glyph is part of the affordance: eye → eye-slash. Bootstrap's codepoints
+     are not compiled into this template's SCSS, so the class is swapped instead
+     of re-declaring `content` in CSS. */
+  const glyph = button.querySelector('i');
+  if (glyph) glyph.className = `bi bi-${showing ? 'eye' : 'eye-slash'}`;
+  button.setAttribute('aria-label', showing ? 'نمایش رمز عبور' : 'پنهان کردن رمز عبور');
+  button.setAttribute('title', showing ? 'نمایش رمز عبور' : 'پنهان کردن رمز عبور');
+  const icon = button.querySelector('i');
+  if (icon) icon.className = `bi bi-${showing ? 'eye-slash' : 'eye-fill'}`;
+  /** Keep the filled/invalid styling and the strength meter in step. */
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.focus({ preventScroll: true });
+}
+
+
 /* ---------------------------------------------------------------------- OTP */
 function initOtp(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Otp', root)) return;
   $$('[data-otp]', root).forEach((host) => {
     const boxes = $$('input', host);
     boxes.forEach((box, index) => {
@@ -356,6 +427,8 @@ function initOtp(root = document) {
 
 /* ------------------------------------------------------------------ steppers */
 function initSteppers(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:Steppers', root)) return;
   on(root, 'click', (event) => {
     const button = event.target.closest('[data-step-up], [data-step-down]');
     if (!button) return;
@@ -374,6 +447,8 @@ function initSteppers(root = document) {
 
 /* --------------------------------------------------------- dependent selects */
 function initDependentSelects(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:DependentSelects', root)) return;
   on(root, 'change', (event) => {
     const select = event.target.closest('[data-depends-on]');
     if (!select) return;
@@ -389,6 +464,8 @@ function initDependentSelects(root = document) {
 
 /* -------------------------------------------------------------- form widgets */
 function initCurrencyInputs(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:CurrencyInputs', root)) return;
   $$('[data-currency-input]', root).forEach((input) => {
     on(input, 'input', () => {
       const digits = toLatinDigits(input.value).replace(/\D/g, '');
@@ -403,6 +480,8 @@ function initCurrencyInputs(root = document) {
 }
 
 function initDraftSaving(root = document) {
+  /* Bound once per root: see `once()` in core/dom.js. */
+  if (!once('init:DraftSaving', root)) return;
   $$('[data-draft]', root).forEach((form) => {
     const key = `draft:${form.dataset.draft}`;
     const saved = storage.get(key, null);
@@ -421,6 +500,7 @@ function initDraftSaving(root = document) {
 }
 
 export function initForms(root = document) {
+  if (!once('forms', root)) return false;
   initValidation(root);
   initFileDrops(root);
   initTagInputs(root);

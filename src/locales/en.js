@@ -135,6 +135,16 @@ export default {
     totalItems: 'Total items',
     showing: 'Showing',
     results: 'results',
+    series: 'Series',
+  },
+
+  /** Labels rendered by the chart engine itself (legend, heat shades, errors). */
+  charts: {
+    total: 'Total',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    renderFailed: 'The chart could not be rendered — data or library unavailable.',
   },
 
   header: {
@@ -307,6 +317,7 @@ export default {
   },
 
   auth: {
+    title: 'Account',
     phone: 'Mobile number',
     secureNote: 'Your connection is encrypted; credentials are never stored on a server.',
     demoEmail: 'Demo email',
@@ -715,6 +726,7 @@ export default {
   },
 
   footer: {
+    tagline: 'The Persian-first admin template',
     product: 'Product',
     resources: 'Resources',
     legal: 'Legal',

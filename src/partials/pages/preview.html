@@ -1,73 +1,79 @@
+<!--
+  NOVAADMIN — live preview / configurator page (no app chrome by design)
+  This page is the sales tool: it exposes the same theme engine the admin uses
+  (data attributes on <html>, persisted in localStorage) so a visitor can feel
+  the layout / palette / density switches before installing anything. The
+  content is rendered by `initPreview` in src/js/pages/content.js.
+-->
 <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
 
   <header class="landing-header" data-landing-header>
-    <div class="landing-container landing-header__inner">
+    <div class="container-xxl">
       <a class="brand" href="index.html" aria-label="{{APP_NAME}}">
-        <img class="brand__mark" src="assets/logo-mark.svg" alt="" width="34" height="34">
+        <img class="brand__mark" src="assets/logo-mark.svg" alt="" width="34" height="34" />
         <span class="brand__text">
           <span class="brand__name">{{APP_NAME}}</span>
           <span class="brand__tag">{{TAGLINE}}</span>
         </span>
       </a>
-      <nav class="landing-nav" aria-label="ناوبری پیش‌نمایش">
-        <a href="index.html" data-i18n="nav.home">صفحه اصلی</a>
-        <a href="#configurator" data-i18n="ui.customizer">شخصی‌سازی</a>
-        <a href="#demos" data-i18n="ui.demos">دموها</a>
-        <a href="docs/introduction.html" data-i18n="section.docs">مستندات</a>
+      <nav class="landing-nav" id="landing-nav" aria-label="ناوبری پیش‌نمایش">
+        <a class="landing-nav__link" href="index.html" data-i18n="nav.home">صفحه اصلی</a>
+        <a class="landing-nav__link" href="#configurator" data-i18n="ui.customizer">شخصی‌سازی</a>
+        <a class="landing-nav__link" href="#demos" data-i18n="ui.demos">دموها</a>
+        <a class="landing-nav__link" href="#responsive">ریسپانسیو</a>
+        <a class="landing-nav__link" href="docs/introduction.html" data-i18n="section.docs">مستندات</a>
       </nav>
       <div class="landing-header__actions">
-        <button class="icon-btn" type="button" data-theme-toggle data-i18n-title="ui.theme" aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
-        <button class="icon-btn" type="button" data-direction-toggle data-i18n-title="ui.direction" aria-label="تغییر جهت"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></button>
-<div class="dropdown">
-          <button class="icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان" data-i18n-title="ui.language"><i class="bi bi-translate" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-icon btn-outline-secondary" type="button" data-theme-toggle title="حالت روشن / تاریک" aria-label="تغییر تم">
+          <i class="bi bi-moon-stars theme-toggle__icon" aria-hidden="true"></i>
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-icon btn-outline-secondary" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان" data-i18n-title="ui.language">
+            <i class="bi bi-translate" aria-hidden="true"></i>
+          </button>
           <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
         </div>
-        <button class="btn btn-light btn-sm" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span data-i18n="ui.customizer">شخصی‌سازی</span></button>
-        <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-play-fill" aria-hidden="true"></i> <span data-i18n="ui.openAi">ورود به دمو</span></a>
+        <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span data-i18n="ui.customizer">شخصی‌سازی</span></button>
+        <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-play-fill" aria-hidden="true"></i> <span>ورود به دمو</span></a>
       </div>
     </div>
   </header>
 
   <main id="main-content" class="page-body" data-landing>
     <section class="landing-hero">
-      <div class="landing-container landing-hero__inner">
-        <div class="landing-hero__text">
-          <span class="landing-badge"><span class="status-dot status-dot--success"></span> نسخه {{VERSION}} — آماده فروش</span>
-          <h1 class="landing-hero__title">همه‌چیز را <em>قبل از خرید</em> ببینید</h1>
-          <p class="landing-hero__text">این صفحه یک پیش‌نمایش زنده است: تم، رنگ، چیدمان، جهت، تراکم و تقویم را همین‌جا تغییر دهید و نتیجه را بلافاصله روی همان صفحه ببینید — بدون نصب و بدون بک‌اند.</p>
-          <div class="landing-hero__actions">
-            <a class="btn btn-primary btn-lg" href="#configurator"><i class="bi bi-sliders" aria-hidden="true"></i> شروع تنظیم زنده</a>
-            <button class="btn btn-light btn-lg" type="button" data-customizer-open><i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i> پنل شخصی‌سازی کامل</button>
-          </div>
-          <dl class="landing-counters">
-            <div class="landing-counter"><dt>صفحه</dt><dd data-counter="203">۰</dd></div>
-            <div class="landing-counter"><dt>داشبورد</dt><dd data-counter="10">۰</dd></div>
-            <div class="landing-counter"><dt>چیدمان</dt><dd data-counter="6">۰</dd></div>
-            <div class="landing-counter"><dt>زبان</dt><dd data-counter="3">۰</dd></div>
-          </dl>
-        </div>
-
-        <div class="landing-preview" data-reveal>
-          <div class="landing-preview__bar"><span></span><span></span><span></span></div>
-          <div class="landing-preview__body">
-            <div class="landing-preview__side">
-              <span class="landing-preview__line" style="width:70%"></span>
-              <span class="landing-preview__line" style="width:92%"></span>
-              <span class="landing-preview__line" style="width:58%"></span>
-              <span class="landing-preview__line" style="width:84%"></span>
-              <span class="landing-preview__line" style="width:64%"></span>
+      <span class="landing-hero__glow" aria-hidden="true"></span>
+      <span class="landing-hero__grid" aria-hidden="true"></span>
+      <div class="container-xxl">
+        <div class="row align-items-center g-5">
+          <div class="col-lg-6" data-reveal>
+            <span class="eyebrow"><span class="status-dot status-dot--success"></span> نسخه {{VERSION}} — پیش‌نمایش زنده</span>
+            <h1 class="landing-hero__title">همه‌چیز را <span class="text-gradient">قبل از خرید</span> لمس کنید</h1>
+            <p class="landing-hero__lead">
+              این صفحه یک پیش‌نمایش زنده است: تم، رنگ، چیدمان، جهت، تراکم و تقویم را همین‌جا تغییر دهید و نتیجه را بلافاصله روی همان صفحه ببینید — بدون نصب و بدون بک‌اند.
+              انتخاب‌ها در مرورگر شما ذخیره می‌شوند و در همه صفحه‌ها اعمال می‌مانند.
+            </p>
+            <div class="landing-hero__actions">
+              <a class="btn btn-primary btn-lg" href="#configurator"><i class="bi bi-sliders" aria-hidden="true"></i> شروع تنظیم زنده</a>
+              <button class="btn btn-outline-secondary btn-lg" type="button" data-customizer-open><i class="bi bi-palette" aria-hidden="true"></i> پنل شخصی‌سازی کامل</button>
             </div>
-            <div class="landing-preview__main">
-              <div class="landing-preview__kpis">
-                <div class="landing-preview__kpi"><span>درآمد ماه</span><strong>۲٫۴ میلیارد</strong></div>
-                <div class="landing-preview__kpi"><span>سفارش</span><strong>۱٫۲۸۴</strong></div>
-                <div class="landing-preview__kpi"><span>نرخ تبدیل</span><strong>۴٫۸٪</strong></div>
+            <div class="landing-hero__band">
+              <div class="row g-4 row-cols-2 row-cols-lg-4">
+                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="206">۲۰۶</span><span class="landing-stat__label">صفحه</span><span class="landing-stat__note">فارسی و RTL</span></div></div>
+                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="10">۱۰</span><span class="landing-stat__label">داشبورد</span><span class="landing-stat__note">با داده اختصاصی</span></div></div>
+                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="6">۶</span><span class="landing-stat__label">چیدمان</span><span class="landing-stat__note">همه ریسپانسیو</span></div></div>
+                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="3">۳</span><span class="landing-stat__label">زبان</span><span class="landing-stat__note">fa / en / ar</span></div></div>
               </div>
-              <div class="landing-preview__chart">
-                <span style="height:42%"></span><span style="height:66%"></span><span style="height:52%"></span>
-                <span style="height:84%"></span><span style="height:61%"></span><span style="height:93%"></span>
-                <span style="height:74%"></span><span style="height:88%"></span>
-              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6" data-reveal>
+            <div class="landing-shot" data-shot="analytics">
+              <picture>
+                <source media="(prefers-color-scheme: dark)" srcset="assets/img/previews/analytics-dark.svg" />
+                <img data-preview-id="analytics" src="assets/img/previews/analytics-light.svg" alt="پیش‌نمایش داشبورد تحلیلی" width="1600" height="1000" loading="eager" decoding="async" />
+              </picture>
+              <span class="landing-shot__frame" aria-hidden="true"></span>
+              <a class="btn btn-primary landing-shot__cta" href="dashboards/analytics.html"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> باز کردن در پنل</a>
             </div>
           </div>
         </div>
@@ -75,229 +81,246 @@
     </section>
 
     <!-- Live configurator — every control writes straight to the theme engine -->
-    <section class="landing-section landing-section--soft" id="configurator">
-      <div class="landing-container">
-        <header class="landing-section__head">
-          <span class="landing-section__eyebrow">Live configurator</span>
-          <h2 class="landing-section__title">تنظیم زنده ظاهر</h2>
-          <p class="landing-section__text">هر انتخاب بلافاصله روی DOM اعمال و در مرورگر شما ذخیره می‌شود؛ با باز کردن پنل‌ها و داشبوردها همان تنظیمات حفظ می‌شوند.</p>
-        </header>
+    <section class="section section--tint" id="configurator">
+      <div class="container-xxl">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow"><i class="bi bi-sliders" aria-hidden="true"></i> Live configurator</span>
+          <h2 class="section-title">تنظیم زنده ظاهر</h2>
+          <p class="section-subtitle">هر انتخاب بلافاصله روی DOM اعمال و در مرورگر شما ذخیره می‌شود؛ با باز کردن پنل‌ها و داشبوردها همان تنظیمات حفظ می‌شوند.</p>
+        </div>
 
-        <div class="card">
+        <div class="card" data-reveal>
           <div class="card__body">
-            <div class="grid grid--2">
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.themeMode">حالت نمایش</h3>
-                <div class="segmented" data-customizer="theme">
-                  <button type="button" class="segmented__item" data-value="light"><i class="bi bi-sun" aria-hidden="true"></i> <span data-i18n="ui.light">روشن</span></button>
-                  <button type="button" class="segmented__item" data-value="dark"><i class="bi bi-moon-stars" aria-hidden="true"></i> <span data-i18n="ui.dark">تاریک</span></button>
-                  <button type="button" class="segmented__item" data-value="system"><i class="bi bi-display" aria-hidden="true"></i> <span data-i18n="ui.system">سیستم</span></button>
+            <div class="row g-4">
+              <div class="col-lg-6">
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.themeMode">حالت نمایش</h3>
+                  <div class="segmented" data-customizer="theme">
+                    <button type="button" class="segmented__item" data-value="light"><i class="bi bi-sun" aria-hidden="true"></i> <span data-i18n="ui.light">روشن</span></button>
+                    <button type="button" class="segmented__item" data-value="dark"><i class="bi bi-moon-stars" aria-hidden="true"></i> <span data-i18n="ui.dark">تاریک</span></button>
+                    <button type="button" class="segmented__item" data-value="system"><i class="bi bi-display" aria-hidden="true"></i> <span data-i18n="ui.system">سیستم</span></button>
+                  </div>
+                </div>
+
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.primaryColor">رنگ اصلی</h3>
+                  <div class="segmented segmented--wrap" data-customizer="primary">
+                    <button type="button" class="segmented__item" data-value="indigo">Indigo</button>
+                    <button type="button" class="segmented__item" data-value="blue">Blue</button>
+                    <button type="button" class="segmented__item" data-value="emerald">Emerald</button>
+                    <button type="button" class="segmented__item" data-value="violet">Violet</button>
+                    <button type="button" class="segmented__item" data-value="orange">Orange</button>
+                    <button type="button" class="segmented__item" data-value="rose">Rose</button>
+                  </div>
+                </div>
+
+                <div class="configurator__group">
+                  <h3 class="customizer__label">سبک سایدبار</h3>
+                  <div class="segmented segmented--wrap" data-customizer="sidebarStyle">
+                    <button type="button" class="segmented__item" data-value="fixed">ثابت</button>
+                    <button type="button" class="segmented__item" data-value="floating">شناور</button>
+                    <button type="button" class="segmented__item" data-value="compact">ریل</button>
+                  </div>
                 </div>
               </div>
 
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.primaryColor">رنگ اصلی</h3>
-                <div class="segmented segmented--wrap" data-customizer="primary">
-                  <button type="button" class="segmented__item" data-value="indigo">Indigo</button>
-                  <button type="button" class="segmented__item" data-value="blue">Blue</button>
-                  <button type="button" class="segmented__item" data-value="emerald">Emerald</button>
-                  <button type="button" class="segmented__item" data-value="violet">Violet</button>
-                  <button type="button" class="segmented__item" data-value="orange">Orange</button>
-                  <button type="button" class="segmented__item" data-value="rose">Rose</button>
-                </div>
-              </div>
-
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.layout">چیدمان</h3>
-                <div class="layout-grid" data-customizer="layout">
-                  <button type="button" class="layout-option" data-value="default"><span class="layout-option__preview is-sidebar"></span><span data-i18n="ui.layoutSidebar">سایدبار</span></button>
-                  <button type="button" class="layout-option" data-value="mini"><span class="layout-option__preview is-mini"></span><span data-i18n="ui.layoutMini">مینی</span></button>
-                  <button type="button" class="layout-option" data-value="collapse"><span class="layout-option__preview is-collapse"></span><span data-i18n="ui.layoutCollapse">جمع‌شده</span></button>
-                  <button type="button" class="layout-option" data-value="horizontal"><span class="layout-option__preview is-horizontal"></span><span data-i18n="ui.layoutHorizontal">افقی</span></button>
-                  <button type="button" class="layout-option" data-value="twocol"><span class="layout-option__preview is-twocol"></span><span data-i18n="ui.layoutTwoCol">دو ستونی</span></button>
-                  <button type="button" class="layout-option" data-value="boxed"><span class="layout-option__preview is-boxed"></span><span data-i18n="ui.layoutBoxed">باکس‌دار</span></button>
-                </div>
-              </div>
-
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.direction">جهت</h3>
-                <div class="segmented" data-customizer="direction">
-                  <button type="button" class="segmented__item" data-value="rtl"><span data-i18n="ui.rtl">راست‌به‌چپ</span></button>
-                  <button type="button" class="segmented__item" data-value="ltr"><span data-i18n="ui.ltr">چپ‌به‌راست</span></button>
+              <div class="col-lg-6">
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.layout">چیدمان</h3>
+                  <div class="layout-grid" data-customizer="layout">
+                    <button type="button" class="layout-option" data-value="default"><span class="layout-option__preview is-sidebar"></span><span data-i18n="ui.layoutSidebar">سایدبار</span></button>
+                    <button type="button" class="layout-option" data-value="mini"><span class="layout-option__preview is-mini"></span><span data-i18n="ui.layoutMini">مینی</span></button>
+                    <button type="button" class="layout-option" data-value="collapse"><span class="layout-option__preview is-collapse"></span><span data-i18n="ui.layoutCollapse">جمع‌شده</span></button>
+                    <button type="button" class="layout-option" data-value="horizontal"><span class="layout-option__preview is-horizontal"></span><span data-i18n="ui.layoutHorizontal">افقی</span></button>
+                    <button type="button" class="layout-option" data-value="twocol"><span class="layout-option__preview is-twocol"></span><span data-i18n="ui.layoutTwoCol">دو ستونی</span></button>
+                    <button type="button" class="layout-option" data-value="boxed"><span class="layout-option__preview is-boxed"></span><span data-i18n="ui.layoutBoxed">باکس‌دار</span></button>
+                  </div>
                 </div>
 
-                <h3 class="customizer__label mt-4" data-i18n="ui.calendar">تقویم</h3>
-                <div class="segmented" data-customizer="calendar">
-                  <button type="button" class="segmented__item" data-value="jalali"><span data-i18n="ui.jalali">شمسی</span></button>
-                  <button type="button" class="segmented__item" data-value="gregorian"><span data-i18n="ui.gregorian">میلادی</span></button>
-                </div>
-              </div>
-
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.density">تراکم</h3>
-                <div class="segmented" data-customizer="density">
-                  <button type="button" class="segmented__item" data-value="comfortable"><span data-i18n="ui.comfortable">راحت</span></button>
-                  <button type="button" class="segmented__item" data-value="compact"><span data-i18n="ui.compact">فشرده</span></button>
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.direction">جهت</h3>
+                  <div class="segmented" data-customizer="direction">
+                    <button type="button" class="segmented__item" data-value="rtl"><span data-i18n="ui.rtl">راست‌به‌چپ</span></button>
+                    <button type="button" class="segmented__item" data-value="ltr"><span data-i18n="ui.ltr">چپ‌به‌راست</span></button>
+                  </div>
                 </div>
 
-                <h3 class="customizer__label mt-4" data-i18n="ui.fontSize">اندازه فونت</h3>
-                <div class="segmented" data-customizer="fontSize">
-                  <button type="button" class="segmented__item" data-value="sm">کوچک</button>
-                  <button type="button" class="segmented__item" data-value="md">متوسط</button>
-                  <button type="button" class="segmented__item" data-value="lg">بزرگ</button>
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.density">تراکم و اندازه فونت</h3>
+                  <div class="segmented" data-customizer="density">
+                    <button type="button" class="segmented__item" data-value="comfortable"><span data-i18n="ui.comfortable">راحت</span></button>
+                    <button type="button" class="segmented__item" data-value="compact"><span data-i18n="ui.compact">فشرده</span></button>
+                  </div>
+                  <div class="segmented mt-2" data-customizer="fontSize">
+                    <button type="button" class="segmented__item" data-value="sm">کوچک</button>
+                    <button type="button" class="segmented__item" data-value="base">متوسط</button>
+                    <button type="button" class="segmented__item" data-value="lg">بزرگ</button>
+                  </div>
                 </div>
-              </div>
 
-              <div class="configurator__group">
-                <h3 class="customizer__label" data-i18n="ui.sidebarStyle">سبک سایدبار</h3>
-                <div class="segmented segmented--wrap" data-customizer="sidebarStyle">
-                  <button type="button" class="segmented__item" data-value="fixed">ثابت</button>
-                  <button type="button" class="segmented__item" data-value="floating">شناور</button>
-                  <button type="button" class="segmented__item" data-value="compact">ریل</button>
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.calendar">تقویم</h3>
+                  <div class="segmented" data-customizer="calendar">
+                    <button type="button" class="segmented__item" data-value="jalali"><span data-i18n="ui.jalali">شمسی</span></button>
+                    <button type="button" class="segmented__item" data-value="gregorian"><span data-i18n="ui.gregorian">میلادی</span></button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="dash-status mt-4">
-              <span><i class="bi bi-info-circle" aria-hidden="true"></i> تنظیمات در <code>localStorage</code> ذخیره می‌شود.</span>
+              <span><i class="bi bi-info-circle" aria-hidden="true"></i> تنظیمات در <code>localStorage</code> ذخیره می‌شود و در همه صفحه‌ها اعمال می‌ماند.</span>
               <button class="btn btn-light btn-sm" type="button" data-customizer-reset><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> <span data-i18n="ui.resetDefaults">بازنشانی پیش‌فرض</span></button>
-              <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> دیدن نتیجه در داشبورد</a>
+              <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> دیدن نتیجه در داشبورد</a>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Devices -->
-    <section class="landing-section">
-      <div class="landing-container">
-        <header class="landing-section__head">
-          <span class="landing-section__eyebrow">Responsive</span>
-          <h2 class="landing-section__title">از ۳۲۰ پیکسل تا ۱۹۲۰ پیکسل</h2>
-          <p class="landing-section__text">شبکه انعطاف‌پذیر، سایدبار کشویی در موبایل و هدف‌های لمسی استاندارد؛ هیچ سرریز افقی و هیچ جدول شکسته‌ای باقی نمی‌ماند.</p>
-        </header>
-        <div class="landing-grid">
-          <div class="device">
-            <div class="device__bar"><span class="device__dots"><i></i><i></i><i></i></span><span class="device__url">novaadmin.dev/dashboards/analytics.html</span></div>
-            <div class="device__screen">
-              <div class="landing-preview">
-                <div class="landing-preview__body">
-                  <div class="landing-preview__side"><span class="landing-preview__line" style="width:80%"></span><span class="landing-preview__line" style="width:60%"></span><span class="landing-preview__line" style="width:74%"></span></div>
-                  <div class="landing-preview__main">
-                    <div class="landing-preview__kpis"><div class="landing-preview__kpi"><span>KPI ۱</span><strong>۸۴٪</strong></div><div class="landing-preview__kpi"><span>KPI ۲</span><strong>۱٫۲K</strong></div><div class="landing-preview__kpi"><span>KPI ۳</span><strong>۴۸۰</strong></div></div>
-                    <div class="landing-preview__chart"><span style="height:50%"></span><span style="height:72%"></span><span style="height:44%"></span><span style="height:88%"></span><span style="height:63%"></span></div>
-                  </div>
-                </div>
-              </div>
+    <!-- Devices — the same preview picture, framed at three widths -->
+    <section class="section" id="responsive">
+      <div class="container-xxl">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow"><i class="bi bi-phone" aria-hidden="true"></i> Responsive</span>
+          <h2 class="section-title">از ۳۲۰ پیکسل تا ۱۹۲۰ پیکسل</h2>
+          <p class="section-subtitle">شبکه انعطاف‌پذیر، سایدبار کشویی در موبایل و هدف‌های لمسی استاندارد؛ هیچ سرریز افقی و هیچ جدول شکسته‌ای باقی نمی‌ماند.</p>
+        </div>
+
+        <div class="landing-devices" data-reveal>
+          <figure class="landing-device-frame landing-device-frame--desktop">
+            <figcaption><i class="bi bi-display" aria-hidden="true"></i> دسکتاپ — ۱۹۲۰</figcaption>
+            <div class="landing-shot">
+              <img data-preview-id="ecommerce" src="assets/img/previews/ecommerce-light.svg" alt="نمای دسکتاپ داشبورد فروشگاهی" width="1600" height="1000" loading="lazy" decoding="async" />
+              <span class="landing-shot__frame" aria-hidden="true"></span>
             </div>
-          </div>
-          <div class="device device--tablet">
-            <div class="device__bar"><span class="device__dots"><i></i><i></i><i></i></span><span class="device__url">حالت تبلت</span></div>
-            <div class="device__screen"><div class="landing-preview"><div class="landing-preview__body"><div class="landing-preview__main"><div class="landing-preview__kpis"><div class="landing-preview__kpi"><span>سفارش‌ها</span><strong>۲۴۰</strong></div><div class="landing-preview__kpi"><span>بازگشت</span><strong>۱۲</strong></div></div><div class="landing-preview__chart"><span style="height:40%"></span><span style="height:70%"></span><span style="height:55%"></span><span style="height:92%"></span></div></div></div></div></div>
-          </div>
-          <div class="device device--phone">
-            <div class="device__bar"><span class="device__dots"><i></i><i></i><i></i></span><span class="device__url">حالت موبایل</span></div>
-            <div class="device__screen"><div class="landing-preview"><div class="landing-preview__body"><div class="landing-preview__main"><div class="landing-preview__kpis"><div class="landing-preview__kpi"><span>امروز</span><strong>۸۴</strong></div></div><div class="landing-preview__chart"><span style="height:35%"></span><span style="height:66%"></span><span style="height:82%"></span></div></div></div></div></div>
-          </div>
+          </figure>
+          <figure class="landing-device-frame landing-device-frame--tablet">
+            <figcaption><i class="bi bi-tablet" aria-hidden="true"></i> تبلت — ۷۶۸</figcaption>
+            <div class="landing-shot">
+              <img data-preview-id="crm" src="assets/img/previews/crm-light.svg" alt="نمای تبلت داشبورد CRM" width="1600" height="1000" loading="lazy" decoding="async" />
+              <span class="landing-shot__frame" aria-hidden="true"></span>
+            </div>
+          </figure>
+          <figure class="landing-device-frame landing-device-frame--phone">
+            <figcaption><i class="bi bi-phone" aria-hidden="true"></i> موبایل — ۳۹۰</figcaption>
+            <div class="landing-shot">
+              <img data-preview-id="finance" src="assets/img/previews/finance-light.svg" alt="نمای موبایل داشبورد مالی" width="1600" height="1000" loading="lazy" decoding="async" />
+              <span class="landing-shot__frame" aria-hidden="true"></span>
+            </div>
+          </figure>
+        </div>
+
+        <div class="callout callout--info mt-5" data-reveal>
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <div>هر چیدمان زیر نقطه‌شکست خودش به حالت امن برمی‌گردد: دو ستونه به ریل جمع‌شوده، سایدبار به کشویی، و جدول‌ها به اسکرول افقی. شعار کنار لوگو هم در حالت باریک حذف می‌شود تا هیچ‌وقت روی آیکن نیفتد.</div>
         </div>
       </div>
     </section>
 
     <!-- Demo switcher -->
-    <section class="landing-section landing-section--soft" id="demos">
-      <div class="landing-container">
-        <header class="landing-section__head">
-          <span class="landing-section__eyebrow">10 demos</span>
-          <h2 class="landing-section__title">دموها را یکی‌یکی باز کنید</h2>
-          <p class="landing-section__text">هر داشبورد داده، نمودار و جدول اختصاصی خودش را دارد — هیچ صفحه‌ای خالی یا تکراری نیست.</p>
-        </header>
-        <div class="landing-grid landing-grid--demos" data-preview-demos></div>
+    <section class="section section--tint" id="demos">
+      <div class="container-xxl">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow"><i class="bi bi-collection" aria-hidden="true"></i> 10 demos</span>
+          <h2 class="section-title">دموها را یکی‌یکی باز کنید</h2>
+          <p class="section-subtitle">هر داشبورد داده، نمودار و جدول اختصاصی خودش را دارد — هیچ صفحه‌ای خالی یا تکراری نیست.</p>
+        </div>
+        <div class="row g-4" data-preview-demos data-reveal></div>
       </div>
     </section>
 
-    <!-- Layout gallery — applies the layout to this very page -->
-    <section class="landing-section" id="layouts">
-      <div class="landing-container">
-        <header class="landing-section__head">
-          <span class="landing-section__eyebrow">Layouts</span>
-          <h2 class="landing-section__title">شش چیدمان، یک کد</h2>
-          <p class="landing-section__text">چیدمان دلخواه را انتخاب کنید؛ همین صفحه بلافاصله با همان چیدمان بازآرایی می‌شود و انتخاب شما ذخیره می‌ماند.</p>
-        </header>
-        <div class="grid grid--2">
-          <div class="configurator__group">
-            <h3 class="customizer__label">چیدمان</h3>
-            <div class="layout-grid" data-preview-layouts></div>
+    <!-- Palette strip -->
+    <section class="section">
+      <div class="container-xxl">
+        <div class="row g-4">
+          <div class="col-lg-6" data-reveal>
+            <div class="card h-100">
+              <div class="card__head">
+                <div>
+                  <h3 class="card__title">چیدمان‌ها</h3>
+                  <p class="card__subtitle">همین صفحه با انتخاب شما بازآرایی می‌شود.</p>
+                </div>
+              </div>
+              <div class="card__body">
+                <div class="layout-grid" data-preview-layouts></div>
+              </div>
+            </div>
           </div>
-          <div class="configurator__group">
-            <h3 class="customizer__label">رنگ اصلی</h3>
-            <div class="swatch-row" data-preview-palettes></div>
-            <p class="text-muted fs-caption mb-0">همه پالت‌ها با آزمون کنتراست روی متن و حالت تاریک انتخاب شده‌اند.</p>
+          <div class="col-lg-6" data-reveal>
+            <div class="card h-100">
+              <div class="card__head">
+                <div>
+                  <h3 class="card__title">رنگ اصلی</h3>
+                  <p class="card__subtitle">همه پالت‌ها با آزمون کنتراست روی متن و در حالت تاریک انتخاب شده‌اند.</p>
+                </div>
+              </div>
+              <div class="card__body">
+                <div class="swatch-row" data-preview-palettes></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="landing-cta">
-      <div class="landing-cta__inner">
-        <h2>آماده شروع هستید؟</h2>
-        <p>مستندات کامل، راهنمای نصب گام‌به‌گام و بیش از ۲۰۰ صفحه آماده در بسته تحویل شماست.</p>
-        <div class="landing-hero__actions" style="justify-content:center">
-          <a class="btn btn-primary btn-lg" href="docs/installation.html"><i class="bi bi-download" aria-hidden="true"></i> راهنمای نصب</a>
-          <a class="btn btn-light btn-lg" href="index.html"><i class="bi bi-house" aria-hidden="true"></i> صفحه محصول</a>
+    <section class="section section--compact">
+      <div class="container-xxl">
+        <div class="landing-cta" data-reveal>
+          <div class="landing-cta__body">
+            <span class="eyebrow eyebrow--light"><i class="bi bi-box2-heart" aria-hidden="true"></i> آماده شروع</span>
+            <h2 class="landing-cta__title">تنظیمات را بسازید، بعد در پنل واقعی ببینید</h2>
+            <p class="landing-cta__text">مستندات کامل، راهنمای نصب گام‌به‌گام و بیش از ۲۰۰ صفحه آماده در بسته تحویل شماست.</p>
+            <div class="landing-cta__actions">
+              <a class="btn btn-light btn-lg" href="docs/installation.html"><i class="bi bi-download" aria-hidden="true"></i> راهنمای نصب</a>
+              <a class="btn btn-outline-light btn-lg" href="index.html"><i class="bi bi-house" aria-hidden="true"></i> صفحه محصول</a>
+            </div>
+          </div>
+          <div class="landing-cta__art" aria-hidden="true"><span></span><span></span><span></span></div>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="landing-footer">
-    <div class="landing-container">
-      <div class="landing-footer__inner">
-        <div>
+    <div class="container-xxl">
+      <div class="row gy-4">
+        <div class="col-lg-6">
           <a class="brand" href="index.html" aria-label="{{APP_NAME}}">
-            <img class="brand__mark" src="assets/logo-mark.svg" alt="" width="34" height="34">
+            <img class="brand__mark" src="assets/logo-mark.svg" alt="" width="34" height="34" />
             <span class="brand__text"><span class="brand__name">{{APP_NAME}}</span><span class="brand__tag">{{TAGLINE}}</span></span>
           </a>
-          <p class="text-muted mt-3">{{TAGLINE}}</p>
+          <p class="landing-footer__note mt-3 mb-0">پیش‌نمایش زندهٔ قالب — همان موتور تم، همان چیدمان‌ها، بدون بک‌اند.</p>
         </div>
-        <nav aria-label="دموها">
-          <h2 class="landing-footer__title">دموها</h2>
-          <div class="landing-footer__links">
-            <a href="dashboards/analytics.html">آنالیتیکس</a>
-            <a href="dashboards/ecommerce.html">فروشگاهی</a>
-            <a href="dashboards/crm.html">مدیریت مشتری</a>
-            <a href="dashboards/saas.html">سرویس ابری</a>
-          </div>
-        </nav>
-        <nav aria-label="منابع">
-          <h2 class="landing-footer__title">منابع</h2>
-          <div class="landing-footer__links">
-            <a href="docs/introduction.html">مستندات</a>
-            <a href="docs/installation.html">نصب</a>
-            <a href="system/changelog.html">تغییرات</a>
-            <a href="system/help-center.html">مرکز راهنما</a>
-          </div>
-        </nav>
+        <div class="col-6 col-lg-3">
+          <h4 class="landing-footer__title">دموها</h4>
+          <ul class="landing-footer__list">
+            <li><a href="dashboards/analytics.html">آنالیتیکس</a></li>
+            <li><a href="dashboards/ecommerce.html">فروشگاهی</a></li>
+            <li><a href="dashboards/crm.html">مدیریت مشتری</a></li>
+            <li><a href="dashboards/saas.html">سرویس ابری</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-lg-3">
+          <h4 class="landing-footer__title">منابع</h4>
+          <ul class="landing-footer__list">
+            <li><a href="docs/introduction.html">مستندات</a></li>
+            <li><a href="docs/installation.html">نصب</a></li>
+            <li><a href="system/changelog.html">تغییرات نسخه</a></li>
+            <li><a href="system/help-center.html">مرکز راهنما</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="landing-footer__legal">
-        <span>© {{YEAR}} {{APP_NAME}} — نسخه {{VERSION}}</span>
-        <span>ساخته‌شده با HTML5، SCSS و ES2022</span>
+      <div class="landing-footer__bottom">
+        <span class="text-muted small">© {{YEAR}} {{APP_NAME}} — نسخه {{VERSION}}</span>
+        <span class="landing-footer__actions">
+          <button class="btn btn-sm btn-light" type="button" data-theme-toggle><i class="bi bi-circle-half" aria-hidden="true"></i> تم</button>
+          <button class="btn btn-sm btn-light" type="button" data-language-toggle><i class="bi bi-translate" aria-hidden="true"></i> <span data-language-label>فارسی</span></button>
+          <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> شخصی‌سازی</button>
+        </span>
       </div>
     </div>
   </footer>
-
-  <!-- Floating quick actions for the preview page -->
-  <div class="preview-toolbar">
-    <div class="preview-toolbar__inner">
-      <button class="btn btn-sm btn-light" type="button" data-theme-toggle><i class="bi bi-circle-half" aria-hidden="true"></i> تم</button>
-      <button class="btn btn-sm btn-light" type="button" data-direction-toggle><i class="bi bi-arrow-left-right" aria-hidden="true"></i> جهت</button>
-<div class="dropdown">
-        <button class="btn btn-sm btn-light" type="button" data-dropdown-toggle="true" aria-expanded="false"><i class="bi bi-translate" aria-hidden="true"></i> <span data-i18n="ui.language">زبان</span></button>
-        <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
-      </div>
-      <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> شخصی‌سازی</button>
-      <a class="btn btn-sm btn-primary" href="dashboards/analytics.html"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> داشبورد</a>
-    </div>
-  </div>
 
   <!-- the customizer, overlays and scripts are appended by the shell in
        `tools/build-pages.mjs` (`noLayout` branch) — do not include them here. -->

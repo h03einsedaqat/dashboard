@@ -173,6 +173,66 @@ export const layout = {
 
   /** Enhances every table so `data-table-sticky` headers stay readable. */
   /**
+   * Horizontal layout: the top navigation row.
+   *
+   * The header ships an empty `<div class="topnav" data-nav-mount hidden>` slot
+   * that nothing used to fill — picking "افقی" in the customizer therefore
+   * removed the sidebar and left *no navigation at all* behind. The row is now
+   * built from the sidebar's own `<ul class="nav__root">` (a clone, so all the
+   * active-link, tooltip and accordion wiring keeps working) whenever the
+   * horizontal layout is active.
+   */
+  initTopNav() {
+    const group = $('[data-topnav-group]');
+    const mount = $('[data-nav-mount]');
+    if (!group || !mount) return null;
+    const source = $('.app-sidebar .nav__root');
+
+    const sync = () => {
+      const isHorizontal = document.documentElement.dataset.layout === 'horizontal';
+      group.hidden = !isHorizontal;
+      if (!isHorizontal) {
+        mount.innerHTML = '';
+        return;
+      }
+      if (!mount.children.length && source) {
+        const clone = source.cloneNode(true);
+        clone.classList.add('nav--top');
+        clone.removeAttribute('id');
+        mount.append(clone);
+        layout.highlightActive();
+        /** The group the current page belongs to starts open. */
+        const active = $('.nav__link.is-active', clone);
+        active?.closest('.nav__item--has-sub')?.classList.add('is-open');
+      }
+      /** A horizontal shell never has a rail to collapse: hide those buttons. */
+      $$('[data-sidebar-collapse], [data-sidebar-toggle]').forEach((button) => {
+        if (isHorizontal) button.setAttribute('data-layout-hidden', '');
+        else button.removeAttribute('data-layout-hidden');
+      });
+    };
+
+    sync();
+    bus.on(EVENTS.layout, sync);
+    bus.on(EVENTS.language, () => window.setTimeout(() => {
+      mount.innerHTML = '';
+      sync();
+    }, 60));
+    /* Hover-opened fly-outs must also work with a keyboard. */
+    on(mount, 'click', (event) => {
+      const toggle = event.target.closest('[data-nav-toggle]');
+      if (!toggle) return;
+      const item = toggle.closest('.nav__item');
+      if (!item) return;
+      [...mount.querySelectorAll('.nav__item--has-sub.is-open')].forEach((node) => {
+        if (node !== item) node.classList.remove('is-open');
+      });
+      item.classList.toggle('is-open');
+    });
+    return mount;
+  },
+
+  /**
    * Two-column layout: a secondary panel next to the content that lists the
    * children of the group the current page belongs to.
    *
@@ -180,6 +240,10 @@ export const layout = {
    * always matches the manifest — no second source of truth to keep in sync —
    * and it is rebuilt whenever the layout or the language changes (labels are
    * cloned *after* the translator has run, so they arrive translated).
+   *
+   * `html.has-secondary` tells the stylesheet that the panel really exists: the
+   * three-column grid may only be applied then, otherwise a page whose group has
+   * no children kept a phantom 15rem empty column next to the content.
    */
   initSecondaryNav() {
     const shell = $('[data-app-shell]');
@@ -187,9 +251,12 @@ export const layout = {
     const isTwocol = () => document.documentElement.dataset.layout === 'twocol';
     let panel = $('.app-secondary', shell);
 
+    const setFlag = (on_) => document.documentElement.classList.toggle('has-secondary', Boolean(on_));
+
     const close = () => {
       panel?.remove();
       panel = null;
+      setFlag(false);
     };
 
     const activeGroup = () => {
@@ -210,8 +277,13 @@ export const layout = {
       const data = activeGroup();
       if (!data) {
         close();
+        /* A two-column layout without a secondary panel must fall back to the
+           plain one, otherwise the content sits in a squeezed third of the
+           screen with a blank column beside it. */
+        document.documentElement.classList.add('twocol-fallback');
         return;
       }
+      document.documentElement.classList.remove('twocol-fallback');
       const { group, subList } = data;
       if (!panel) {
         panel = create('aside', {
@@ -251,6 +323,9 @@ export const layout = {
       });
       // Keep the group header icon for visual continuity with the sidebar.
       if (icon) panel.querySelector('.app-secondary__title')?.prepend(icon.cloneNode(true));
+      setFlag(true);
+      /** A panel that ended up with a single entry is not worth its column. */
+      if (!$$('.app-secondary__link', panel).length) close();
     };
 
     build();
@@ -274,6 +349,7 @@ export const layout = {
     layout.initScrollEffects();
     layout.initStickyTables();
     layout.initSecondaryNav();
+    layout.initTopNav();
 
     /**
      * One hamburger, two behaviours: below `lg` the sidebar is an off-canvas

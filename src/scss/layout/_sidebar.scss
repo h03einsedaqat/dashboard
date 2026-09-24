@@ -35,8 +35,38 @@
   align-items: center;
   gap: var(--nv-space-3);
   min-width: 0;
+  flex: 1 1 auto;
   color: var(--nv-heading);
 }
+
+/*
+ * The slogan sits beside the mark in a flex row, so on every narrow rail
+ * (mini / collapse / compact / two-column, and on `lg` type) it used to wrap
+ * into the logo and overlap it. One line, ellipsised, and dropped entirely
+ * where there is no room — the brand never breaks another layout choice.
+ */
+.brand__text {
+  min-inline-size: 0;
+  overflow: hidden;
+}
+.brand__name,
+.brand__tag {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1439.98px) {
+  .app-sidebar .brand__tag {
+    display: none;
+  }
+}
+
+html[data-font-size='lg'] .app-sidebar .brand__tag {
+  display: none;
+}
+
 .brand:hover {
   color: var(--nv-primary);
 }
@@ -696,5 +726,52 @@
 
   [data-sidebar-style='compact'] .app-sidebar .nav__sub {
     display: revert !important;
+  }
+}
+
+/* --------------------------------------------------------- horizontal clone */
+/** `layout.js` clones the sidebar nav into the header for the horizontal mode. */
+.nav--top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--nv-space-1);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  padding-block: 0.15rem;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sidebar-group__label,
+  .nav-section,
+  .nav-item__caret,
+  .nav-item__badge {
+    display: none;
+  }
+
+  .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .nav-submenu {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
+    min-inline-size: 14rem;
+    padding: var(--nv-space-2);
+    border: 1px solid var(--nv-border);
+    border-radius: var(--nv-radius-md);
+    background: var(--nv-surface);
+    box-shadow: var(--nv-shadow-md);
+    display: none;
+  }
+
+  .nav-item:has(.nav-submenu):hover .nav-submenu,
+  .nav-item:has(.nav-submenu):focus-within .nav-submenu {
+    display: block;
   }
 }

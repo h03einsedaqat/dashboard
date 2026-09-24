@@ -17,9 +17,12 @@ import { setLanguage } from '../core/i18n.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
 import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
+import { withState } from '../core/load.js';
+import { SHOWCASE, FEATURES, FAQ, STEPS, RELEASE_HEADLINE, CODE_SAMPLE } from '../../data/landing.js';
 import { config } from '../../config/config.js';
 import { searchService, commandService } from '../../services/index.js';
 import { navigation, navigationSections, navigationCount } from '../../data/navigation.js';
+import { goTo, url } from '../core/links.js';
 import * as kit from './kit.js';
 
 const {
@@ -48,133 +51,142 @@ const {
 
 /* ===================================================== landing / marketing */
 
+/**
+ * Landing page — the shop window of the template.
+ * ------------------------------------------------------------------
+ * Two rules shape this module:
+ *
+ *   1. **Every block is a state machine.** Each section is loaded through
+ *      `withState()`, so it starts as a skeleton, becomes content, or shows a
+ *      retryable error card. No panel is ever silently empty — including when
+ *      a service rejects.
+ *   2. **What is advertised is what ships.** The hero preview and the demo
+ *      gallery render the generated dashboard pictures (`tools/gen-previews.mjs`),
+ *      drawn from the same mock data the real dashboards use, and they follow
+ *      the visitor's theme (light / dark) like every other page.
+ */
 export async function initLanding() {
   const node = $('[data-landing]') ?? host();
   if (!node) return;
   node.dataset.appClaimed = '1';
 
-  const [highlights, counters, testimonials, pricing, faq, tech] = await Promise.all([
-    services.contentService.highlights(),
-    services.contentService.counters(),
-    services.contentService.testimonials(),
-    services.contentService.pricing(),
-    services.contentService.faq(),
-    services.contentService.techStack(),
+  wireLandingHeader(node);
+  initMarquee(node);
+  initHeroShowcase(node);
+  initFaqControls(node);
+
+  const block = (selector, load, options = {}) => {
+    const target = $(selector, node);
+    if (!target) return Promise.resolve();
+    return withState(target, load, { skeleton: 'card', ...options });
+  };
+
+  await Promise.all([
+    block('[data-landing-highlights]', landingFeatures, { skeleton: 'card' }),
+    block('[data-landing-demos]', landingDemos, { skeleton: 'card', title: 'دموها' }),
+    block('[data-landing-layouts]', landingLayouts, { skeleton: 'list', title: 'چیدمان‌ها' }),
+    block('[data-landing-ai]', landingAi, { skeleton: 'list', title: 'بخش هوش مصنوعی' }),
+    block('[data-landing-tech]', landingTech, { skeleton: 'text', title: 'پشته فناوری' }),
+    block('[data-landing-steps]', landingSteps, { skeleton: 'card', title: 'شروع سریع' }),
+    block('[data-landing-release]', landingRelease, { skeleton: 'list', title: 'تازه‌های نسخه' }),
+    block('[data-landing-testimonials]', landingTestimonials, { skeleton: 'card', title: 'نظرات' }),
+    block('[data-landing-pricing]', landingPricing, { skeleton: 'card', title: 'پلن‌ها' }),
+    block('[data-landing-faq]', landingFaq, { skeleton: 'list', title: 'پرسش‌های پرتکرار', wrap: false }),
+    block('[data-ai-stats]', landingAiStats, { skeleton: 'kpi', title: 'آمار AI' }),
+    landingCounters(node),
   ]);
 
-  /**
-   * The counter strip is generated from `contentService.counters()` so the
-   * numbers on the page always match the product (page count, components…).
-   */
-  const counterHost = $('[data-landing-counters]', node);
-  if (counterHost && counters.length) {
-    render(
-      counterHost,
-      counters
-        .map(
-          (item) => `<div class="landing-counter"><dt>${escapeHtml(item.label)}</dt><dd data-counter="${Number(item.value) || 0}" data-counter-suffix="${escapeHtml(item.suffix ?? '')}">${formatNumber(0)}</dd></div>`,
-        )
-        .join(''),
-    );
-  }
-
-  $$('[data-counter]', node).forEach((counter) => {
-    const target = Number(counter.dataset.counter ?? 0);
-    const suffix = counter.dataset.counterSuffix ?? '';
-    let current = 0;
-    const step = Math.max(1, Math.round(target / 40));
-    const timer = setInterval(() => {
-      current += step;
-      if (current >= target) {
-        current = target;
-        clearInterval(timer);
-      }
-      counter.textContent = `${formatNumber(current)}${target === 0 ? '' : suffix}`;
-    }, 24);
+  /* The FAQ is interactive only once its items exist. */
+  initFaqControls(node);
+  $$('[data-code]', node).forEach((el) => {
+    el.innerHTML = highlightCode(CODE_SAMPLE);
   });
+}
 
-  const grid = $('[data-landing-highlights]', node);
-  if (grid) {
-    render(
-      grid,
-      highlights
-        .map(
-          (item) => `<article class="card card--icon" data-reveal><span class="card__icon card__icon--${escapeHtml(item.tone ?? 'primary')}"><i class="bi bi-${escapeHtml(item.icon ?? 'stars')}" aria-hidden="true"></i></span>
-            <h3 class="card__title">${escapeHtml(item.title)}</h3><p class="card__subtitle">${escapeHtml(item.text ?? item.body ?? '')}</p></article>`,
-        )
-        .join(''),
-    );
+/* ----------------------------------------------------- shared landing helpers */
+
+/** Preview picture for a dashboard, in the theme the visitor is looking at. */
+function previewSrc(id, mode = landingMode()) {
+  return `assets/img/previews/${id}-${mode}.svg`;
+}
+
+function landingMode() {
+  const snapshot = theme.snapshot?.() ?? {};
+  if (snapshot.theme === 'system' || !snapshot.theme) {
+    return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+  }
+  return snapshot.theme === 'dark' ? 'dark' : 'light';
+}
+
+/** Re-points every preview image on the page after a theme change. */
+function syncLandingImages(root = document) {
+  $$('[data-preview-id]', root).forEach((img) => {
+    const id = img.dataset.previewId;
+    const wanted = previewSrc(id);
+    if (img.getAttribute('src') !== wanted) {
+      if (typeof Image === 'undefined') {
+        img.setAttribute('src', wanted);
+        return;
+      }
+      img.style.opacity = '0';
+      const next = new Image();
+      next.alt = img.alt;
+      next.width = img.width;
+      next.height = img.height;
+      next.decoding = 'async';
+      next.onload = () => {
+        img.replaceWith(Object.assign(next, { style: 'transition: opacity 220ms var(--nv-ease)' }));
+        requestAnimationFrame(() => {
+          next.style.opacity = '1';
+        });
+      };
+      next.src = wanted;
+      return;
+    }
+  });
+}
+
+function highlightCode(source) {
+  return escapeHtml(source)
+    .replace(/(\/\/[^\n]*)/g, '<span class="tok-c">$1</span>')
+    .replace(/(&#39;[^&]*?&#39;|`[^`]*`)/g, '<span class="tok-s">$1</span>')
+    .replace(/\b(export|const|async|await|return|function|import|from|new|=&gt;)\b/g, '<span class="tok-k">$1</span>');
+}
+
+/* ---------------------------------------------------------------- chrome bits */
+
+/**
+ * Header shared by every chrome-less marketing page: stuck shadow, a mobile
+ * menu button (created when the page did not ship one), active-section
+ * tracking, the Jalali year in the footer and the newsletter form.
+ * Small, self-contained and all optional — the page stays readable with every
+ * one of them missing.
+ */
+export function wireLandingHeader(node = document) {
+  const header = $('.landing-header');
+  if (header) {
+    const onScroll = () => header.classList.toggle('is-stuck', window.scrollY > 8);
+    onScroll();
+    on(window, 'scroll', debounce(onScroll, 60), { passive: true });
   }
 
-  const testimonialGrid = $('[data-landing-testimonials]', node);
-  if (testimonialGrid) {
-    render(
-      testimonialGrid,
-      testimonials
-        .map(
-          (item) => `<figure class="card"><div class="card__body"><span class="rating rating--readonly">${Array.from({ length: 5 }, (_, index) => `<i class="bi bi-star${index < item.rating ? '-fill' : ''}" aria-hidden="true"></i>`).join('')}</span>
-            <blockquote class="mt-3 mb-3">${escapeHtml(item.text)}</blockquote>
-            <figcaption class="d-flex align-items-center gap-3"><img class="avatar avatar--sm" src="${escapeHtml(item.avatar)}" alt=""><div><strong>${escapeHtml(item.name)}</strong><span class="list-item__sub">${escapeHtml(item.role)}</span></div></figcaption></div></figure>`,
-        )
-        .join(''),
-    );
+  const menu = $('.landing-header .landing-nav', node) ?? $('.landing-nav');
+  let menuButton = $('[data-landing-menu]');
+  if (menu && !menuButton) {
+    /* The preview page ships no button; without one the nav would simply vanish
+       below the breakpoint, so it is created here instead of duplicating markup. */
+    const actions = $('.landing-header__actions');
+    if (actions) {
+      menuButton = document.createElement('button');
+      menuButton.type = 'button';
+      menuButton.className = 'btn btn-sm btn-icon btn-outline-secondary';
+      menuButton.setAttribute('data-landing-menu', '');
+      menuButton.setAttribute('aria-controls', 'landing-nav');
+      menuButton.setAttribute('aria-label', 'فهرست بخش‌ها');
+      menuButton.innerHTML = '<i class="bi bi-list" aria-hidden="true"></i>';
+      actions.prepend(menuButton);
+    }
   }
-
-  const pricingHost = $('[data-landing-pricing]', node);
-  if (pricingHost) {
-    render(
-      pricingHost,
-      pricing
-        .map(
-          (plan) => `<article class="price-card${plan.featured ? ' price-card--featured' : ''}">
-            ${plan.featured ? '<span class="price-card__badge">پیشنهاد ویژه</span>' : ''}
-            <h3 class="price-card__name">${escapeHtml(plan.name)}</h3>
-            <p class="price-card__desc">${escapeHtml(plan.description ?? '')}</p>
-            <p class="price-card__amount">${plan.price ? formatCurrency(plan.price, 'IRR', { compact: true }) : 'رایگان'}<span>${plan.price ? ' / ماه' : ''}</span></p>
-            <ul class="price-card__list">${(plan.features ?? [])
-              .map((feature) => (typeof feature === 'string' ? { text: feature, included: true } : feature))
-              .map(
-                (feature) =>
-                  `<li${feature.included === false ? ' class="is-muted"' : ''}><i class="bi bi-${feature.included === false ? 'dash-circle' : 'check2-circle'}" aria-hidden="true"></i> ${escapeHtml(feature.text ?? '')}</li>`,
-              )
-              .join('')}</ul>
-            <a class="btn ${plan.featured ? 'btn-primary' : 'btn-light'} w-100" href="system/pricing.html">شروع کنید</a>
-          </article>`,
-        )
-        .join(''),
-    );
-  }
-
-  const faqHost = $('[data-landing-faq]', node);
-  if (faqHost) {
-    render(
-      faqHost,
-      `<div class="faq-list" data-accordion>${faq
-        .map(
-          (item, index) => `<div class="accordion-item"><button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-accordion-toggle aria-expanded="${index === 0}">${escapeHtml(item.q ?? item.question ?? '')}<i class="bi bi-chevron-down" aria-hidden="true"></i></button>
-            <div class="accordion-body" data-accordion-body ${index === 0 ? '' : 'hidden'}><p>${escapeHtml(item.a ?? item.answer ?? '')}</p></div></div>`,
-        )
-        .join('')}</div>`,
-    );
-  }
-
-  const techHost = $('[data-landing-tech]', node);
-  if (techHost) {
-    render(
-      techHost,
-      tech
-        .map((item) => `<div class="integration-card"><span class="integration-card__logo"><i class="bi bi-${escapeHtml(item.icon ?? 'code-slash')}" aria-hidden="true"></i></span><div class="integration-card__body"><strong class="integration-card__title">${escapeHtml(item.name)}</strong><p class="integration-card__text">${escapeHtml(item.note ?? item.text ?? item.description ?? '')}</p></div></div>`)
-        .join(''),
-    );
-  }
-
-  /*
-   * Landing navigation: below the `lg` breakpoint the header collapses to a
-   * menu button, so the panel has to open, close on selection and report its
-   * state for assistive technology.
-   */
-  const menuButton = $('[data-landing-menu]', node) ?? $('[data-landing-menu]');
-  const menu = $('#landing-nav') ?? $('.landing-nav');
   if (menuButton && menu) {
     const setMenu = (open) => {
       menu.classList.toggle('is-open', open);
@@ -186,28 +198,547 @@ export async function initLanding() {
       if (event.target.closest('a')) setMenu(false);
     });
     on(document, 'keydown', (event) => {
-      if (event.key === 'Escape' && menu.classList.contains('is-open')) setMenu(false);
+      if (event.key === 'Escape') setMenu(false);
     });
   }
 
-  refreshLandingNumbers(node);
-  $$('[data-counter]', node).forEach((counter) => counter.removeAttribute('data-counter'));
-  initCharts(node);
-  on(node, 'click', (event) => {
-    const switcher = event.target.closest('[data-demo-switch]');
-    if (switcher) {
+  const links = $$('.landing-nav__link', node);
+  const sections = links.map((link) => $(link.getAttribute('href'), node)).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length) {
+    const spy = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          links.forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === `#${entry.target.id}`));
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px', threshold: [0, 1] },
+    );
+    sections.forEach((section) => spy.observe(section));
+  }
+
+  const yearNode = $('[data-year]', node);
+  if (yearNode) {
+    try {
+      yearNode.textContent = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric' }).format(new Date());
+    } catch {
+      yearNode.textContent = toDigits(new Date().getFullYear());
+    }
+  }
+
+  const newsletter = $('[data-newsletter]', node);
+  if (newsletter) {
+    on(newsletter, 'submit', async (event) => {
       event.preventDefault();
-      const demo = switcher.dataset.demoSwitch;
-      window.location.href = demo === 'current' ? 'dashboards/analytics.html' : `dashboards/${demo}.html`;
+      const input = $('input[type="email"]', newsletter);
+      const button = $('button[type="submit"]', newsletter);
+      const note = $('.landing-cta__note', newsletter.parentElement ?? newsletter);
+      const value = (input?.value ?? '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+        input?.setCustomValidity('یک ایمیل معتبر بنویسید');
+        input?.reportValidity();
+        input?.setCustomValidity('');
+        input?.focus();
+        return;
+      }
+      button?.classList.add('is-loading');
+      if (button) button.disabled = true;
+      try {
+        await services.contentService.subscribe(value);
+        input.value = '';
+        if (note) note.innerHTML = '<i class="bi bi-check2-circle"></i> عضویت ثبت شد — خبرنامه ماهانه برای شما ارسال می‌شود.';
+        toast.success('عضویت انجام شد', 'خبرنامه ماهانه برای شما ارسال می‌شود.');
+      } catch (error) {
+        toast.error('عضویت ناموفق بود', error?.message ?? 'دوباره تلاش کنید.');
+      } finally {
+        button?.classList.remove('is-loading');
+        if (button) button.disabled = false;
+      }
+    });
+  }
+}
+
+/** The scrolling proof strip needs its content twice for a seamless loop. */
+function initMarquee(node) {
+  const track = $('[data-marquee]', node);
+  if (!track || track.dataset.cloned === '1') return;
+  track.dataset.cloned = '1';
+  track.insertAdjacentHTML('beforeend', track.innerHTML);
+}
+
+/* ---------------------------------------------------------------- the device */
+
+/**
+ * The hero product preview.
+ *
+ * It is not a video and not a static screenshot: it is a real `<img>` per demo
+ * in both themes, with tab semantics, arrow-key navigation, auto-rotation that
+ * pauses while the visitor is reading or hovering, and the two live numbers of
+ * that dashboard fetched from the same analytics service the dashboards use.
+ */
+function initHeroShowcase(node) {
+  const shell = $('[data-showcase]', node);
+  if (!shell || shell.dataset.ready === '1') return;
+  shell.dataset.ready = '1';
+
+  const items = SHOWCASE.map((entry) => ({ ...entry, url: `dashboards/${entry.id}.html` }));
+  const tabsHost = $('[data-showcase-tabs]', shell);
+  const mediaHost = $('[data-showcase-media]', shell);
+  const caption = $('[data-showcase-caption]', shell);
+  const metricsHost = $('[data-showcase-metrics]', shell);
+  const slugNode = $('[data-showcase-slug]', shell);
+  if (!tabsHost || !mediaHost) return;
+
+  let index = Math.max(0, items.findIndex((item) => item.id === (document.body.dataset.page || '').split('/').pop()?.replace('.html', '')));
+  if (index < 0) index = 0;
+  let timer = null;
+
+  render(
+    tabsHost,
+    items
+      .map(
+        (item, position) =>
+          `<button class="landing-device__tab" type="button" role="tab" id="showcase-tab-${escapeHtml(item.id)}" aria-controls="showcase-media" aria-selected="${position === index}" data-showcase-index="${position}" tabindex="${position === index ? 0 : -1}">${escapeHtml(item.title)}</button>`,
+      )
+      .join(''),
+  );
+
+  const paintMetrics = (item) => {
+    render(
+      metricsHost,
+      item.metrics
+        .map((metric) => `<span class="landing-device__metric"><span>${escapeHtml(metric.label)}</span><b>${escapeHtml(metric.value)}</b></span>`)
+        .join(''),
+    );
+    /* Real KPI of that demo, when the service answers — the page never waits on it. */
+    services.analyticsService
+      ?.kpis?.(item.id)
+      ?.then((kpis) => {
+        const first = (kpis ?? [])[0];
+        const chip = $('[data-showcase-delta]', shell);
+        if (chip && first) {
+          chip.textContent = `${first.delta >= 0 ? '+' : '−'}${toDigits(Math.abs(first.delta))}٪ ${escapeHtml(first.label)}`;
+        }
+      })
+      ?.catch(() => {});
+  };
+
+  const show = (position) => {
+    index = (position + items.length) % items.length;
+    const item = items[index];
+    tabsHost.querySelectorAll('.landing-device__tab').forEach((tab, tabIndex) => {
+      const active = tabIndex === index;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    if (slugNode) slugNode.textContent = item.id;
+    if (caption) caption.textContent = `${item.title} — ${item.text}`;
+    paintMetrics(item);
+    shell.classList.remove('is-ready');
+    mediaHost.classList.add('is-swapping');
+    const id = `showcase-${item.id}-${Date.now()}`;
+    const picture = `<picture>
+        <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(item.id))}" />
+        <img id="${id}" data-preview-id="${escapeHtml(item.id)}" src="${escapeHtml(previewSrc(item.id))}" width="1600" height="1000" alt="پیش‌نمایش ${escapeHtml(item.title)} در ${config.appName}" decoding="async" />
+      </picture>`;
+    const fallback = () => {
+      render(
+        mediaHost,
+        `<div class="state-panel state-panel--empty"><i class="bi bi-image-alt"></i><span class="state-panel__title">پیش‌نمایش در دسترس نیست</span><span class="state-panel__text">برای دیدن این دمو وارد پنل شوید.</span><a class="btn btn-sm btn-primary" href="${escapeHtml(item.url)}">باز کردن دمو</a></div>`,
+      );
+      shell.classList.add('is-ready');
+    };
+    /*
+     * The picture is decoded before it is swapped in, so changing demo never
+     * flashes a half-drawn frame. When the browser (or a headless harness) has
+     * no `Image`, the markup is inserted directly — an `<img>` that cannot
+     * decode simply shows its alt text, which is still better than a blank box.
+     */
+    if (typeof Image === 'undefined') {
+      render(mediaHost, picture);
+      shell.classList.add('is-ready');
+      return;
+    }
+    const preload = new Image();
+    preload.onload = () => {
+      render(mediaHost, picture);
+      shell.classList.add('is-ready');
+      setTimeout(() => mediaHost.classList.remove('is-swapping'), 460);
+    };
+    preload.onerror = fallback;
+    preload.src = previewSrc(item.id);
+  };
+
+  show(index);
+
+  const stop = () => {
+    if (timer) clearInterval(timer);
+    timer = null;
+  };
+  const start = () => {
+    stop();
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+    timer = setInterval(() => show(index + 1), 7000);
+  };
+  on(tabsHost, 'click', (event) => {
+    const tab = event.target.closest('[data-showcase-index]');
+    if (!tab) return;
+    show(Number(tab.dataset.showcaseIndex));
+    start();
+  });
+  on(tabsHost, 'keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const forward = event.key === 'ArrowLeft'; /* RTL: left points to the next item */
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index + (forward ? 1 : -1);
+    show(next);
+    tabsHost.querySelector('.landing-device__tab.is-active')?.focus();
+    start();
+  });
+  on(shell, 'mouseenter', stop);
+  on(shell, 'mouseleave', start);
+  on(shell, 'focusin', stop);
+  on(shell, 'focusout', start);
+  on(document, 'visibilitychange', () => (document.hidden ? stop() : start()));
+  bus.on(EVENTS.theme, () => {
+    syncLandingImages(node);
+    show(index);
+  });
+  if ('IntersectionObserver' in window) {
+    const visibility = new IntersectionObserver((entries) => (entries[0].isIntersecting ? start() : stop()));
+    visibility.observe(shell);
+  } else {
+    start();
+  }
+}
+
+/* ------------------------------------------------------------ data sections */
+
+async function landingFeatures() {
+  const served = await services.contentService.highlights().catch(() => []);
+  const items = FEATURES.length ? FEATURES : served.map((item) => ({ ...item, proof: '' }));
+  return items
+    .map(
+      (item) => `<div class="col-sm-6 col-xl-3">
+        <article class="landing-feature landing-feature--${escapeHtml(item.tone ?? 'primary')}">
+          <span class="landing-feature__icon"><i class="bi bi-${escapeHtml(item.icon ?? 'stars')}" aria-hidden="true"></i></span>
+          <h3 class="landing-feature__title">${escapeHtml(item.title)}</h3>
+          <p class="landing-feature__text">${escapeHtml(item.text ?? item.body ?? '')}</p>
+          ${item.proof ? `<span class="landing-feature__proof"><i class="bi bi-patch-check-fill" aria-hidden="true"></i> ${escapeHtml(item.proof)}</span>` : ''}
+        </article></div>`,
+    )
+    .join('');
+}
+
+async function landingDemos() {
+  const demos = config.demos ?? [];
+  const pagesByDemo = await services.demoService
+    ?.switcher?.()
+    ?.catch(() => []);
+  const extras = new Map((pagesByDemo ?? []).map((row) => [row.id, row]));
+  return demos
+    .map((demo) => {
+      const meta = SHOWCASE.find((entry) => entry.id === demo.id) ?? {};
+      const extra = extras.get(demo.id) ?? {};
+      const label = demo.label?.fa ?? demo.id;
+      return `<div class="col-sm-6 col-xl-4">
+        <article class="landing-demo-card" data-reveal>
+          <a class="landing-demo-card__media" href="${escapeHtml(demo.url ?? `dashboards/${demo.id}.html`)}" aria-label="باز کردن داشبورد ${escapeHtml(label)}">
+            <picture>
+              <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(demo.id))}" />
+              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1600" height="1000" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(label)} — ${escapeHtml(meta.text ?? '')}" />
+            </picture>
+            <span class="landing-demo-card__open"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> باز کردن دمو</span>
+          </a>
+          <div class="landing-demo-card__body">
+            <span class="landing-demo-card__icon"><i class="bi bi-${escapeHtml(demo.icon ?? 'window')}" aria-hidden="true"></i></span>
+            <div style="min-width:0">
+              <h3 class="landing-demo-card__title">${escapeHtml(meta.title ?? label)}</h3>
+              <p class="landing-demo-card__text">${escapeHtml(meta.text ?? extra.description ?? '')}</p>
+            </div>
+          </div>
+          <footer class="landing-demo-card__foot">
+            <span><i class="bi bi-layers" aria-hidden="true"></i> ${escapeHtml(extra.section ?? 'بخش کامل')}</span>
+            ${(meta.metrics ?? []).slice(0, 2).map((metric) => `<span>${escapeHtml(metric.label)}: <b>${escapeHtml(metric.value)}</b></span>`).join('')}
+          </footer>
+        </article></div>`;
+    })
+    .join('');
+}
+
+async function landingLayouts() {
+  const layouts = [
+    { value: 'sidebar', icon: 'layout-sidebar-inset', title: 'سایدبار (پیش‌فرض)', text: 'ستون کناری باز با زیرمنوی آکاردئونی.' },
+    { value: 'mini', icon: 'layout-sidebar', title: 'مینی', text: 'فقط آیکن‌ها؛ با هاور، نام منو نمایان می‌شود.' },
+    { value: 'collapse', icon: 'list-nested', title: 'جمع‌شونده', text: 'سایدبار باریک با ریل آیکن و حالت کشویی.' },
+    { value: 'horizontal', icon: 'menu-button-wide', title: 'افقی', text: 'منوی بالای صفحه با گروه‌های بازشو — بدون ستون کناری.' },
+    { value: 'twocol', icon: 'columns-gap', title: 'دو ستونی', text: 'ریل آیکن + پنل دوم برای زیرمENU گروه فعال.' },
+    { value: 'boxed', icon: 'border', title: 'باکس‌دار', text: 'همان چیدمان داخل یک قاب با عرض محدود.' },
+  ];
+  const current = theme.snapshot?.()?.layout ?? 'default';
+  const isOn = (value) => (value === 'sidebar' ? current === 'default' || current === 'sidebar' : current === value);
+  return layouts
+    .map(
+      (layout) => `<button class="landing-layout${isOn(layout.value) ? ' is-active' : ''}" type="button" data-layout-option="${escapeHtml(layout.value)}" aria-pressed="${isOn(layout.value)}">
+        <span class="landing-layout__head">
+          <i class="bi bi-${escapeHtml(layout.icon)}" aria-hidden="true"></i>
+          <span class="landing-layout__title">${escapeHtml(layout.title)}</span>
+          <i class="bi bi-check2-circle landing-layout__check" aria-hidden="true"></i>
+        </span>
+        <span class="landing-layout__preview" aria-hidden="true"><i></i><i></i></span>
+        <span class="landing-layout__text">${escapeHtml(layout.text)}</span>
+      </button>`,
+    )
+    .join('');
+}
+
+async function landingAi() {
+  const pages = [
+    { url: 'ai/dashboard.html', icon: 'speedometer2', title: 'نمای کلی مصرف', text: 'توکن، هزینه و خطاها به تفکیک مدل.' },
+    { url: 'ai/chat.html', icon: 'chat-dots', title: 'محاوره', text: 'جریان پاسخ، ابزارها و تاریخچه.' },
+    { url: 'ai/playground.html', icon: 'braces-asterisk', title: 'ساخت پرامپت', text: 'متغیر، نمونه و تست زنده.' },
+    { url: 'ai/prompts.html', icon: 'collection', title: 'کتابخانه پرامپت', text: 'جست‌وجو، برچسب و نسخه‌بندی.' },
+    { url: 'ai/api-keys.html', icon: 'key', title: 'کلیدها', text: 'ساخت، چرخش و محدوده دسترسی.' },
+    { url: 'ai/usage.html', icon: 'graph-up', title: 'قبض و مصرف', text: 'روند هزینه و پیش‌بینی ماه.' },
+  ];
+  return pages
+    .map(
+      (page) => `<a class="landing-ai-item" href="${escapeHtml(page.url)}">
+        <i class="bi bi-${escapeHtml(page.icon)}" aria-hidden="true"></i>
+        <strong>${escapeHtml(page.title)}</strong>
+        <span>${escapeHtml(page.text)}</span>
+      </a>`,
+    )
+    .join('');
+}
+
+async function landingAiStats() {
+  const [usage, keys] = await Promise.all([services.usageService?.overview?.().catch(() => null), services.apiKeyService?.list?.().catch(() => null)]);
+  const rows = [
+    { label: 'توکن ۳۰ روز', value: usage ? formatNumber(usage.tokens ?? 0) : '—' },
+    { label: 'کلید فعال', value: keys ? toDigits((keys.items ?? keys ?? []).length) : '—' },
+  ];
+  return `<div class="row g-3">${rows
+    .map(
+      (row) => `<div class="col-6"><div class="tile tile--soft"><span class="tile__label">${escapeHtml(row.label)}</span><strong class="tile__value">${escapeHtml(row.value)}</strong></div></div>`,
+    )
+    .join('')}</div>`;
+}
+
+async function landingTech() {
+  const tech = await services.contentService.techStack();
+  return (tech ?? [])
+    .map(
+      (item) => `<span class="landing-tech__item"><i class="bi bi-${escapeHtml(item.icon ?? 'box-seam')}" aria-hidden="true"></i>
+        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.note ?? item.version ?? '')}</small></span></span>`,
+    )
+    .join('');
+}
+
+async function landingSteps() {
+  return STEPS.map(
+    (step) => `<li class="landing-step">
+      <h3 class="landing-step__title">${escapeHtml(step.title)}</h3>
+      <p class="landing-step__text">${escapeHtml(step.text)}</p>
+      <code class="landing-step__code">${escapeHtml(step.code)}</code>
+      <button class="btn btn-sm btn-light landing-step__copy" type="button" data-copy="${escapeHtml(step.code)}" title="کپی"><i class="bi bi-clipboard" aria-hidden="true"></i></button>
+    </li>`,
+  ).join('');
+}
+
+async function landingRelease() {
+  const changelog = await services.contentService.changelog?.().catch(() => []);
+  const first = (changelog ?? [])[0];
+  const items = RELEASE_HEADLINE.items.concat(first?.entries?.slice(0, 3) ?? []);
+  return items.map((line) => `<li>${escapeHtml(line)}</li>`).join('');
+}
+
+async function landingTestimonials() {
+  const items = await services.contentService.testimonials();
+  return (items ?? [])
+    .slice(0, 6)
+    .map(
+      (item) => `<figure class="landing-quote">
+        <span class="landing-quote__stars" aria-label="${toDigits(item.rating ?? 5)} از ۵ ستاره">${Array.from({ length: 5 }, (_, index) => `<i class="bi bi-star${index < (item.rating ?? 5) ? '-fill' : ''}" aria-hidden="true"></i>`).join('')}</span>
+        <blockquote class="landing-quote__text">${escapeHtml(item.text ?? item.quote ?? '')}</blockquote>
+        <figcaption class="landing-quote__who">
+          ${item.avatar ? `<img class="landing-quote__avatar" src="${escapeHtml(item.avatar)}" alt="" width="38" height="38" loading="lazy" />` : '<span class="landing-quote__avatar" aria-hidden="true"></span>'}
+          <span><span class="landing-quote__name">${escapeHtml(item.name)}</span><br /><span class="landing-quote__role">${escapeHtml(item.role ?? '')}</span></span>
+        </figcaption>
+      </figure>`,
+    )
+    .join('');
+}
+
+async function landingPricing() {
+  const plans = await services.contentService.pricing();
+  return (plans ?? [])
+    .map(
+      (plan) => `<article class="landing-plan${plan.featured ? ' landing-plan--featured' : ''}">
+        ${plan.featured ? '<span class="landing-plan__flag">پیشنهاد ما</span>' : ''}
+        <header><h3 class="landing-plan__name">${escapeHtml(plan.name ?? plan.title)}</h3><p class="landing-plan__tagline">${escapeHtml(plan.tagline ?? plan.text ?? '')}</p></header>
+        <p class="landing-plan__price">${escapeHtml(plan.price ?? '')}${plan.period ? `<small>${escapeHtml(plan.period)}</small>` : ''}</p>
+        <ul class="landing-plan__list">${(plan.features ?? plan.items ?? []).map((feature) => `<li><i class="bi bi-check2" aria-hidden="true"></i> ${escapeHtml(feature)}</li>`).join('')}</ul>
+        <a class="btn ${plan.featured ? 'btn-light' : 'btn-primary'}" href="auth/register.html">${escapeHtml(plan.cta ?? 'خرید و دانلود')}</a>
+      </article>`,
+    )
+    .join('');
+}
+
+async function landingFaq() {
+  const items = FAQ.map((item, index) => ({ ...item, open: index === 0 }));
+  const groups = [...new Set(items.map((item) => item.group))];
+  const chips = $('[data-faq-chips]');
+  if (chips) {
+    render(
+      chips,
+      [`<button class="landing-faq__chip is-active" type="button" data-faq-group="all" aria-pressed="true">همه</button>`]
+        .concat(groups.map((group, index) => `<button class="landing-faq__chip" type="button" data-faq-group="${index}" aria-pressed="false">${escapeHtml(group)}</button>`))
+        .join(''),
+    );
+  }
+  return items
+    .map(
+      (item, index) => `<div class="accordion-item${item.open ? ' is-open' : ''}" data-faq-item data-group="${escapeHtml(String(groups.indexOf(item.group)))}" id="faq-${escapeHtml(item.id)}">
+        <h3 class="accordion-header">
+          <button class="accordion-button${item.open ? '' : ' collapsed'}" type="button" data-accordion-toggle aria-expanded="${item.open}" aria-controls="faq-${escapeHtml(item.id)}-body">
+            <i class="bi bi-${escapeHtml(item.icon ?? 'question-circle')}" aria-hidden="true"></i>
+            <span>${escapeHtml(item.question)}</span>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+          </button>
+        </h3>
+        <div class="accordion-body" id="faq-${escapeHtml(item.id)}-body" role="region" aria-labelledby="faq-${escapeHtml(item.id)}" data-accordion-body${item.open ? '' : ' hidden'}>
+          <p>${escapeHtml(item.answer)}</p>
+          ${(item.meta ?? []).length ? `<div class="accordion__tags">${item.meta.map((meta) => `<span class="accordion__tag">${escapeHtml(meta)}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>`,
+    )
+    .join('');
+}
+
+async function landingCounters(node) {
+  const counters = await services.contentService.counters().catch(() => []);
+  const band = $$('[data-band-number]', node);
+  if (counters?.length && band.length) {
+    counters.slice(0, band.length).forEach((item, index) => {
+      const el = band[index];
+      if (!el) return;
+      el.dataset.bandNumber = String(item.value ?? el.dataset.bandNumber);
+      el.dataset.counter = String(Number(item.value) || 0);
+      el.dataset.counterSuffix = String(item.suffix ?? '');
+      $('.landing-stat__label', el.parentElement)?.replaceChildren(document.createTextNode(String(item.label ?? '')));
+      $('.landing-stat__note', el.parentElement)?.replaceChildren(document.createTextNode(String(item.note ?? '')));
+    });
+  }
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  $$('[data-counter]', node).forEach((counter) => {
+    const target = Number(counter.dataset.counter ?? 0);
+    const suffix = counter.dataset.counterSuffix ?? '';
+    if (reduce || !target) {
+      counter.textContent = `${formatNumber(target)}${suffix}`;
+      return;
+    }
+    let current = 0;
+    const step = Math.max(1, Math.round(target / 40));
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      counter.textContent = `${formatNumber(current)}${target === 0 ? '' : suffix}`;
+    }, 24);
+  });
+}
+
+/**
+ * FAQ interactions that the generic accordion does not cover: free-text search,
+ * topic chips, open/close-all, the `.collapsed` class Bootstrap-style CSS keeps
+ * and deep links such as `index.html#faq-license`.
+ */
+function initFaqControls(node) {
+  const list = $('[data-landing-faq]', node);
+  if (!list || list.dataset.wired === '1') return;
+  list.dataset.wired = '1';
+
+  const items = () => $$('[data-faq-item]', list);
+  const setOpen = (item, open) => {
+    item.classList.toggle('is-open', open);
+    const button = $('.accordion-button', item);
+    const body = $('[data-accordion-body]', item);
+    button?.classList.toggle('collapsed', !open);
+    button?.setAttribute('aria-expanded', String(open));
+    if (body) body.hidden = !open;
+  };
+
+  const search = $('[data-faq-search]', node);
+  const empty = $('[data-faq-empty]', node);
+  const apply = () => {
+    const term = (search?.value ?? '').trim().toLowerCase();
+    const group = $('.landing-faq__chip.is-active')?.dataset.faqGroup ?? 'all';
+    let visible = 0;
+    items().forEach((item) => {
+      const matchesText = !term || item.textContent.toLowerCase().includes(term);
+      const matchesGroup = group === 'all' || item.dataset.group === group;
+      const show = matchesText && matchesGroup;
+      item.hidden = !show;
+      if (show) visible += 1;
+      if (show && term) setOpen(item, true);
+      if (!show) setOpen(item, false);
+    });
+    if (empty) empty.hidden = visible > 0;
+  };
+  if (search) on(search, 'input', debounce(apply, 120));
+
+  on(node, 'click', (event) => {
+    const chip = event.target.closest('[data-faq-group]');
+    if (chip) {
+      event.preventDefault();
+      $$('[data-faq-group]', node).forEach((other) => {
+        const active = other === chip;
+        other.classList.toggle('is-active', active);
+        other.setAttribute('aria-pressed', String(active));
+      });
+      apply();
+      return;
+    }
+    if (event.target.closest('[data-faq-reset]')) {
+      if (search) search.value = '';
+      $$('[data-faq-group]', node).forEach((other, index) => {
+        other.classList.toggle('is-active', index === 0);
+        other.setAttribute('aria-pressed', String(index === 0));
+      });
+      apply();
+      return;
+    }
+    const toggleAll = event.target.closest('[data-faq-expand]');
+    if (toggleAll) {
+      const open = toggleAll.dataset.faqExpand !== 'true';
+      toggleAll.dataset.faqExpand = String(open);
+      toggleAll.innerHTML = open ? 'بستن همه' : 'باز کردن همه';
+      items().forEach((item) => !item.hidden && setOpen(item, open));
     }
   });
-  on($('[data-newsletter]', node), 'submit', async (event) => {
-    event.preventDefault();
-    const input = $('input', event.currentTarget);
-    await services.contentService.subscribe(input.value);
-    input.value = '';
-    toast.success('عضویت انجام شد', 'خبرنامه ماهانه برای شما ارسال می‌شود.');
+
+  /* A single question per click when the list is not being searched. */
+  on(list, 'click', (event) => {
+    const button = event.target.closest('[data-accordion-toggle]');
+    if (!button || (search?.value ?? '').trim()) return;
+    const item = button.closest('[data-faq-item]');
+    const willOpen = !item.classList.contains('is-open');
+    items().forEach((other) => other !== item && setOpen(other, false));
+    setOpen(item, willOpen);
   });
+
+  const hash = window.location.hash?.replace('#', '');
+  if (hash?.startsWith('faq-')) {
+    const target = $(`#${hash}`, node);
+    if (target) {
+      setOpen(target, true);
+      setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 220);
+    }
+  }
 }
 
 /**
@@ -255,7 +786,7 @@ export async function initSearchResults() {
   on($('[data-search-form]', node), 'submit', (event) => {
     event.preventDefault();
     const value = $('input[name="q"]', node)?.value?.trim();
-    if (value) window.location.href = `search.html?q=${encodeURIComponent(value)}`;
+    if (value) goTo(`search.html?q=${encodeURIComponent(value)}`);
   });
   on(node, 'click', (event) => {
     const chip = event.target.closest('[data-browse-section]');
@@ -743,7 +1274,22 @@ export async function initPreview() {
     $('[data-preview-demos]', node),
     config.demos
       .map(
-        (demo) => `<a class="landing-demo" href="dashboards/${demo.id}.html"><i class="bi bi-${escapeHtml(demo.icon)}" aria-hidden="true"></i><strong>${escapeHtml(demo.label.fa)}</strong><span>${escapeHtml(demo.label.en)}</span></a>`,
+        (demo) => `<div class="col-sm-6 col-xl-4"><article class="landing-demo-card">
+          <a class="landing-demo-card__media" href="dashboards/${demo.id}.html" aria-label="باز کردن داشبورد ${escapeHtml(demo.label.fa)}">
+            <picture>
+              <source type="image/svg+xml" srcset="${escapeHtml(previewSrc(demo.id))}" />
+              <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1600" height="1000" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(demo.label.fa)}" />
+            </picture>
+            <span class="landing-demo-card__open"><i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> باز کردن</span>
+          </a>
+          <div class="landing-demo-card__body">
+            <span class="landing-demo-card__icon"><i class="bi bi-${escapeHtml(demo.icon)}" aria-hidden="true"></i></span>
+            <div style="min-width:0">
+              <h3 class="landing-demo-card__title">${escapeHtml(demo.label.fa)}</h3>
+              <p class="landing-demo-card__text">${escapeHtml(demo.label.en)} — داده، نمودار و جدول اختصاصی</p>
+            </div>
+          </div>
+        </article></div>`,
       )
       .join(''),
   );
@@ -774,6 +1320,14 @@ export async function initPreview() {
     const group = option.closest('[data-preview-layouts]') ? 'چیدمان' : 'رنگ اصلی';
     toast.success('ظاهر به‌روز شد', `${group}: ${option.dataset.value}`);
   });
+
+  /* The preview page is the one place where a theme change must repaint the
+     pictures: every mock-up exists as a light and a dark drawing. */
+  wireLandingHeader(node);
+  /* The hosts are tagged with `data-customizer` at runtime, i.e. after theme.js
+     synced the page — one extra pass keeps the current choice highlighted. */
+  theme.sync?.();
+  bus.on(EVENTS.theme, () => syncLandingImages(node));
 
   initCharts(node);
 }
@@ -969,6 +1523,22 @@ export async function initAuth() {
   };
 
   const spec = specs[page] ?? specs['auth-login'];
+
+  /**
+   * The marketing aside previews the same dashboard in both themes, and the
+   * theme can be flipped from the tools bar under the card — so the visible
+   * screenshot is re-picked on every theme change instead of being baked into
+   * the generated HTML.
+   */
+  const syncAuthShot = () => {
+    const mode = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    $$('[data-auth-shot]').forEach((image) => {
+      image.hidden = image.dataset.authShot !== mode;
+    });
+  };
+  syncAuthShot();
+  bus.on(EVENTS.theme, syncAuthShot);
+
   const variation = spec.variation ?? 'standard';
   const cardClasses = ['auth-card', spec.wide ? 'auth-card--wide' : '', variation === 'minimal' ? 'auth-card--plain' : ''].filter(Boolean).join(' ');
 
@@ -1015,7 +1585,7 @@ export async function initAuth() {
         return;
       }
       toast.success('تأیید شد', 'در حال انتقال به داشبورد…');
-      setTimeout(() => window.location.assign(spec.redirect ?? 'dashboards/analytics.html'), 900);
+      setTimeout(() => goTo(spec.redirect ?? 'dashboards/analytics.html'), 900);
     });
     on($('[data-resend]', node), 'click', () => toast.info('کد ارسال شد', 'کد جدید تا ۲ دقیقه دیگر می‌رسد.'));
     return;
@@ -1044,7 +1614,7 @@ export async function initAuth() {
   // ------------------------------------------------------------- form cards
   const head = spec.avatar
     ? `<header class="auth-card__head">
-        <img class="avatar avatar--2xl" src="${spec.avatar}" alt="">
+        <img class="avatar avatar--2xl" src="${url(spec.avatar)}" alt="" width="72" height="72">
         <h2 class="auth-card__title">${escapeHtml(spec.person ?? '')}</h2>
         <p class="auth-card__text" data-i18n="${spec.head.textKey}">${spec.head.text}</p>
       </header>`
@@ -1092,14 +1662,37 @@ export async function initAuth() {
   // ------------------------------------------------------------ interactions
   const demoBox = $('[data-demo-box]', node);
   if (demoBox) {
-    on($('[data-demo-fill]', demoBox), 'click', () => {
+    const fillDemo = () => {
       const form = $('[data-auth-form]', node);
-      const email = $('[name="email"]', form);
-      const password = $('[name="password"]', form);
-      if (email) email.value = AUTH_DEMO.email;
-      if (password) password.value = AUTH_DEMO.password;
-      [email, password].forEach((input) => input?.dispatchEvent?.({ type: 'input', target: input }));
-      toast.info('اطلاعات آزمایشی وارد شد', 'برای ورود روی دکمه ورود بزنید.');
+      if (!form) return null;
+      const filled = [];
+      for (const [name, value] of Object.entries(AUTH_DEMO)) {
+        const input = $(`[name="${name}"]`, form);
+        if (!input) continue;
+        input.value = value;
+        /* Real events, so validation, the password meter and the submit state
+           all react exactly as they do on typed input. */
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        filled.push(input);
+      }
+      return { form, filled };
+    };
+
+    on($('[data-demo-fill]', demoBox), 'click', () => {
+      const result = fillDemo();
+      if (!result) return;
+      toast.info('اطلاعات آزمایشی وارد شد', 'فرم پر شد؛ با دکمه «ورود و ادامه» مستقیم وارد شوید.');
+      const more = document.createElement('button');
+      more.type = 'submit';
+      more.className = 'btn btn-primary btn-sm w-100 auth-demo__go';
+      more.innerHTML = '<i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> ورود و ادامه';
+      more.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (typeof result.form.requestSubmit === 'function') result.form.requestSubmit();
+        else result.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      });
+      demoBox.append(more);
     });
   }
 
@@ -1121,7 +1714,14 @@ export async function initAuth() {
     // dashboard opens. Swap this call for your own authentication endpoint.
     await services.authService.login({ email: form.email?.value ?? '', password: form.password?.value ?? '' }).catch(() => null);
     toast.success('ورود موفق', 'در حال انتقال به داشبورد…');
-    setTimeout(() => window.location.assign(spec.redirect ?? 'dashboards/analytics.html'), 800);
+    /*
+     * `?next=` lets a timed-out session come back to the page it was on. Only a
+     * in-template relative path is accepted, so the parameter can never be used
+     * to push somebody to another host.
+     */
+    const next = new URLSearchParams(window.location.search).get('next');
+    const target = next && /^[a-z0-9][a-z0-9./_-]*\.html$/i.test(next) && !/^\/\//.test(next) ? next : spec.redirect ?? 'dashboards/analytics.html';
+    setTimeout(() => goTo(target), 800);
     button.classList.remove('is-loading');
     button.disabled = false;
     if (label && original) label.textContent = original;
@@ -1408,7 +2008,7 @@ export async function initSystemPages() {
   on($('[data-error-search]', node), 'submit', (event) => {
     event.preventDefault();
     const value = $('input', event.currentTarget).value.trim();
-    if (value) window.location.href = `search.html?q=${encodeURIComponent(value)}`;
+    if (value) goTo(`search.html?q=${encodeURIComponent(value)}`);
   });
 }
 

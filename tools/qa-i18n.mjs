@@ -51,7 +51,11 @@ function scan(file) {
 
   lines.forEach((line) => {
     // data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria …
-    for (const match of line.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)) add(match[1], file, line);
+    for (const match of line.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)) {
+      // `data-i18n-ready` is a boot flag on <html>, not a lookup key.
+      if (/data-i18n-ready=/.test(match[0])) continue;
+      add(match[1], file, line);
+    }
     // t('key') and t("key")
     for (const match of line.matchAll(/\bt\(\s*['"]([A-Za-z][\w.]*)['"]/g)) add(match[1], file, line);
     // dictionary lookups used by components (`dict().table.x` is not a hook; only string keys count)

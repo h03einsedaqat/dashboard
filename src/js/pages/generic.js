@@ -15,8 +15,10 @@ import { toast } from '../core/toast.js';
 import { formatCurrency, formatNumber, toDigits } from '../core/numbers.js';
 import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
-import { createDataTable } from '../core/datatable.js';
+import { withState } from '../core/load.js';
+import { createDataTable, initDataTables } from '../core/datatable.js';
 import * as services from '../../services/index.js';
+import { emptyState } from './kit.js';
 
 /** Column presets per resource — reused by generic pages and the API service. */
 export const COLUMNS = {
@@ -321,17 +323,153 @@ const SUMMARY_LABELS = {
   subscriptions: [['total', 'اشتراک‌ها'], ['mrr', 'درآمد ماهانه', 'currency'], ['trialing', 'آزمایشی'], ['pastDue', 'معوق']],
 };
 
-function kpiStrip(resource, summary, title) {
-  const spec = SUMMARY_LABELS[resource];
-  if (!spec || !summary) return '';
-  return `<div class="kpi-row" data-reveal>${spec
-    .map(([key, label, format]) => {
-      const value = summary[key];
-      if (value === undefined || value === null) return '';
-      const formatted = format === 'currency' ? formatCurrency(value, 'IRR', { compact: true }) : format === 'percent' ? `${formatNumber(value, { decimals: 1 })}٪` : formatNumber(value);
-      return `<article class="stat-card"><div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span></div><p class="stat-card__value">${escapeHtml(formatted)}</p><p class="stat-card__meta">${escapeHtml(title)}</p></article>`;
-    })
+const KPI_FALLBACKS = {
+  total: ['کل رکوردها', 'number'],
+  active: ['فعال', 'number'],
+  open: ['باز', 'number'],
+  pending: ['در انتظار', 'number'],
+  paid: ['پرداخت‌شده', 'number'],
+  overdue: ['معوق', 'number'],
+  revenue: ['درآمد', 'currency'],
+  mrr: ['درآمد ماهانه', 'currency'],
+};
+
+/**
+ * The four tiles on top of every generated overview.
+ *
+ * When the service returns a `summary` the numbers come straight from it; when
+ * it does not, they are counted from the rows that are actually on screen, so a
+ * KPI is never a made-up constant.
+ */
+function kpiStrip(resource, summary, title, items = []) {
+  const spec = SUMMARY_LABELS[resource] ?? [];
+  const rows = Array.isArray(items) ? items : [];
+  const derived = (key) => {
+    const lower = String(key).toLowerCase();
+    if (lower === 'total') return rows.length;
+    if (lower === 'revenue' || lower === 'mrr') return rows.reduce((sum, row) => sum + (Number(row.total ?? row.amount ?? row.value ?? 0) || 0), 0);
+    return rows.filter((row) => String(row.status ?? row.stage ?? '') === lower).length;
+  };
+  const cells = [];
+  spec.forEach(([key, label, format]) => {
+    const value = summary?.[key] ?? derived(key);
+    if (value === undefined || value === null || value === '') return;
+    const formatted =
+      format === 'currency' ? formatCurrency(value, 'IRR', { compact: true }) : format === 'percent' ? `${formatNumber(value, { decimals: 1 })}٪` : formatNumber(value);
+    cells.push({ label, value: formatted });
+  });
+  if (!cells.length) {
+    /* No summary contract for this resource — count what is on screen instead. */
+    const statuses = new Map();
+    rows.forEach((row) => {
+      const label = row.statusLabel ?? row.status ?? row.stageLabel ?? row.stage;
+      if (label) statuses.set(String(label), (statuses.get(String(label)) ?? 0) + 1);
+    });
+    const money = rows.reduce((sum, row) => sum + (Number(row.total ?? row.amount ?? 0) || 0), 0);
+    cells.push({ label: `کل ${title}`, value: formatNumber(rows.length) });
+    if (money) cells.push({ label: 'ارزش کل', value: formatCurrency(money, 'IRR', { compact: true }) });
+    [...statuses.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4 - cells.length)
+      .forEach(([label, count]) => cells.push({ label, value: formatNumber(count) }));
+  }
+  if (!cells.length) return '';
+  return `<div class="kpi-row" data-reveal>${cells
+    .slice(0, 4)
+    .map(
+      (cell, index) => `<article class="stat-card">
+        <div class="stat-card__head">
+          <span class="stat-card__label">${escapeHtml(cell.label)}</span>
+          <span class="stat-card__icon stat-card__icon--${['primary', 'success', 'info', 'warning'][index % 4]}"><i class="bi bi-${['clipboard-data', 'check2-circle', 'graph-up', 'hourglass-split'][index % 4]}" aria-hidden="true"></i></span>
+        </div>
+        <p class="stat-card__value">${escapeHtml(cell.value)}</p>
+        <p class="stat-card__meta">بر پایه داده‌های همین صفحه</p>
+      </article>`,
+    )
     .join('')}</div>`;
+}
+
+/* ------------------------------------------------- overview chart helpers */
+
+/** Month number (1-12) of a date in the Persian calendar, without extra deps. */
+function persianMonthIndex(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    const digits = String(new Intl.DateTimeFormat('en-US-u-ca-persian', { month: 'numeric' }).format(date)).replace(/[^0-9]/g, '');
+    const index = Number(digits);
+    return index >= 1 && index <= 12 ? index : null;
+  } catch {
+    return null;
+  }
+}
+
+const PERSIAN_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+
+/** Real monthly buckets built from the records' own dates. */
+function monthlyBuckets(items, valueKeys) {
+  const buckets = PERSIAN_MONTHS.map((label) => ({ label, value: 0, count: 0 }));
+  items.forEach((item) => {
+    const when = valueKeys.dates.map((key) => item?.[key]).find(Boolean);
+    const index = persianMonthIndex(when);
+    if (!index) return;
+    const amount = valueKeys.amounts.map((key) => Number(item?.[key])).find((value) => Number.isFinite(value) && value !== 0) ?? 1;
+    buckets[index - 1].value += Math.abs(amount);
+    buckets[index - 1].count += 1;
+  });
+  return buckets;
+}
+
+/** Counts grouped by status/stage, largest first. */
+function statusBreakdown(items) {
+  const map = new Map();
+  items.forEach((item) => {
+    const label = item?.statusLabel ?? item?.status ?? item?.stageLabel ?? item?.stage ?? item?.priorityLabel;
+    if (label === undefined || label === null || label === '') return;
+    const text = String(label);
+    map.set(text, (map.get(text) ?? 0) + 1);
+  });
+  return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+}
+
+/** Trend + breakdown for an overview, both derived from the loaded rows. */
+function overviewCharts(resource, title, items) {
+  const buckets = monthlyBuckets(items, {
+    dates: ['placedAt', 'createdAt', 'paidAt', 'shippedAt', 'at', 'date', 'since', 'dueDate'],
+    amounts: ['total', 'amount', 'value', 'price', 'quantity', 'sold'],
+  });
+  const hasData = buckets.some((bucket) => bucket.count > 0);
+  const labels = hasData ? buckets.map((bucket) => bucket.label) : PERSIAN_MONTHS.slice(0, 7);
+  const data = hasData ? buckets.map((bucket) => bucket.value) : [0, 0, 0, 0, 0, 0, 0];
+  const breakdown = statusBreakdown(items);
+  const chartSeries = JSON.stringify([{ name: title, data }]);
+  return `<div class="widget-grid">
+    <section class="card" data-span="8" data-reveal>
+      <header class="card__head">
+        <div><h2 class="card__title">روند ${escapeHtml(title)}</h2><p class="card__subtitle">${hasData ? 'تجمیع رکوردها به تفکیک ماه شمسی' : 'بدون رکورد تاریخ‌دار در این بازه — نمودار پس از افزودن داده پر می‌شود'}</p></div>
+        <div class="card__actions"><span class="badge badge--soft-primary rounded-pill">${toDigits(buckets.reduce((sum, bucket) => sum + bucket.count, 0))} رکورد تاریخ‌دار</span></div>
+      </header>
+      <div class="card__body"><div class="chart" data-chart="area" data-chart-height="300" data-chart-series='${chartSeries}' data-chart-labels='${JSON.stringify(labels)}'></div></div>
+    </section>
+    <section class="card" data-span="4" data-reveal>
+      <header class="card__head">
+        <div><h2 class="card__title">توزیع وضعیت‌ها</h2><p class="card__subtitle">سهم هر وضعیت از فهرست روبه‌رو</p></div>
+      </header>
+      <div class="card__body">${
+        breakdown.length
+          ? `<div class="chart" data-chart="donut" data-chart-height="300" data-chart-series='${JSON.stringify(breakdown.map((row) => row.value))}' data-chart-labels='${JSON.stringify(breakdown.map((row) => row.label))}'></div>`
+          : emptyState({ title: 'وضعیتی برای شمارش نیست', text: 'رکوردها فیلد وضعیت ندارند.', icon: 'pie-chart' })
+      }</div>
+      ${
+        breakdown.length
+          ? `<footer class="card__foot">${breakdown
+              .slice(0, 3)
+              .map((row) => `<span>${escapeHtml(row.label)} <strong class="numeric">${toDigits(row.value)}</strong></span>`)
+              .join('')}</footer>`
+          : ''
+      }
+    </section>
+  </div>`;
 }
 
 function tableMarkup(resource, columns, title) {
@@ -357,17 +495,6 @@ function tableMarkup(resource, columns, title) {
   </div>`;
 }
 
-function chartCard(resource, title) {
-  const series = {
-    orders: { type: 'area', series: [{ name: 'سفارش‌ها', data: [120, 168, 142, 210, 186, 244, 268] }, { name: 'بازگشتی', data: [42, 58, 51, 76, 68, 92, 104] }], labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر'] },
-    users: { type: 'column', series: [{ name: 'کاربران جدید', data: [32, 48, 41, 62, 74, 68, 86] }], labels: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] },
-    invoices: { type: 'area', series: [{ name: 'درآمد', data: [12, 18, 16, 22, 26, 24, 31] }, { name: 'هزینه', data: [8, 11, 9, 14, 15, 13, 17] }], labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر'] },
-  }[resource] ?? { type: 'area', series: [{ name: 'روند', data: [10, 18, 14, 26, 22, 32, 38] }], labels: ['۱', '۲', '۳', '۴', '۵', '۶', '۷'] };
-  return `<div class="card" data-reveal>
-    <div class="card__head"><div><h2 class="card__title">روند ${escapeHtml(title)}</h2><p class="card__subtitle">هفت دوره گذشته</p></div></div>
-    <div class="card__body"><div class="chart" data-chart="${series.type}" data-chart-height="300" data-chart-series='${JSON.stringify(series.series)}' data-chart-labels='${JSON.stringify(series.labels)}'></div></div>
-  </div>`;
-}
 
 
 /* ------------------------------------------------------- dashboard harness */
@@ -495,26 +622,48 @@ async function paintDashboardActivity(node) {
   );
 }
 
-/** Renders the generic overview experience (KPI + chart + table). */
+/**
+ * The generic overview experience: KPI tiles, a trend and a breakdown chart
+ * derived from the same rows the table shows, then the data table itself.
+ *
+ * It is the fallback for every `kind: 'app'` page, so it deliberately reads the
+ * resource through the service layer — swapping the mock for a real endpoint
+ * changes the page without touching this file.
+ */
 async function renderOverview(node, { resource, title }) {
-  const service = services.default[resource] ?? services.default.orders;
-  const columns = COLUMNS[resource] ?? deriveColumns(await service.list({ perPage: 1 }));
-  let summary = null;
-  try {
-    const result = await service.list({ perPage: 1 });
-    summary = result?.summary ?? null;
-  } catch (error) {
-    console.warn('[nova:generic] summary failed', error);
-  }
-  render(
+  /*
+   * `withState` gives this generated page the same three-phase behaviour as the
+   * hand-written ones: a skeleton while the resource answers, a real panel with
+   * a retry button when it does not, and content painted before the reveal
+   * observer runs.
+   */
+  await withState(
     node,
-    `<div class="dashboard-shell">
-      ${kpiStrip(resource, summary, title)}
-      <div class="widget-grid">${chartCard(resource, title)}</div>
-      ${tableMarkup(resource, columns, title)}
-    </div>`,
+    async () => {
+      const service = services.default[resource] ?? services.default.orders;
+      const result = (await service.list({ perPage: 240 })) ?? { items: [] };
+      const items = result.items ?? [];
+      const columns = COLUMNS[resource] ?? deriveColumns(result);
+      return `<div class="dashboard-shell">
+        ${kpiStrip(resource, result.summary ?? null, title, items)}
+        ${overviewCharts(resource, title, items)}
+        ${tableMarkup(resource, columns, title)}
+      </div>`;
+    },
+    {
+      skeleton: 'rows',
+      title,
+      /*
+       * Generic pages paint after the boot pass that binds the data tables, so
+       * both the charts and the table have to be started from here. Both calls
+       * are idempotent per node, which keeps a re-paint cheap.
+       */
+      onData: (target) => {
+        initCharts(target);
+        initDataTables(target);
+      },
+    },
   );
-  initCharts(node);
 }
 
 function deriveColumns(result) {

@@ -6,13 +6,32 @@ import { novaIncludes, novaRoot, collectPages } from './tools/nova-plugin.mjs';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const pages = collectPages('src/pages');
 
+/**
+ * Answers the dev-server keep-alive ping (`initKeepAlive()` in
+ * src/js/core/load.js). Returning 204 keeps the response free of CORS and
+ * content-type noise while proving the socket is still alive.
+ */
+function novaHeartbeat() {
+  return {
+    name: 'nova-heartbeat',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__nova-heartbeat', (_req, res) => {
+        res.statusCode = 204;
+        res.setHeader('Cache-Control', 'no-store');
+        res.end();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root,
   /** Relative base keeps the built template portable (sub-folders, file servers, CDNs). */
   base: './',
   publicDir: 'public',
 
-  plugins: [novaIncludes(), novaRoot()],
+  plugins: [novaIncludes(), novaRoot(), novaHeartbeat()],
 
   resolve: {
     alias: {
@@ -30,6 +49,13 @@ export default defineConfig({
     },
   },
 
+  /**
+   * Long-lived previews sit behind a proxy that drops idle sockets, which made
+   * Vite's client report “connection lost” after about a minute of inactivity.
+   * The overlay is silenced (`initConnectivity()` in src/js/core/load.js already
+   * explains the state to the user) and the keep-alive tick is answered by the
+   * dev server itself, so the proxy keeps seeing traffic.
+   */
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -37,6 +63,7 @@ export default defineConfig({
     allowedHosts: true,
     fs: { strict: false },
     warmup: { clientFiles: ['./src/main.js'] },
+    hmr: { overlay: false },
   },
 
   preview: {

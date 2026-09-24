@@ -18,6 +18,7 @@ import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initCalendar } from '../core/calendar.js';
+import { goTo } from '../core/links.js';
 import * as kit from './kit.js';
 
 const { card, infoRows, timeline, paint, host, pageHeader, formMarkup, collectValues, openRecordForm, exportable, emptyState, statusBadge, toolButtons, statsFrom, chart, services } = kit;
@@ -66,7 +67,7 @@ async function mailClient() {
     }
     const item = event.target.closest('[data-mail-item]');
     if (item) {
-      window.location.href = `apps/email.html?folder=${encodeURIComponent(query)}&id=${encodeURIComponent(item.dataset.mailItem)}`;
+      goTo(`apps/email.html?folder=${encodeURIComponent(query)}&id=${encodeURIComponent(item.dataset.mailItem)}`);
       return;
     }
     const remove = event.target.closest('[data-mail-delete]');
@@ -75,7 +76,7 @@ async function mailClient() {
       if (!ok) return;
       await services.mailService.remove(remove.dataset.mailDelete);
       toast.success('نامه حذف شد', 'می‌توانید آن را از سطل زباله بازگردانید.');
-      window.location.href = `apps/email.html?folder=${encodeURIComponent(query)}`;
+      goTo(`apps/email.html?folder=${encodeURIComponent(query)}`);
     }
   });
 }
@@ -845,7 +846,7 @@ export async function initCms() {
       }
       await services.media.create?.({}).catch?.(() => null);
       toast.success('نوشته منتشر شد', 'نوشته در فهرست مطالب قابل مشاهده است.');
-      setTimeout(() => window.location.assign('cms/posts.html'), 900);
+      setTimeout(() => goTo('cms/posts.html'), 900);
     });
     on($('[data-save-draft]', node), 'click', () => toast.info('پیش‌نویس ذخیره شد', 'می‌توانید بعداً آن را منتشر کنید.'));
     return;

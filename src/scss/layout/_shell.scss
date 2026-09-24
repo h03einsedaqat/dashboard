@@ -41,7 +41,6 @@
   margin-inline: auto;
   padding-inline: 0;
 }
-
 .page-body {
   display: flex;
   flex-direction: column;
@@ -101,9 +100,29 @@
   display: none;
 }
 
-/* -------------------------------------------------------- two column nav */
-[data-layout='twocol'] .app-shell {
+/* -------------------------------------------------------- two column nav
+   The rail + panel grid is only applied when a secondary panel really exists
+   (`layout.js` sets `html.has-secondary`) and when there is room for three
+   columns. Both guards matter: without the first, a page whose nav group has no
+   children kept an empty 15rem column; without the second, a 1280px laptop lost
+   half of its content width and every card started to wrap badly.
+   ------------------------------------------------------------------------- */
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-shell {
   grid-template-columns: var(--nv-sidebar-compact-w) 15rem minmax(0, 1fr);
+}
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar {
+  --nv-sidebar-w: var(--nv-sidebar-compact-w);
+}
+
+@media (max-width: 1399.98px) {
+  /* Two side columns + content is only sane from 1400px up. Below that the
+     panel is dropped and the rail returns to its normal width. */
+  [data-layout='twocol'].has-secondary .app-shell {
+    grid-template-columns: var(--nv-sidebar-w) minmax(0, 1fr);
+  }
+  [data-layout='twocol'].has-secondary .app-secondary {
+    display: none;
+  }
 }
 
 /* The panel only exists in the two-column layout; `layout.js` mounts it. */
@@ -165,7 +184,7 @@
   font-weight: var(--nv-fw-semibold);
 }
 
-[data-layout='twocol'] .app-secondary {
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-secondary {
   display: flex;
 }
 
@@ -187,23 +206,34 @@
   margin-inline-end: var(--nv-space-2);
   color: var(--nv-primary);
 }
-[data-layout='twocol'] .app-sidebar .nav__label,
-[data-layout='twocol'] .app-sidebar .nav__sub,
-[data-layout='twocol'] .app-sidebar .nav__section,
-[data-layout='twocol'] .app-sidebar .app-sidebar__search,
-[data-layout='twocol'] .app-sidebar .app-sidebar__promo {
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .nav__label,
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .nav__sub,
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .nav__section,
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .app-sidebar__search,
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .app-sidebar__promo {
   display: none;
 }
-[data-layout='twocol'] .app-sidebar .nav__link {
+[data-layout='twocol'].has-secondary:not(.twocol-fallback) .app-sidebar .nav__link {
   justify-content: center;
   padding-inline: 0;
+}
+/* The rail carries a brand mark only, so the slogan must never be squeezed in. */
+[data-layout='twocol'] .app-sidebar .brand__text {
+  display: none;
 }
 
 /* ----------------------------------------------------------- boxed layout */
 [data-layout='boxed'] .app-content {
   padding-inline: clamp(0.75rem, 2vw, 2rem);
 }
+/*
+ * `boxed` used to style `.container-fluid` only, while every application page
+ * renders `.page-body` — the "constrained width" switch therefore looked dead on
+ * 200 of the 206 pages. Both containers are framed together now.
+ */
+[data-layout='boxed'] .app-content > .page-body,
 [data-layout='boxed'] .app-content > .container-fluid {
+  width: 100%;
   max-width: 1400px;
   background: var(--nv-surface);
   border: 1px solid var(--nv-border);
@@ -224,6 +254,9 @@
 }
 [data-layout='horizontal'] .app-header {
   border-block-end: 0;
+}
+[data-layout='horizontal'] [data-layout-hidden] {
+  display: none !important;
 }
 [data-layout='horizontal'] .app-header__brand {
   display: flex !important;

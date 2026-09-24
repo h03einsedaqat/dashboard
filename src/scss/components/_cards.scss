@@ -255,3 +255,20 @@
   color: var(--nv-heading);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------- collapsed cards */
+/** `heads.js` collapses a card from its header tool; the body leaves the flow. */
+.card--collapsed {
+  .card__body,
+  .card__foot {
+    display: none;
+  }
+
+  .card__head {
+    border-block-end: 0;
+  }
+
+  [data-card-collapse] .bi {
+    transform: rotate(180deg);
+  }
+}
