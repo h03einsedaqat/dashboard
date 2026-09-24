@@ -72,11 +72,16 @@ export function toDigits(value, lang = activeLanguage) {
   return String(value).replace(/\d/g, (digit) => set[Number(digit)]);
 }
 
-/** Converts any digit set back to Latin — used before parsing user input. */
+/**
+ * Converts any digit set back to Latin — used before parsing user input. Persian and
+ * Arabic separators are folded too (`۲٬۴۵۰٫۵` becomes `2450.5`), because text copied
+ * out of `formatNumber()` itself has to survive a round trip through a field.
+ */
 export function toLatinDigits(value) {
   return String(value ?? '')
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[٫٬]/g, (d) => (d === '٫' ? '.' : ''));
 }
 
 /**
@@ -84,15 +89,25 @@ export function toLatinDigits(value) {
  * @param {number} value
  * @param {Object} [options] { lang, decimals, grouping }
  */
+/*
+ * `fa` and `ar` do not use the Latin separators: thousands are `٬` and the decimal
+ * mark is `٫`. Numbers are formatted through `en-US` (every engine agrees on that)
+ * and the marks are swapped here, so `formatNumber`, `formatCurrency`,
+ * `formatPercent` and `formatCompact` all read the same way — and `en` keeps `,`.
+ */
+const SEPARATORS = { fa: { group: '٬', decimal: '٫' }, ar: { group: '٬', decimal: '٫' } };
+
 export function formatNumber(value, { lang = activeLanguage, decimals = 0, grouping = true } = {}) {
   const number = Number(toLatinDigits(value));
-  if (!Number.isFinite(number)) return toDigits('۰', lang);
+  if (!Number.isFinite(number)) return toDigits('0', lang);
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
     useGrouping: grouping,
   }).format(number);
-  return toDigits(formatted, lang);
+  const marks = SEPARATORS[lang];
+  const local = marks ? formatted.replace(/,/g, marks.group).replace(/\./g, marks.decimal) : formatted;
+  return toDigits(local, lang);
 }
 
 /** Short readable form: ۱۲٫۴ میلیون / ۱٫۸ میلیارد — used by KPI cards. */

@@ -218,6 +218,15 @@
   align-items: flex-start;
   gap: var(--nv-space-2);
 }
+/* A feature the plan does not include. */
+.price-card__list .is-excluded {
+  color: var(--nv-text-muted);
+
+  i {
+    color: var(--nv-text-muted);
+  }
+}
+
 .price-card__list i {
   color: var(--nv-success);
   margin-block-start: 0.2rem;

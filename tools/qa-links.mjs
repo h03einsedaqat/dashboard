@@ -302,9 +302,22 @@ const sitemapPath = path.join(DIST, 'sitemap.xml');
 if (fs.existsSync(sitemapPath)) {
   const sitemap = fs.readFileSync(sitemapPath, 'utf8');
   const listed = new Set([...sitemap.matchAll(/<loc>[^<]*\/([^/<]+(?:\.html)?)<\/loc>/g)].map((m) => m[1]));
-  const missingFromSitemap = [...pageSet].filter((page) => !sitemap.includes(`/${page}<`));
-  if (missingFromSitemap.length) warn('seo.sitemap', `${missingFromSitemap.length} pages are not in sitemap.xml (first: ${missingFromSitemap.slice(0, 5).join(', ')})`);
-  console.log(`  sitemap: ${listed.size} URLs`);
+  const bare = /<loc>[^<]*\/\/[^/]+\/<\/loc>/.test(sitemap); // the landing is advertised as the bare domain
+  /* `noindex` and the sitemap have to agree: a page that asks not to be indexed
+     must not be advertised (crawlers then distrust the whole file), and a page
+     that is indexable should be in there. `tools/gen-nav.mjs` documents the switch. */
+  const noindex = new Set(
+    htmlFiles
+      .filter((file) => /name="robots"[^>]*content="[^"]*noindex/i.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => rel(file)),
+  );
+  const advertised = [...noindex].filter((page) => sitemap.includes(`/${page}<`));
+  if (advertised.length) fail('seo.sitemap', `${advertised.length} noindex pages are listed in sitemap.xml (first: ${advertised.slice(0, 5).join(', ')})`);
+  const missingFromSitemap = [...pageSet].filter(
+    (page) => !noindex.has(page) && !sitemap.includes(`/${page}<`) && !(page === 'index.html' && bare),
+  );
+  if (missingFromSitemap.length) warn('seo.sitemap', `${missingFromSitemap.length} indexable pages are not in sitemap.xml (first: ${missingFromSitemap.slice(0, 5).join(', ')})`);
+  console.log(`  sitemap: ${listed.size} URLs · robots: ${noindex.size} pages kept out`);
 } else {
   warn('seo.sitemap', 'dist/sitemap.xml missing');
 }
