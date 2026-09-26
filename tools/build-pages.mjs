@@ -375,7 +375,7 @@ function buildLocaleData() {
 /* ------------------------------------------------------------ auth layout  */
 
 /** Auth variations that keep the marketing aside vs. go centred. */
-const AUTH_CENTERED = new Set(['auth-login-minimal', 'auth-verify-email', 'auth-two-factor', 'auth-lock-screen', 'auth-logout', 'auth-error']);
+const AUTH_CENTERED = new Set(['auth-login-minimal', 'auth-verify', 'auth-2fa', 'auth-lock', 'auth-logout', 'auth-error', 'auth-verify-email', 'auth-two-factor', 'auth-lock-screen']);
 const AUTH_MINIMAL = new Set(['auth-login-minimal']);
 
 /**

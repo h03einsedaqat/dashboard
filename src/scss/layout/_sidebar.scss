@@ -1,10 +1,17 @@
 /* ==========================================================================
-   NOVAADMIN — Sidebar (navigation)
+   NOVAADMIN — Sidebar (navigation) — PROFESSIONAL REWORK
    --------------------------------------------------------------------------
    One DOM tree drives all six layouts and both directions:
      • vertical  → sections + accordion sub menus
      • rail      → icons only, fly-out sub menus on hover
      • horizontal→ top bar with dropdown panels (see _shell.scss)
+   FIXES:
+   - collapsed/mini/collapse now truly icon-only, no text leak
+   - search and promo hidden in collapsed
+   - user meta hidden, avatar centered
+   - brand slogan never overlaps logo
+   - fly-out menus positioned correctly in RTL/LTR
+   - compact style hover handled in _shell.scss, here we ensure inner elements
    ========================================================================== */
 
 .app-sidebar {
@@ -15,10 +22,17 @@
   background: var(--nv-sidebar-bg);
   border-inline-end: 1px solid var(--nv-border);
   z-index: var(--nv-z-sidebar);
-  transition: transform var(--nv-dur-slow) var(--nv-ease-out), width var(--nv-dur) var(--nv-ease);
+  transition: transform var(--nv-dur-slow) var(--nv-ease-out), width var(--nv-dur) var(--nv-ease), box-shadow var(--nv-dur) var(--nv-ease);
   height: 100%;
   max-height: 100vh;
   overflow: hidden;
+}
+
+/* In rail modes, sidebar must allow fly-out overflow */
+.sidebar-collapsed .app-sidebar,
+[data-layout='mini'] .app-sidebar,
+[data-layout='collapse'] .app-sidebar {
+  overflow: visible;
 }
 
 .app-sidebar__head {
@@ -28,6 +42,7 @@
   gap: var(--nv-space-2);
   padding: var(--nv-space-5) var(--nv-space-5) var(--nv-space-4);
   flex: 0 0 auto;
+  min-height: 4.25rem;
 }
 
 .brand {
@@ -37,17 +52,15 @@
   min-width: 0;
   flex: 1 1 auto;
   color: var(--nv-heading);
+  text-decoration: none;
 }
 
-/*
- * The slogan sits beside the mark in a flex row, so on every narrow rail
- * (mini / collapse / compact / two-column, and on `lg` type) it used to wrap
- * into the logo and overlap it. One line, ellipsised, and dropped entirely
- * where there is no room — the brand never breaks another layout choice.
- */
 .brand__text {
   min-inline-size: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 .brand__name,
 .brand__tag {
@@ -55,30 +68,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-@media (max-width: 1439.98px) {
-  .app-sidebar .brand__tag {
-    display: none;
-  }
-}
-
-html[data-font-size='lg'] .app-sidebar .brand__tag {
-  display: none;
-}
-
-.brand:hover {
-  color: var(--nv-primary);
-}
-.brand__mark {
-  flex: 0 0 auto;
-  display: block;
-}
-.brand__text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-  min-width: 0;
 }
 .brand__name {
   font-size: 1.0625rem;
@@ -90,9 +79,25 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   font-size: 0.6875rem;
   color: var(--nv-text-muted);
   letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+@media (max-width: 1439.98px) {
+  .app-sidebar .brand__tag {
+    display: none;
+  }
+}
+html[data-font-size='lg'] .app-sidebar .brand__tag {
+  display: none;
+}
+
+.brand:hover {
+  color: var(--nv-primary);
+}
+.brand__mark {
+  flex: 0 0 auto;
+  display: block;
+  width: 34px;
+  height: 34px;
 }
 
 .app-sidebar__body {
@@ -104,6 +109,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   flex-direction: column;
   gap: var(--nv-space-4);
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 
 .app-sidebar__search {
@@ -129,6 +135,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   border-radius: var(--nv-radius-lg);
   background: var(--nv-surface-2);
   border: 1px solid var(--nv-border);
+  min-width: 0;
 }
 .sidebar-user__meta {
   min-width: 0;
@@ -141,6 +148,9 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   font-size: var(--nv-text-body-sm);
   font-weight: var(--nv-fw-semibold);
   color: var(--nv-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sidebar-user__mail {
   font-size: var(--nv-text-micro);
@@ -172,6 +182,8 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--nv-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .nav__item {
@@ -196,6 +208,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   text-align: start;
   cursor: pointer;
   transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+  min-width: 0;
 }
 
 .nav__link:hover {
@@ -253,12 +266,41 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   transition: transform var(--nv-dur) var(--nv-ease);
 }
 
+.nav__caret-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--nv-radius-sm);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: all var(--nv-dur-fast) var(--nv-ease);
+}
+
+.nav__caret-btn:hover {
+  background: var(--nv-surface-3);
+  color: var(--nv-heading);
+}
+
 .nav__item--has-sub.is-open > .nav__link {
   color: var(--nv-heading);
   background: var(--nv-surface-hover);
 }
 .nav__item--has-sub.is-open > .nav__link .nav__caret {
   transform: rotate(180deg);
+}
+
+/* Parent link with children - ensure icon link works in all modes */
+.nav__item--has-sub > .nav__link {
+  position: relative;
+  cursor: pointer;
+}
+
+.nav__item--has-sub > .nav__link .nav__icon,
+.nav__item--has-sub > .nav__link .nav__label {
+  pointer-events: auto;
 }
 
 .nav__sub {
@@ -284,6 +326,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   padding-inline-start: var(--nv-space-3);
   min-height: 2.15rem;
   font-size: var(--nv-text-caption);
+  position: relative;
 }
 
 .nav__sub .nav__link::before {
@@ -295,9 +338,6 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   border-radius: var(--nv-radius-circle);
   background: var(--nv-border-strong);
   transition: background-color var(--nv-dur-fast) var(--nv-ease);
-}
-.nav__sub .nav__link {
-  position: relative;
 }
 .nav__sub .nav__link:hover::before,
 .nav__sub .nav__link.is-active::before {
@@ -315,13 +355,21 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   box-shadow: none;
 }
 
-/* --------------------------------------------------------------- rail mode */
+/* --------------------------------------------------------------- rail mode - ICON ONLY */
 .sidebar-collapsed,
 [data-layout='mini'],
 [data-layout='collapse'] {
   .app-sidebar__head {
     justify-content: center;
     padding-inline: var(--nv-space-3);
+  }
+  .app-sidebar__body {
+    padding-inline: var(--nv-space-3);
+    overflow: visible !important;
+  }
+  .app-nav,
+  .nav__root {
+    overflow: visible !important;
   }
 }
 
@@ -334,6 +382,9 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 .sidebar-collapsed .nav__caret,
 [data-layout='mini'] .nav__caret,
 [data-layout='collapse'] .nav__caret,
+.sidebar-collapsed .nav__caret-btn,
+[data-layout='mini'] .nav__caret-btn,
+[data-layout='collapse'] .nav__caret-btn,
 .sidebar-collapsed .nav__badge,
 [data-layout='mini'] .nav__badge,
 [data-layout='collapse'] .nav__badge,
@@ -342,8 +393,11 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 [data-layout='collapse'] .sidebar-user__meta,
 .sidebar-collapsed .app-sidebar__promo,
 [data-layout='mini'] .app-sidebar__promo,
-[data-layout='collapse'] .app-sidebar__promo {
-  display: none;
+[data-layout='collapse'] .app-sidebar__promo,
+.sidebar-collapsed .app-sidebar__search,
+[data-layout='mini'] .app-sidebar__search,
+[data-layout='collapse'] .app-sidebar__search {
+  display: none !important;
 }
 
 .sidebar-collapsed .nav__section,
@@ -351,9 +405,20 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 [data-layout='collapse'] .nav__section {
   padding: var(--nv-space-4) 0 var(--nv-space-2);
   text-align: center;
-  font-size: 0.6rem;
-  letter-spacing: 0;
+  font-size: 0;
+  height: 1px;
   overflow: hidden;
+  position: relative;
+}
+.sidebar-collapsed .nav__section::after,
+[data-layout='mini'] .nav__section::after,
+[data-layout='collapse'] .nav__section::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline: 20% 20%;
+  height: 1px;
+  background: var(--nv-divider);
 }
 
 .sidebar-collapsed .nav__link,
@@ -363,35 +428,55 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   padding-inline: 0;
 }
 
-.sidebar-collapsed .app-sidebar__body,
-[data-layout='mini'] .app-sidebar__body,
-[data-layout='collapse'] .app-sidebar__body {
-  padding-inline: var(--nv-space-3);
-  overflow: visible;
-}
-
 .sidebar-collapsed .sidebar-user,
 [data-layout='mini'] .sidebar-user,
 [data-layout='collapse'] .sidebar-user {
   justify-content: center;
   padding: var(--nv-space-2);
+  background: transparent;
+  border: 0;
 }
 
-/* fly-out sub menus in rail mode */
+/* fly-out sub menus in rail mode - FIXED: no gap, bridge, links work */
 .sidebar-collapsed .nav__item--has-sub > .nav__sub,
 [data-layout='mini'] .nav__item--has-sub > .nav__sub,
 [data-layout='collapse'] .nav__item--has-sub > .nav__sub {
   display: none;
   position: absolute;
-  inset-inline-start: calc(100% + 0.5rem);
+  inset-inline-start: calc(100% + 0.25rem);
   inset-block-start: 0;
-  min-width: 14rem;
+  min-width: 16rem;
+  max-width: 20rem;
   padding: var(--nv-space-2);
   background: var(--nv-surface);
   border: 1px solid var(--nv-border);
   border-radius: var(--nv-radius-lg);
   box-shadow: var(--nv-shadow-lg);
   z-index: var(--nv-z-drawer);
+  pointer-events: auto;
+}
+/* Invisible bridge to prevent hover gap */
+.sidebar-collapsed .nav__item--has-sub > .nav__sub::after,
+[data-layout='mini'] .nav__item--has-sub > .nav__sub::after,
+[data-layout='collapse'] .nav__item--has-sub > .nav__sub::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 100%;
+  inset-block: 0;
+  width: 0.75rem;
+  background: transparent;
+}
+[dir='rtl'] .sidebar-collapsed .nav__item--has-sub > .nav__sub,
+[dir='rtl'] [data-layout='mini'] .nav__item--has-sub > .nav__sub,
+[dir='rtl'] [data-layout='collapse'] .nav__item--has-sub > .nav__sub {
+  inset-inline-start: auto;
+  inset-inline-end: calc(100% + 0.25rem);
+}
+[dir='rtl'] .sidebar-collapsed .nav__item--has-sub > .nav__sub::after,
+[dir='rtl'] [data-layout='mini'] .nav__item--has-sub > .nav__sub::after,
+[dir='rtl'] [data-layout='collapse'] .nav__item--has-sub > .nav__sub::after {
+  inset-inline-end: auto;
+  inset-inline-start: 100%;
 }
 .sidebar-collapsed .nav__item--has-sub:hover > .nav__sub,
 [data-layout='mini'] .nav__item--has-sub:hover > .nav__sub,
@@ -401,6 +486,29 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 [data-layout='collapse'] .nav__item--has-sub:focus-within > .nav__sub {
   display: flex;
   animation: nv-fade-in var(--nv-dur) var(--nv-ease-out);
+  pointer-events: auto;
+}
+/* is-open in mini should NOT auto-show, only on hover - user requested closed by default */
+.sidebar-collapsed .nav__item--has-sub.is-open > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub.is-open > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub.is-open > .nav__sub {
+  display: none;
+}
+.sidebar-collapsed .nav__item--has-sub.is-open:hover > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub.is-open:hover > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub.is-open:hover > .nav__sub,
+.sidebar-collapsed .nav__item--has-sub.is-open:focus-within > .nav__sub,
+[data-layout='mini'] .nav__item--has-sub.is-open:focus-within > .nav__sub,
+[data-layout='collapse'] .nav__item--has-sub.is-open:focus-within > .nav__sub {
+  display: flex;
+}
+/* Ensure single links (not has-sub) are fully clickable in mini mode */
+.sidebar-collapsed .nav__item:not(.nav__item--has-sub) .nav__link,
+[data-layout='mini'] .nav__item:not(.nav__item--has-sub) .nav__link,
+[data-layout='collapse'] .nav__item:not(.nav__item--has-sub) .nav__link {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 .sidebar-collapsed .nav__sub::before,
 [data-layout='mini'] .nav__sub::before,
@@ -416,7 +524,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 .sidebar-collapsed .nav__sub .nav__label,
 [data-layout='mini'] .nav__sub .nav__label,
 [data-layout='collapse'] .nav__sub .nav__label {
-  display: block;
+  display: block !important;
 }
 .sidebar-collapsed .nav__sub .nav__link::before,
 [data-layout='mini'] .nav__sub .nav__link::before,
@@ -518,17 +626,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   }
 }
 
-/* ==========================================================================
-   Sidebar style variants
-   --------------------------------------------------------------------------
-   Driven by `[data-sidebar-style]` on <html> (set pre-paint by theme-boot.js):
-     • default (or `fixed`) → follows the active light/dark theme
-     • dark                 → dark panel in both themes
-     • brand                → primary gradient panel
-   The variant only re-points local tokens, so every nav rule above keeps
-   working without duplication — including the rail fly-out and mobile drawer.
-   ========================================================================== */
-
+/* Sidebar style variants */
 [data-sidebar-style='dark'],
 [data-sidebar-style='brand'] {
   --nv-sidebar-bg: #0b1220;
@@ -591,146 +689,7 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   color: var(--nv-sidebar-fg);
 }
 
-[data-sidebar-style='dark'] .app-sidebar .nav__sub,
-[data-sidebar-style='brand'] .app-sidebar .nav__sub {
-  border-inline-start-color: var(--nv-sidebar-border);
-}
-
-[data-sidebar-style='dark'] .app-sidebar .app-sidebar__search .form-control,
-[data-sidebar-style='brand'] .app-sidebar .app-sidebar__search .form-control {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: transparent;
-  color: var(--nv-sidebar-fg);
-}
-
-[data-sidebar-style='dark'] .app-sidebar .app-sidebar__search .form-control::placeholder,
-[data-sidebar-style='brand'] .app-sidebar .app-sidebar__search .form-control::placeholder {
-  color: var(--nv-sidebar-muted);
-}
-
-[data-sidebar-style='dark'] .app-sidebar .promo-card,
-[data-sidebar-style='brand'] .app-sidebar .promo-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-[data-sidebar-style='dark'] .app-sidebar .promo-card__title,
-[data-sidebar-style='brand'] .app-sidebar .promo-card__title {
-  color: var(--nv-sidebar-fg);
-}
-
-[data-sidebar-style='dark'] .app-sidebar .promo-card__body p,
-[data-sidebar-style='brand'] .app-sidebar .promo-card__body p {
-  color: var(--nv-sidebar-muted);
-}
-
-/* ============================================================ sidebar styles
-   `data-sidebar-style` covers two families so every customizer option has a
-   visible effect:
-     • colour variants …… default | dark | brand
-     • position variants … fixed | floating | compact
-   Both families are additive: `default` and `fixed` are the shipped look.
-   ========================================================================== */
-
-/* --- floating: inset, rounded, elevated sidebar ------------------------- */
-[data-sidebar-style='floating'] .app-shell {
-  grid-template-columns: calc(var(--nv-sidebar-w) + var(--nv-space-4)) minmax(0, 1fr);
-}
-
-[data-sidebar-style='floating'] .app-sidebar {
-  margin: var(--nv-space-4);
-  margin-inline-end: 0;
-  inset-block: var(--nv-space-4);
-  block-size: auto;
-  max-block-size: calc(100vh - (var(--nv-space-4) * 2));
-  border-radius: var(--nv-radius-lg);
-  border: 1px solid var(--nv-border);
-  box-shadow: var(--nv-shadow-md);
-  overflow: hidden;
-}
-
-[data-sidebar-style='floating'] .app-sidebar__body {
-  padding-inline: var(--nv-space-2);
-}
-
-[data-sidebar-style='floating'] .app-sidebar + .app-main .app-header {
-  margin-inline: 0;
-}
-
-/* --- compact: permanent narrow rail, labels exposed on hover ------------ */
-[data-sidebar-style='compact'] .app-shell {
-  grid-template-columns: var(--nv-sidebar-compact-w) minmax(0, 1fr);
-}
-
-[data-sidebar-style='compact'] .app-sidebar {
-  width: var(--nv-sidebar-compact-w);
-}
-
-[data-sidebar-style='compact'] .app-sidebar .nav__label,
-[data-sidebar-style='compact'] .app-sidebar .brand__text,
-[data-sidebar-style='compact'] .app-sidebar .nav__caret,
-[data-sidebar-style='compact'] .app-sidebar .nav__badge,
-[data-sidebar-style='compact'] .app-sidebar .app-sidebar__search,
-[data-sidebar-style='compact'] .app-sidebar .nav__section span {
-  display: none;
-}
-
-[data-sidebar-style='compact'] .app-sidebar .nav__link {
-  justify-content: center;
-  padding-inline: 0;
-}
-
-[data-sidebar-style='compact'] .app-sidebar .nav__sub {
-  display: none !important;
-}
-
-[data-sidebar-style='compact'] .app-sidebar:hover {
-  width: var(--nv-sidebar-w);
-}
-
-[data-sidebar-style='compact'] .app-sidebar:hover .nav__label,
-[data-sidebar-style='compact'] .app-sidebar:hover .brand__text,
-[data-sidebar-style='compact'] .app-sidebar:hover .nav__caret,
-[data-sidebar-style='compact'] .app-sidebar:hover .app-sidebar__search,
-[data-sidebar-style='compact'] .app-sidebar:hover .nav__section span {
-  display: revert;
-}
-
-[data-sidebar-style='compact'] .app-sidebar:hover .nav__link {
-  justify-content: flex-start;
-  padding-inline: var(--nv-space-3);
-}
-
-@media (max-width: 991.98px) {
-  [data-sidebar-style='floating'] .app-shell,
-  [data-sidebar-style='compact'] .app-shell {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  [data-sidebar-style='floating'] .app-sidebar,
-  [data-sidebar-style='compact'] .app-sidebar {
-    width: var(--nv-sidebar-w);
-    margin: 0;
-    inset-block: 0;
-    border-radius: 0;
-    border: 0;
-  }
-
-  [data-sidebar-style='compact'] .app-sidebar .nav__label,
-  [data-sidebar-style='compact'] .app-sidebar .brand__text,
-  [data-sidebar-style='compact'] .app-sidebar .nav__caret,
-  [data-sidebar-style='compact'] .app-sidebar .app-sidebar__search,
-  [data-sidebar-style='compact'] .app-sidebar .nav__section span {
-    display: revert;
-  }
-
-  [data-sidebar-style='compact'] .app-sidebar .nav__sub {
-    display: revert !important;
-  }
-}
-
-/* --------------------------------------------------------- horizontal clone */
-/** `layout.js` clones the sidebar nav into the header for the horizontal mode. */
+/* horizontal clone */
 .nav--top {
   display: flex;
   flex-direction: row;
@@ -743,35 +702,5 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 
   &::-webkit-scrollbar {
     display: none;
-  }
-
-  .sidebar-group__label,
-  .nav-section,
-  .nav-item__caret,
-  .nav-item__badge {
-    display: none;
-  }
-
-  .nav-item {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .nav-submenu {
-    position: absolute;
-    inset-block-start: 100%;
-    inset-inline-start: 0;
-    min-inline-size: 14rem;
-    padding: var(--nv-space-2);
-    border: 1px solid var(--nv-border);
-    border-radius: var(--nv-radius-md);
-    background: var(--nv-surface);
-    box-shadow: var(--nv-shadow-md);
-    display: none;
-  }
-
-  .nav-item:has(.nav-submenu):hover .nav-submenu,
-  .nav-item:has(.nav-submenu):focus-within .nav-submenu {
-    display: block;
   }
 }

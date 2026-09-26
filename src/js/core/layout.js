@@ -103,14 +103,37 @@ export const layout = {
     });
   },
 
-  /** Accordion behaviour for nested navigation. */
+  /** Accordion behaviour for nested navigation - FIXED for mini/horizontal/twocol */
   initNav() {
     on(document, 'click', (event) => {
       const toggle = event.target.closest('[data-nav-toggle]');
       if (toggle) {
-        event.preventDefault();
         const item = toggle.closest('.nav__item');
         if (!item) return;
+        const root = document.documentElement;
+        const isRail = root.classList.contains('sidebar-collapsed') || ['mini', 'collapse'].includes(root.dataset.layout);
+        const isHorizontal = root.dataset.layout === 'horizontal';
+        const isTwocol = root.dataset.layout === 'twocol';
+        
+        // In rail modes (mini/collapse/collapsed), toggle should open fly-out, not accordion
+        if (isRail || isHorizontal || isTwocol) {
+          event.preventDefault();
+          event.stopPropagation();
+          const isOpen = item.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', String(isOpen));
+          // Close other open items at same level
+          if (item.parentElement) {
+            [...item.parentElement.children].forEach((sibling) => {
+              if (sibling !== item && sibling.classList.contains('is-open')) {
+                sibling.classList.remove('is-open');
+                sibling.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
+              }
+            });
+          }
+          return;
+        }
+        
+        event.preventDefault();
         const isOpen = item.classList.toggle('is-open');
         toggle.setAttribute('aria-expanded', String(isOpen));
         // Accordion: close sibling groups at the same level.
@@ -124,7 +147,42 @@ export const layout = {
         }
         return;
       }
-      if (event.target.closest('.app-sidebar a, .topnav a, .app-secondary a')) layout.closeDrawer();
+      // Close drawer on link click (mobile)
+      if (event.target.closest('.app-sidebar a, .topnav a, .app-secondary a')) {
+        // Don't prevent default - let link work
+        layout.closeDrawer();
+        // Close all open dropdowns in horizontal/twocol after navigation - PURE HOVER for horizontal (no remain)
+        const root = document.documentElement;
+        if (root.dataset.layout === 'horizontal') {
+          // For horizontal: always close after click, hover only (user requested)
+          document.querySelectorAll('.nav__item--has-sub.is-open').forEach((el) => {
+            el.classList.remove('is-open');
+            el.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
+          });
+        } else if (['twocol', 'mini', 'collapse'].includes(root.dataset.layout) || root.classList.contains('sidebar-collapsed')) {
+          document.querySelectorAll('.nav__item--has-sub.is-open').forEach((el) => {
+            // Keep active group open, close others
+            if (!el.querySelector('a.is-active')) {
+              el.classList.remove('is-open');
+              el.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
+            }
+          });
+        }
+      }
+    });
+    
+    // Close dropdowns when clicking outside
+    on(document, 'click', (event) => {
+      const root = document.documentElement;
+      const isSpecialLayout = ['horizontal', 'twocol', 'mini', 'collapse'].includes(root.dataset.layout) || root.classList.contains('sidebar-collapsed');
+      if (!isSpecialLayout) return;
+      if (event.target.closest('.nav__item--has-sub, .app-secondary')) return;
+      document.querySelectorAll('.nav__item--has-sub.is-open').forEach((el) => {
+        if (!el.querySelector('a.is-active')) {
+          el.classList.remove('is-open');
+          el.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
+        }
+      });
     });
   },
 
@@ -200,10 +258,44 @@ export const layout = {
         clone.classList.add('nav--top');
         clone.removeAttribute('id');
         mount.append(clone);
+        // Enhance horizontal dropdowns: add header with icon+label inside each sub
+        $$('.nav__item--has-sub', clone).forEach((item) => {
+          // Use direct children to avoid :scope compatibility issues
+          const btn = Array.from(item.children).find(c => c.classList?.contains('nav__link'));
+          const sub = Array.from(item.children).find(c => c.classList?.contains('nav__sub'));
+          if (!btn || !sub) return;
+          const label = btn.querySelector('.nav__label')?.textContent?.trim() ?? '';
+          const icon = btn.querySelector('.nav__icon')?.innerHTML ?? '';
+          if (!sub.querySelector('.topnav__dropdown-header')) {
+            const count = Array.from(sub.children).filter(c => c.classList?.contains('nav__item')).length;
+            const header = create('li', { class: 'topnav__dropdown-header' });
+            header.innerHTML = `<span class="topnav__dropdown-icon">${icon}</span><span class="topnav__dropdown-title">${label}</span><span class="topnav__dropdown-badge">${count} آیتم</span>`;
+            sub.prepend(header);
+          }
+          // Ensure all links inside are clickable and visible
+          $$('a.nav__link', sub).forEach((a) => {
+            a.style.pointerEvents = 'auto';
+            a.style.display = 'flex';
+            a.style.visibility = 'visible';
+            a.style.opacity = '1';
+          });
+          // Ensure sub items are visible
+          Array.from(sub.children).forEach((li) => {
+            if (li.classList?.contains('nav__item')) {
+              li.style.display = 'block';
+              li.style.visibility = 'visible';
+              li.style.opacity = '1';
+            }
+          });
+          // Force sub to be hidden initially (will be shown on hover via CSS)
+          sub.style.visibility = '';
+          sub.style.opacity = '';
+        });
         layout.highlightActive();
-        /** The group the current page belongs to starts open. */
         const active = $('.nav__link.is-active', clone);
         active?.closest('.nav__item--has-sub')?.classList.add('is-open');
+        // Fix links depth for topnav
+        import('../core/links.js').then(m => m.fixLinks(clone)).catch(()=>{});
       }
       /** A horizontal shell never has a rail to collapse: hide those buttons. */
       $$('[data-sidebar-collapse], [data-sidebar-toggle]').forEach((button) => {
@@ -218,10 +310,51 @@ export const layout = {
       mount.innerHTML = '';
       sync();
     }, 60));
-    /* Hover-opened fly-outs must also work with a keyboard. */
+    /* Hover-opened fly-outs must also work with a keyboard - HOVERABLE LIKE MINI */
+    // For horizontal, make it fully hoverable like mini: mouseenter shows, mouseleave hides with delay
+    on(mount, 'mouseenter', (event) => {
+      const item = event.target.closest('.nav__item--has-sub');
+      if (!item) return;
+      const root = document.documentElement;
+      if (root.dataset.layout !== 'horizontal') return;
+      // Close siblings
+      [...mount.querySelectorAll('.nav__item--has-sub.is-open')].forEach((node) => {
+        if (node !== item) node.classList.remove('is-open');
+      });
+      item.classList.add('is-open');
+    }, true);
+    on(mount, 'mouseleave', (event) => {
+      const item = event.target.closest('.nav__item--has-sub');
+      if (!item) return;
+      const root = document.documentElement;
+      if (root.dataset.layout !== 'horizontal') return;
+      // Delay hide to allow moving to dropdown
+      setTimeout(() => {
+        if (!item.matches(':hover') && !item.querySelector('.nav__sub:hover')) {
+          // Keep active group open if it contains active link
+          if (!item.querySelector('a.is-active')) {
+            item.classList.remove('is-open');
+          }
+        }
+      }, 150);
+    }, true);
     on(mount, 'click', (event) => {
       const toggle = event.target.closest('[data-nav-toggle]');
       if (!toggle) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const root = document.documentElement;
+      // For horizontal: pure hover, click should NOT keep open (user requested)
+      if (root.dataset.layout === 'horizontal') {
+        const item = toggle.closest('.nav__item');
+        if (!item) return;
+        // Close all, don't keep open after click
+        [...mount.querySelectorAll('.nav__item--has-sub.is-open')].forEach((node) => {
+          node.classList.remove('is-open');
+          node.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
+        });
+        return;
+      }
       const item = toggle.closest('.nav__item');
       if (!item) return;
       [...mount.querySelectorAll('.nav__item--has-sub.is-open')].forEach((node) => {
@@ -260,13 +393,29 @@ export const layout = {
     };
 
     const activeGroup = () => {
+      // First try to find active link's group
       const active = $('.app-sidebar .nav__link.is-active, .topnav .nav__link.is-active');
-      const sub = active?.closest('.nav__sub');
-      const group = sub?.closest('.nav__item--has-sub') ?? $('.app-sidebar .nav__item--has-sub.is-open');
-      if (!group) return null;
-      const subList = group.querySelector('.nav__sub');
-      if (!subList || !subList.children.length) return null;
-      return { group, subList };
+      if (active) {
+        const sub = active.closest('.nav__sub');
+        const group = sub?.closest('.nav__item--has-sub');
+        if (group) {
+          const subList = group.querySelector('.nav__sub');
+          if (subList && subList.children.length) return { group, subList };
+        }
+      }
+      // Then try open group (clicked)
+      const openGroup = $('.app-sidebar .nav__item--has-sub.is-open');
+      if (openGroup) {
+        const subList = openGroup.querySelector('.nav__sub');
+        if (subList && subList.children.length) return { group: openGroup, subList };
+      }
+      // Fallback: first group with children
+      const firstGroup = $('.app-sidebar .nav__item--has-sub');
+      if (firstGroup) {
+        const subList = firstGroup.querySelector('.nav__sub');
+        if (subList && subList.children.length) return { group: firstGroup, subList };
+      }
+      return null;
     };
 
     const build = () => {
@@ -296,24 +445,45 @@ export const layout = {
       }
       const label = group.querySelector(':scope > .nav__link .nav__label')?.textContent.trim() ?? '';
       const icon = group.querySelector(':scope > .nav__link .nav__icon i');
+      const groupIconHtml = icon ? icon.outerHTML : '<i class="bi bi-collection"></i>';
       panel.setAttribute('aria-label', label);
       panel.innerHTML = `
-        <p class="app-secondary__title">${label}</p>
-        <ul class="app-secondary__list"></ul>`;
+        <div class="app-secondary__header">
+          <div class="app-secondary__title"><span class="app-secondary__title-icon">${groupIconHtml}</span><span class="app-secondary__title-text">${label}</span></div>
+          <div class="app-secondary__search">
+            <i class="bi bi-search"></i>
+            <input type="search" placeholder="جستجو..." aria-label="جستجو در ${label}" />
+          </div>
+        </div>
+        <div class="app-secondary__body">
+          <ul class="app-secondary__list"></ul>
+        </div>
+        <div class="app-secondary__foot">
+          <span class="app-secondary__count"></span>
+        </div>`;
       const list = $('.app-secondary__list', panel);
+      const countEl = $('.app-secondary__count', panel);
+      const searchInput = $('.app-secondary__search input', panel);
+      let totalCount = 0;
       $$(':scope > .nav__item', subList).forEach((item) => {
         const link = item.querySelector('a.nav__link');
         if (!link) return;
+        totalCount++;
         const li = create('li', { class: 'app-secondary__item' });
         const clone = link.cloneNode(true);
         clone.classList.add('app-secondary__link');
         clone.classList.toggle('is-active', link.classList.contains('is-active'));
         if (link.classList.contains('is-active')) clone.setAttribute('aria-current', 'page');
         else clone.removeAttribute('aria-current');
-        // The rail tooltip is meaningless in a full-width list.
         clone.removeAttribute('data-tooltip');
-        const iconSlot = clone.querySelector('.nav__icon i');
-        if (!iconSlot && icon) {
+        const href = link.getAttribute('href');
+        if (href) clone.setAttribute('href', href);
+        clone.style.pointerEvents = 'auto';
+        // Enhance icon wrapper
+        const iconSlot = clone.querySelector('.nav__icon');
+        if (iconSlot) {
+          iconSlot.classList.add('app-secondary__icon');
+        } else if (icon) {
           const host = create('span', { class: 'app-secondary__icon' });
           host.innerHTML = icon.outerHTML;
           clone.prepend(host);
@@ -321,10 +491,27 @@ export const layout = {
         li.append(clone);
         list.append(li);
       });
-      // Keep the group header icon for visual continuity with the sidebar.
-      if (icon) panel.querySelector('.app-secondary__title')?.prepend(icon.cloneNode(true));
+      if (countEl) countEl.textContent = `${totalCount} آیتم`;
+      // Search filtering
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          let visible = 0;
+          $$('.app-secondary__item', panel).forEach((li) => {
+            const txt = li.textContent.toLowerCase();
+            const show = !q || txt.includes(q);
+            li.hidden = !show;
+            if (show) visible++;
+          });
+          if (countEl) countEl.textContent = q ? `${visible} / ${totalCount}` : `${totalCount} آیتم`;
+        });
+      }
       setFlag(true);
-      /** A panel that ended up with a single entry is not worth its column. */
+      import('../core/links.js').then(m => m.fixLinks(panel)).catch(()=>{});
+      $$('a', panel).forEach(a => {
+        a.style.pointerEvents = 'auto';
+        a.addEventListener('click', () => layout.closeDrawer());
+      });
       if (!$$('.app-secondary__link', panel).length) close();
     };
 

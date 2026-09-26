@@ -353,18 +353,14 @@ async function boot() {
   } catch (error) {
     if (isChunkLoadFailure(error)) {
       /**
-       * A stale dynamic import after the bundler restarted is not an
-       * application error: reload once and it resolves itself.
+       * Previously this did a hard reload, which in preview caused
+       * dashboard to appear for a moment then reload back to login.
+       * Now we just show the inline error panel and don't reload.
        */
-      /* The flag used to live for the whole session, so after the first
-         dev-server hiccup every later one ended on the error panel until the
-         browser was restarted. It is now a short time window instead. */
-      const last = Number(sessionStorage.getItem('nova:chunk-reloaded') ?? 0);
-      if (Date.now() - last > 15000) {
-        sessionStorage.setItem('nova:chunk-reloaded', String(Date.now()));
-        window.location.reload();
-        return;
-      }
+      console.warn('[NOVAADMIN] chunk load failed, showing error panel instead of reload', error);
+      reportError(error);
+      renderRouteFailure(error);
+      return;
     }
     reportError(error);
     renderRouteFailure(error);

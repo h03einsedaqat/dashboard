@@ -25,19 +25,10 @@
      elements start hidden and no flash of un-styled content is visible. */
   root.classList.add('has-reveal');
 
-  /* Login-first demo: panel pages stay hidden until main.js confirms a session
-     (or redirects to auth/login.html). A safety timer never leaves it hidden. */
+  /* Login-first demo disabled for preview: authGuard logic in main.js handles redirect,
+     hiding body caused blank flash. Now just ensure is-guarded is removed. */
   try {
-    var path = window.location.pathname;
-    var isPublic = /\/(auth|system|docs)\//.test(path) || /(index|preview|START-HERE)\.html$/.test(path) || /\/$/.test(path);
-    var hasSession = window.localStorage.getItem(PREFIX + 'session') || window.sessionStorage.getItem(PREFIX + 'session');
-    if (!isPublic && !hasSession) {
-      root.classList.add('is-guarded');
-      var guardStyle = document.createElement('style');
-      guardStyle.textContent = 'html.is-guarded body{visibility:hidden}';
-      (document.head || root).appendChild(guardStyle);
-      setTimeout(function () { root.classList.remove('is-guarded'); }, 3000);
-    }
+    root.classList.remove('is-guarded');
   } catch (e) {}
 
   /**
