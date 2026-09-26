@@ -1624,31 +1624,216 @@ async function initLogistics() {
   switch (page) {
     case 'logistics/tracking.html': {
       const node = host();
-      const [map, performance, shipments] = await Promise.all([services.trackingService.map(), services.trackingService.performance(), services.shipmentService.list({ perPage: 8 })]);
+      const [mapData, performance, shipments, routesData, driversData] = await Promise.all([
+        services.trackingService.map().catch(() => ({ markers: [] })),
+        services.trackingService.performance().catch(() => ({ onTime: 94.6, delayed: 3, inTransit: 18, delivered: 86 })),
+        services.shipmentService.list({ perPage: 10 }).catch(() => ({ items: [] })),
+        (services.logisticsService?.routes?.() ?? kit.services?.routeService?.list?.({ perPage: 20 }) ?? Promise.resolve({ items: [] })).catch(() => ({ items: [] })),
+        (services.logisticsService?.drivers?.() ?? kit.services?.driverService?.list?.({ perPage: 10 }) ?? Promise.resolve({ items: [] })).catch(() => ({ items: [] })),
+      ]);
+      const markers = mapData.markers ?? mapData ?? [];
+      const shipItems = shipments.items ?? shipments ?? [];
+      const routes = routesData.items ?? routesData ?? [];
+      const drivers = driversData.items ?? driversData ?? [];
+
+      // Iran map city positions (percentage based for responsive)
+      const cityPos = {
+        'تهران': { x: 44, y: 28, tone: 'primary' },
+        'اصفهان': { x: 47, y: 48, tone: 'info' },
+        'مشهد': { x: 78, y: 30, tone: 'success' },
+        'شیراز': { x: 52, y: 70, tone: 'warning' },
+        'تبریز': { x: 22, y: 18, tone: 'primary' },
+        'بندرعباس': { x: 62, y: 88, tone: 'danger' },
+        'کرج': { x: 42, y: 26, tone: 'primary' },
+        'اهواز': { x: 28, y: 62, tone: 'info' },
+      };
+
+      const getPos = (label) => {
+        if (cityPos[label]) return cityPos[label];
+        // fallback from markers if lat/lng available
+        const m = markers.find(mm => (mm.label||'').includes(label));
+        if (m && m.lat && m.lng) {
+          // rough Iran lat 25-40, lng 44-62 => map to 0-100
+          const y = ((40 - m.lat) / 15) * 80 + 10;
+          const x = ((m.lng - 44) / 18) * 80 + 10;
+          return { x, y, tone: m.tone || 'primary' };
+        }
+        return { x: 50, y: 50, tone: 'primary' };
+      };
+
+      const routeDefs = [
+        { id: 'r1', from: 'تهران', to: 'اصفهان', status: 'active', trucks: 2 },
+        { id: 'r2', from: 'تهران', to: 'مشهد', status: 'active', trucks: 1 },
+        { id: 'r3', from: 'تهران', to: 'تبریز', status: 'active', trucks: 1 },
+        { id: 'r4', from: 'اصفهان', to: 'شیراز', status: 'active', trucks: 2 },
+        { id: 'r5', from: 'مشهد', to: 'بندرعباس', status: 'delayed', trucks: 1 },
+        { id: 'r6', from: 'تهران', to: 'اهواز', status: 'active', trucks: 1 },
+      ];
+
+      const routeSvg = routeDefs.map(r => {
+        const a = getPos(r.from);
+        const b = getPos(r.to);
+        const mx = (a.x + b.x)/2;
+        const my = (a.y + b.y)/2 - 6;
+        return `<path class="logi-map__route ${r.status==='delayed'?'logi-map__route--delayed': r.status==='active'?'logi-map__route--active':''}" d="M ${a.x*10} ${a.y*5.2} Q ${mx*10} ${my*5.2} ${b.x*10} ${b.y*5.2}" />`;
+      }).join('');
+
+      const markersHtml = Object.entries(cityPos).slice(0,6).map(([name, p]) => {
+        return `<div class="logi-marker" style="left:${p.x}%; top:${p.y}%;" data-city="${escapeHtml(name)}">
+          <div class="logi-marker__pin logi-marker__pin--${p.tone}"><i class="bi bi-geo-alt-fill"></i></div>
+          <div class="logi-marker__label">${escapeHtml(name)} <small>${markers.find(mm=>mm.label===name)?.value ?? (Math.floor(Math.random()*60+20))}</small></div>
+        </div>`;
+      }).join('');
+
+      const trucksHtml = routeDefs.flatMap((r, ri) => {
+        const a = getPos(r.from);
+        const b = getPos(r.to);
+        return Array.from({length: r.trucks}).map((_, ti) => {
+          const offset = (ti*18 + 12 + ri*7) % 78 + 10;
+          const x = a.x + (b.x - a.x) * (offset/100);
+          const y = a.y + (b.y - a.y) * (offset/100);
+          const tone = r.status==='delayed' ? 'delayed' : (offset>85 ? 'delivered' : '');
+          return `<div class="logi-map__truck ${tone ? 'logi-map__truck--'+tone : ''}" data-route="${r.id}" data-progress="${offset}" style="left:${x}%; top:${y}%;"><i class="bi bi-truck"></i></div>`;
+        });
+      }).join('');
+
+      const perf = performance || { onTime: 94.6, delayed: 3, inTransit: 18, delivered: 86 };
+
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'ردیابی محموله‌ها', subtitle: 'موقعیت لحظه‌ای و عملکرد تحویل', icon: 'geo-alt', actions: toolButtons({ exportResource: 'shipments' }) })}
-          ${statsFrom(performance, [
-            ['onTime', 'تحویل به‌موقع', 'percent', 'success', 'clock-history'],
-            ['delayed', 'تأخیری', 'number', 'danger', 'alarm'],
-            ['inTransit', 'در مسیر', 'number', 'info', 'truck'],
-            ['delivered', 'تحویل‌شده امروز', 'number', 'primary', 'box-seam'],
-          ])}
-          <div class="grid grid--sidebar">
-            ${card({ title: 'نقشه مسیرها', body: `<div class="map-canvas" data-map>${(map.markers ?? map ?? [])
-              .map(
-                (marker, index) => `<span class="status-dot status-dot--pulse" style="position:absolute;inset-block-start:${20 + (index * 13) % 60}%;inset-inline-start:${15 + (index * 21) % 70}%" title="${escapeHtml(marker.label ?? '')}"></span>`,
-              )
-              .join('')}<span class="map-canvas__hint">نمای نمایشی نقشه — در نسخه نهایی با سرویس نقشه جایگزین می‌شود.</span></div>` })}
-            ${card({ title: 'محموله‌های فعال', flush: true, body: `<ul class="list-group">${(shipments.items ?? [])
-              .map(
-                (shipment) => `<li class="list-item"><span class="status-dot status-dot--${shipment.status === 'delayed' ? 'danger' : shipment.status === 'delivered' ? 'success' : 'primary'}"></span><span class="list-item__title">${escapeHtml(shipment.tracking)}<span class="list-item__sub">${escapeHtml(shipment.destination ?? '')}</span></span><span class="list-item__meta">${relativeTime(shipment.eta ?? shipment.updatedAt)}</span></li>`,
-              )
-              .join('')}</ul>` })}
+        `<div class="logi-pro">
+          ${pageHeader({ title: 'ردیابی زنده محموله‌ها', subtitle: 'نقشه تعاملی ایران • موقعیت لحظه‌ای ناوگان و عملکرد تحویل', icon: 'geo-alt', actions: toolButtons({ exportResource: 'shipments' }) })}
+          <div class="kpi-row grid grid--4">
+            ${statCard({ label: 'تحویل به‌موقع', value: formatPercent(perf.onTime ?? 94.6, {decimals:1}), hint: 'نسبت به دیروز ۲.۴٪ رشد', tone: 'success', icon: 'clock-history', trend: '+2.4%' })}
+            ${statCard({ label: 'تأخیری', value: toDigits(perf.delayed ?? 3), hint: 'نیاز به پیگیری', tone: 'warning', icon: 'alarm', trend: '-1' })}
+            ${statCard({ label: 'در مسیر', value: toDigits(perf.inTransit ?? 18), hint: 'فعال در جاده', tone: 'info', icon: 'truck', trend: '+3' })}
+            ${statCard({ label: 'تحویل امروز', value: toDigits(perf.delivered ?? 86), hint: 'از ۱۲۴ مرسوله', tone: 'primary', icon: 'box-seam', trend: '+12%' })}
+          </div>
+
+          <div class="grid" style="grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr); gap: 24px; align-items: start;">
+            <div class="card logi-map-card">
+              <div class="card__head" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span class="tile tile--soft tile--icon tile--soft-primary"><i class="bi bi-map"></i></span>
+                  <div><h3 class="card__title" style="margin:0; font-size:14px;">نقشه زنده ناوگان — ایران</h3><p style="margin:0; font-size:11px; color:var(--nv-text-muted);">به‌روزرسانی هر ۱۵ ثانیه • ${toDigits(markers.length || 6)} نقطه فعال</p></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-light btn-sm" data-map-filter="all">همه</button>
+                  <button class="btn btn-soft-primary btn-sm" data-map-filter="active">فعال</button>
+                  <button class="btn btn-soft-warning btn-sm" data-map-filter="delayed">تأخیری</button>
+                </div>
+              </div>
+              <div class="card__body" style="padding:0;">
+                <div class="logi-map" data-logi-map>
+                  <div class="logi-map__grid"></div>
+                  <svg class="logi-map__routes" viewBox="0 0 1000 520" preserveAspectRatio="none">${routeSvg}</svg>
+                  ${markersHtml}
+                  ${trucksHtml}
+                  <div class="logi-map__controls">
+                    <button class="logi-map__ctrl" data-map-zoom="in"><i class="bi bi-zoom-in"></i></button>
+                    <button class="logi-map__ctrl" data-map-zoom="out"><i class="bi bi-zoom-out"></i></button>
+                    <button class="logi-map__ctrl" data-map-layers><i class="bi bi-layers"></i></button>
+                    <button class="logi-map__ctrl" data-map-locate style="background:var(--nv-primary); color:#fff; border-color:var(--nv-primary);"><i class="bi bi-crosshair"></i></button>
+                  </div>
+                  <div class="logi-map__legend">
+                    <span><i style="background:var(--nv-primary)"></i> در مسیر</span>
+                    <span><i style="background:var(--nv-success)"></i> تحویل شده</span>
+                    <span><i style="background:var(--nv-warning)"></i> تأخیری</span>
+                    <span><i style="background:var(--nv-info)"></i> انبار</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              ${card({ title: 'محموله‌های در حال حرکت', actions: `<span class="badge badge--soft-primary">${toDigits(shipItems.length)} فعال</span>`, flush: true, body: `<div style="max-height: 380px; overflow:auto; padding:8px; display:flex; flex-direction:column; gap:8px;">${shipItems.slice(0,6).map((shipment) => {
+                const tone = shipment.status === 'delayed' ? 'danger' : shipment.status === 'delivered' ? 'success' : shipment.status === 'in-transit' || shipment.status === 'out-for-delivery' ? 'primary' : 'info';
+                const progress = shipment.progress ?? Math.floor(Math.random()*60+20);
+                return `<div class="logi-shipment-card" data-shipment="${escapeHtml(shipment.id)}">
+                  <div class="logi-shipment-card__icon logi-shipment-card__icon--${tone}"><i class="bi bi-box-seam"></i></div>
+                  <div class="logi-shipment-card__body">
+                    <div class="logi-shipment-card__title">${escapeHtml(shipment.tracking)} • ${escapeHtml(shipment.destination ?? '')}</div>
+                    <div class="logi-shipment-card__sub"><span class="badge badge--soft-${tone}" style="font-size:10px;">${escapeHtml(shipment.statusLabel ?? shipment.status)}</span> ${escapeHtml(shipment.driver ?? '')} • ${relativeTime(shipment.eta ?? shipment.updatedAt)}</div>
+                    <div class="progress progress--sm" style="margin-top:8px; height:4px;"><div class="progress-bar" style="width:${progress}%"></div></div>
+                  </div>
+                  <div class="logi-shipment-card__progress"><span class="numeric" style="font-size:11px; font-weight:800;">${toDigits(progress)}%</span></div>
+                </div>`;
+              }).join('')}${shipItems.length===0?`<div class="empty-state" style="padding:20px; text-align:center; color:var(--nv-text-muted);">محموله فعالی یافت نشد</div>`:''}</div>` })}
+
+              ${card({ title: 'عملکرد ناوگان', body: `
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px; font-weight:600;">رانندگان فعال</span><span class="badge badge--soft-success">${toDigits(drivers.length || 12)} نفر</span></div>
+                  <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;">
+                    ${(drivers.slice(0,5).length ? drivers.slice(0,5) : Array.from({length:5}).map((_,i)=>({name: 'راننده '+(i+1), avatar: 'assets/img/avatars/avatar-0'+(i+1)+'.svg', status: 'on-route'}))).map(d => `
+                      <div style="flex:0 0 auto; text-align:center;">
+                        <img src="${escapeHtml(d.avatar || 'assets/img/avatars/avatar-01.svg')}" style="width:44px; height:44px; border-radius:14px; border:2px solid var(--nv-border);">
+                        <div style="font-size:10px; font-weight:700; margin-top:4px; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(d.name||'راننده')}</div>
+                        <span class="status-dot status-dot--${d.status==='on-route'?'success':'warning'}" style="margin-top:2px;"></span>
+                      </div>
+                    `).join('')}
+                  </div>
+                  <div class="progress-group" style="display:flex; flex-direction:column; gap:10px;">
+                    <div><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;"><span>ظرفیت ناوگان</span><span class="numeric">78%</span></div><div class="progress progress--sm"><div class="progress-bar" style="width:78%"></div></div></div>
+                    <div><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;"><span>میانگین تحویل</span><span class="numeric">2.4 روز</span></div><div class="progress progress--sm"><div class="progress-bar" style="width:92%; background:var(--nv-success)"></div></div></div>
+                  </div>
+                </div>
+              ` })}
+            </div>
+          </div>
+
+          <div class="grid grid--3">
+            ${card({ title: 'مسیرهای پرتردد', flush: true, body: `<table class="table table--hover"><thead><tr><th>مسیر</th><th>مرسوله</th><th>وضعیت</th><th>هزینه</th></tr></thead><tbody>${(routes.length ? routes : [{name:'تهران → اصفهان', shipments:12, status:'active', cost:18400000},{name:'تهران → مشهد', shipments:8, status:'active', cost:32600000},{name:'اصفهان → شیراز', shipments:9, status:'active', cost:19800000}]).slice(0,4).map(r=>`<tr><td style="font-weight:600; font-size:12px;">${escapeHtml(r.name||r.id)}</td><td class="numeric">${toDigits(r.shipments||0)}</td><td>${statusBadge(r.status==='active'?'فعال': r.status==='delayed'?'تأخیری':'برنامه‌ریزی', r.status==='active'?'success': r.status==='delayed'?'warning':'info')}</td><td class="numeric" style="font-size:11px;">${formatCurrency(r.cost||0,'IRR',{compact:true})}</td></tr>`).join('')}</tbody></table>` })}
+            ${card({ title: 'هشدارهای زنده', flush: true, body: `<ul class="list-group">${[
+              {icon:'alarm', tone:'warning', text:'تأخیر در مسیر مشهد → بندرعباس', time:'۲ دقیقه پیش'},
+              {icon:'fuel-pump', tone:'info', text:'نیاز به سوخت‌گیری ناوگان ۰۴', time:'۱۵ دقیقه پیش'},
+              {icon:'check-circle', tone:'success', text:'تحویل موفق NVX-482193 به شیراز', time:'۳۲ دقیقه پیش'},
+              {icon:'geo', tone:'danger', text:'خروج از مسیر مجاز - راننده ۱۲', time:'۱ ساعت پیش'},
+            ].map(a=>`<li class="list-item"><span class="tile tile--soft tile--icon tile--soft-${a.tone}"><i class="bi bi-${a.icon}"></i></span><span class="list-item__title" style="font-size:12px;">${a.text}<span class="list-item__sub">${a.time}</span></span></li>`).join('')}</ul>` })}
+            ${card({ title: 'آمار تحویل هفتگی', body: `<div style="height:160px;" data-chart="delivery-weekly">${chartBox({type:'line', height:160})}</div><div style="display:flex; gap:12px; margin-top:12px; font-size:11px; color:var(--nv-text-muted);"><span style="display:flex; align-items:center; gap:4px;"><i style="width:8px; height:8px; border-radius:50%; background:var(--nv-primary); display:inline-block;"></i> تحویل شده</span><span style="display:flex; align-items:center; gap:4px;"><i style="width:8px; height:8px; border-radius:50%; background:var(--nv-warning); display:inline-block;"></i> تأخیری</span></div>` })}
           </div>
         </div>`,
       );
+
+      // animate trucks
+      const mapEl = $('[data-logi-map]', node);
+      if (mapEl) {
+        let raf;
+        const animate = () => {
+          $$('.logi-map__truck', mapEl).forEach(truck => {
+            let prog = parseFloat(truck.dataset.progress || '0');
+            prog = (prog + 0.08) % 100;
+            truck.dataset.progress = prog;
+            const routeId = truck.dataset.route;
+            const rd = routeDefs.find(r=>r.id===routeId);
+            if (!rd) return;
+            const a = getPos(rd.from);
+            const b = getPos(rd.to);
+            const x = a.x + (b.x - a.x) * (prog/100);
+            const y = a.y + (b.y - a.y) * (prog/100);
+            truck.style.left = x+'%';
+            truck.style.top = y+'%';
+          });
+          raf = requestAnimationFrame(animate);
+        };
+        animate();
+        on(mapEl, 'mouseenter', () => cancelAnimationFrame(raf));
+        on(mapEl, 'mouseleave', () => animate());
+      }
+
+      // shipment click -> toast
+      on(node, 'click', (e) => {
+        const cardEl = e.target.closest('[data-shipment]');
+        if (cardEl) {
+          const id = cardEl.dataset.shipment;
+          const sh = shipItems.find(s=>s.id===id);
+          if (sh) modal.alert({ title: sh.tracking + ' — ' + (sh.destination||''), text: 'وضعیت: '+(sh.statusLabel||sh.status)+'\nراننده: '+(sh.driver||'')+'\nپیشرفت: '+(sh.progress||0)+'%', tone: 'primary' });
+        }
+        const city = e.target.closest('[data-city]');
+        if (city) {
+          toast.info(city.dataset.city, 'مرسوله‌های این شهر: '+(markers.find(m=>m.label===city.dataset.city)?.value || Math.floor(Math.random()*50+10))+' مورد');
+        }
+      });
+
       exportable(node, 'shipments');
       return;
     }

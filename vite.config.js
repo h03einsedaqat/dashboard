@@ -41,6 +41,7 @@ export default defineConfig({
   },
 
   css: {
+    devSourcemap: false,
     preprocessorOptions: {
       scss: {
         api: 'modern-compiler',
@@ -48,6 +49,13 @@ export default defineConfig({
         quietDeps: true,
       },
     },
+  },
+
+  esbuild: {
+    target: 'es2020',
+    legalComments: 'none',
+    // Drop console in production for smaller bundle
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
   },
 
   /**
@@ -66,8 +74,12 @@ export default defineConfig({
    */
   optimizeDeps: {
     entries: ['index.html', 'src/pages/**/*.html'],
-    include: ['apexcharts', 'sortablejs', 'sweetalert2', 'dayjs', 'jalaali-js'],
+    include: ['apexcharts', 'sortablejs', 'sweetalert2', 'dayjs', 'jalaali-js', 'bootstrap'],
+    exclude: ['@swc/wasm', 'lightningcss'],
     holdUntilCrawlEnd: true,
+    esbuildOptions: {
+      target: 'es2020',
+    },
   },
 
   server: {
@@ -91,8 +103,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2020',
     cssCodeSplit: true,
+    cssMinify: 'esbuild',
+    minify: 'esbuild',
     assetsInlineLimit: 2048,
     chunkSizeWarningLimit: 1200,
+    reportCompressedSize: false,
     rollupOptions: {
       input: {
         index: path.resolve(root, 'index.html'),
@@ -105,8 +120,13 @@ export default defineConfig({
             if (id.includes('bootstrap')) return 'vendor-bootstrap';
             if (id.includes('sweetalert2')) return 'vendor-swal';
             if (id.includes('sortablejs')) return 'vendor-sortable';
+            if (id.includes('dayjs') || id.includes('jalaali')) return 'vendor-date';
             return 'vendor';
           }
+          // Split large page controllers
+          if (id.includes('src/js/pages/modules.js')) return 'modules';
+          if (id.includes('src/js/pages/content.js')) return 'content';
+          if (id.includes('src/js/pages/apps.js')) return 'apps';
           return undefined;
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',

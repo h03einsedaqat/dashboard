@@ -20,16 +20,19 @@ function renderBadge(badge) {
 function renderLink(item, active) {
   const isActive = active === item.url;
   const label = esc(item.label.fa);
-  const i18n = ` nav-${item.id}`;
   if (item.children?.length) {
     const childActive = item.children.some((c) => c.url === active);
+    // Parent with children: render as link (so icon works in mini) + caret span that toggles
+    // Valid HTML: caret is span inside link, JS prevents navigation when caret clicked
     return `<li class="nav__item nav__item--has-sub${childActive ? ' is-open' : ''}" data-nav-item data-nav-id="${item.id}">
-          <button class="nav__link" type="button" data-nav-toggle aria-expanded="${childActive ? 'true' : 'false'}">
+          <a class="nav__link${isActive ? ' is-active' : ''}" href="${href(item.url)}"${isActive ? ' aria-current="page"' : ''} data-nav-link data-tooltip="${label}">
             <span class="nav__icon"><i class="bi bi-${item.icon}" aria-hidden="true"></i></span>
             <span class="nav__label" data-i18n="nav.${item.id}">${label}</span>
             ${renderBadge(item.badge)}
-            <i class="bi bi-chevron-down nav__caret" aria-hidden="true"></i>
-          </button>
+            <span class="nav__caret-btn" data-nav-toggle aria-expanded="${childActive ? 'true' : 'false'}" role="button" tabindex="0" aria-label="باز کردن زیرمنو">
+              <i class="bi bi-chevron-down nav__caret" aria-hidden="true"></i>
+            </span>
+          </a>
           <ul class="nav__sub" data-nav-sub>${item.children.map((c) => renderLink(c, active)).join('')}</ul>
         </li>`;
   }

@@ -289,7 +289,7 @@ function initHeroShowcase(node) {
   if (!shell || shell.dataset.ready === '1') return;
   shell.dataset.ready = '1';
 
-  const items = SHOWCASE.map((entry) => ({ ...entry, url: `dashboards/${entry.id}.html` }));
+  const items = SHOWCASE.map((entry) => ({ ...entry, url: `auth/login.html?next=${encodeURIComponent(`dashboards/${entry.id}.html`)}` }));
   const tabsHost = $('[data-showcase-tabs]', shell);
   const mediaHost = $('[data-showcase-media]', shell);
   const caption = $('[data-showcase-caption]', shell);
@@ -453,7 +453,7 @@ async function landingDemos() {
       const cols = demos.length === 10 && position >= 6 ? 'col-sm-6 col-xl-3' : 'col-sm-6 col-xl-4';
       return `<div class="${cols}">
         <article class="landing-demo-card" data-reveal>
-          <a class="landing-demo-card__media" href="${escapeHtml(demo.url ?? `dashboards/${demo.id}.html`)}" aria-label="باز کردن داشبورد ${escapeHtml(label)}">
+          <a class="landing-demo-card__media" href="${escapeHtml(`auth/login.html?next=${encodeURIComponent(demo.url ?? `dashboards/${demo.id}.html`)}`)}" aria-label="باز کردن داشبورد ${escapeHtml(label)}">
             <picture>
               <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1440" height="900" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(label)} — ${escapeHtml(meta.text ?? '')}" />
             </picture>
@@ -1323,7 +1323,7 @@ export async function initPreview() {
     config.demos
       .map(
         (demo) => `<div class="col-sm-6 col-xl-4"><article class="landing-demo-card">
-          <a class="landing-demo-card__media" href="dashboards/${demo.id}.html" aria-label="باز کردن داشبورد ${escapeHtml(demo.label.fa)}">
+          <a class="landing-demo-card__media" href="auth/login.html?next=dashboards/${demo.id}.html" aria-label="باز کردن داشبورد ${escapeHtml(demo.label.fa)}">
             <picture>
               <img data-preview-id="${escapeHtml(demo.id)}" src="${escapeHtml(previewSrc(demo.id))}" width="1440" height="900" loading="lazy" decoding="async" alt="پیش‌نمایش داشبورد ${escapeHtml(demo.label.fa)}" />
             </picture>
@@ -1476,321 +1476,533 @@ function authWhyList() {
   </ul>`;
 }
 
+
 export async function initAuth() {
   const node = $('[data-auth]') ?? document.querySelector('.auth-page');
   if (!node) return;
-  // Pages carry `data-resource="auth-…"`; keying off that instead of the file
-  // path keeps every variation (split, minimal, 2FA, lock…) working.
   const page = document.querySelector('[data-resource^="auth-"]')?.dataset.resource ?? kit.pageId();
+  
+  // Login page keeps its own premium implementation (don't touch)
   if (page === 'auth-login') {
     const { initLoginPro } = await import('./login.js');
     if (initLoginPro()) return;
   }
+  
   if (page === 'auth-logout' || page === 'auth-lock') {
     try {
       window.localStorage.removeItem('nova:session');
       window.sessionStorage.removeItem('nova:session');
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
-  /** Per-page copy and layout. `variation` drives the visual differences. */
-  const specs = {
-    'auth-login': {
-      variation: 'standard',
-      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'shield-lock' },
-      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
-      submitKey: 'auth.login',
-      submit: 'ورود',
-      redirect: 'dashboards/analytics.html',
-    },
-    'auth-login-split': {
-      variation: 'social-first',
-      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'stars' },
-      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
-      submitKey: 'auth.login',
-      submit: 'ورود',
-      redirect: 'dashboards/analytics.html',
-    },
-    'auth-login-minimal': {
-      variation: 'minimal',
-      head: { titleKey: 'auth.loginTitle', title: 'ورود به حساب', textKey: 'auth.loginSubtitle', text: 'برای ادامه، اطلاعات حساب خود را وارد کنید', icon: 'box-arrow-in-right' },
-      fields: [AUTH_FIELDS.email, AUTH_FIELDS.password],
-      submitKey: 'auth.login',
-      submit: 'ورود',
-      redirect: 'dashboards/analytics.html',
-    },
-    'auth-register': {
-      variation: 'standard',
-      wide: true,
-      head: { titleKey: 'auth.registerTitle', title: 'ساخت حساب جدید', textKey: 'auth.registerSubtitle', text: 'در چند ثانیه حساب خود را بسازید', icon: 'person-plus' },
-      fields: [AUTH_FIELDS.name, AUTH_FIELDS.email, AUTH_FIELDS.phone, AUTH_FIELDS.newPassword, AUTH_FIELDS.confirm],
-      terms: true,
-      submitKey: 'auth.createAccount',
-      submit: 'ساخت حساب',
-      redirect: 'auth/verify-email.html',
-    },
-    'auth-forgot': {
-      variation: 'standard',
-      head: { titleKey: 'auth.forgotTitle', title: 'بازیابی رمز عبور', textKey: 'auth.forgotSubtitle', text: 'ایمیل خود را وارد کنید تا لینک بازیابی ارسال شود', icon: 'key' },
-      fields: [AUTH_FIELDS.email],
-      submitKey: 'auth.sendLink',
-      submit: 'ارسال لینک بازیابی',
-      backLink: true,
-    },
-    'auth-reset': {
-      variation: 'standard',
-      head: { titleKey: 'auth.resetTitle', title: 'تعیین رمز عبور جدید', textKey: 'auth.resetSubtitle', text: 'رمز عبور قوی انتخاب کنید', icon: 'shield-lock' },
-      fields: [AUTH_FIELDS.newPassword, AUTH_FIELDS.confirm],
-      submitKey: 'auth.updatePassword',
-      submit: 'به‌روزرسانی رمز عبور',
-      redirect: 'auth/login.html',
-    },
-    'auth-login-2fa': {
-      variation: 'standard',
-      head: { titleKey: 'auth.twoFactorTitle', title: 'ورود دو مرحله‌ای', textKey: 'auth.twoFactorSubtitle', text: 'کد برنامه احراز هویت را وارد کنید', icon: 'shield-check' },
-      otp: true,
-      redirect: 'dashboards/analytics.html',
-    },
-    'auth-verify': {
-      variation: 'standard',
-      head: { titleKey: 'auth.verifyTitle', title: 'تأیید حساب کاربری', textKey: 'auth.verifySubtitle', text: 'کد ۶ رقمی ارسال‌شده به ایمیل را وارد کنید', icon: 'envelope-check' },
-      otp: true,
-      redirect: 'dashboards/analytics.html',
-    },
-    'auth-lock': {
-      variation: 'minimal',
-      head: { titleKey: 'auth.lockTitle', title: 'صفحه قفل شده است', textKey: 'auth.lockSubtitle', text: 'برای ادامه رمز عبور خود را وارد کنید', icon: 'lock' },
-      fields: [AUTH_FIELDS.password],
-      submitKey: 'auth.unlock',
-      submit: 'باز کردن قفل',
-      avatar: 'assets/img/avatars/avatar-08.svg',
-      person: 'سارا محمدی',
-      redirect: 'dashboards/analytics.html',
-      secondary: { href: 'login.html', key: 'auth.useAnotherAccount', text: 'ورود با حساب دیگر' },
-    },
-    'auth-logout': {
-      variation: 'minimal',
-      head: { titleKey: 'auth.loggedOut', title: 'از حساب خود خارج شدید', textKey: 'auth.lockSubtitle', text: 'برای ادامه رمز عبور خود را وارد کنید', icon: 'box-arrow-right' },
-      success: { key: 'auth.success', text: 'نشست شما با موفقیت بسته شد. داده‌های شما محفوظ است.' },
-      actions: [
-        { href: 'login.html', className: 'btn-primary', icon: 'box-arrow-in-right', key: 'auth.backToSignIn', text: 'بازگشت به ورود' },
-        { href: 'index.html', className: 'btn-light', icon: 'house-door', key: 'auth.backHome', text: 'بازگشت به صفحه اصلی' },
-      ],
-    },
-  };
+  const { url, goTo } = await import('../core/links.js');
+  const { toast } = await import('../core/toast.js');
+  const services = kit.services;
 
-  const spec = specs[page] ?? specs['auth-login'];
+  const DEMO = { email: 'demo@novaadmin.dev', password: '12345678' };
+  const GOOGLE_SVG = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+  const MS_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg>';
 
-  /**
-   * The marketing aside previews the same dashboard in both themes, and the
-   * theme can be flipped from the tools bar under the card — so the visible
-   * screenshot is re-picked on every theme change instead of being baked into
-   * the generated HTML.
-   */
-  const syncAuthShot = () => {
-    const mode = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-    $$('[data-auth-shot]').forEach((image) => {
-      image.hidden = image.dataset.authShot !== mode;
-    });
-  };
-  syncAuthShot();
-  bus.on(EVENTS.theme, syncAuthShot);
+  function particles(count = 12) {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return '';
+    return Array.from({ length: count }, (_, i) => {
+      const x = (i * 37) % 100;
+      const y = (i * 53) % 100;
+      const size = 2 + (i % 3);
+      const delay = (i % 7) * -1.3;
+      const dur = 6 + (i % 5) * 2;
+      return `<i style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-delay:${delay}s;animation-duration:${dur}s"></i>`;
+    }).join('');
+  }
 
-  const variation = spec.variation ?? 'standard';
-  const cardClasses = ['auth-card', spec.wide ? 'auth-card--wide' : '', variation === 'minimal' ? 'auth-card--plain' : ''].filter(Boolean).join(' ');
+  const QUOTES = [
+    { text: 'ساخت پنل داخلی که قبلاً دو هفته طول می‌کشید، با نوا ادمین در دو روز تحویل شد.', name: 'مهدی رضایی', role: 'مدیر فنی، داده‌پردازان پارس', avatar: 'assets/img/avatars/avatar-11.svg' },
+    { text: 'RTL واقعی، تقویم شمسی و نمودارهای تمیز — دقیقاً همان چیزی که دنبالش بودیم.', name: 'سعید امینی', role: 'بنیان‌گذار، سرویس ابری ویرا', avatar: 'assets/img/avatars/avatar-03.svg' },
+  ];
 
-  // ---------------------------------------------------------------- OTP flow
-  if (spec.otp) {
-    render(
-      node,
-      `<div class="${cardClasses}">
-        ${authBrandMark()}
-        ${authHead(spec.head)}
-        <form data-otp-form class="form-stack" novalidate>
-          <div class="form-field">
-            <label class="form-label" data-i18n="auth.codeLabel">کد تأیید</label>
-            <div class="otp-row" data-otp>${Array.from({ length: 6 }, (_, index) => `<input class="form-control otp-input numeric" inputmode="numeric" maxlength="1" aria-label="رقم ${index + 1}">`).join('')}</div>
+  function visualSide() {
+    const q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    return `<section class="lx-visual" aria-hidden="true">
+      <div class="lx-aurora"><span></span><span></span><span></span></div>
+      <div class="lx-grid"></div>
+      <div class="lx-particles">${particles()}</div>
+      <div class="lx-copy">
+        <span class="lx-pill"><span class="lx-pill__dot"></span> نسخه ۱٫۰٫۲ · همه سرویس‌ها فعال</span>
+        <h2>کسب‌وکارتان را <span class="lx-grad">هوشمندتر</span> مدیریت کنید</h2>
+        <p>۱۰ داشبورد تخصصی، کارگاه هوش مصنوعی، گزارش‌های لحظه‌ای و ده‌ها ماژول آماده — همه در یک پنل فارسی.</p>
+      </div>
+      <div class="lx-stage">
+        <figure class="lx-shot lx-shot--back"><img src="${url('assets/img/shots/ai-studio-dark.jpg')}" alt="" width="1440" height="900"></figure>
+        <figure class="lx-shot lx-shot--front">
+          <span class="lx-shot__bar"><i></i><i></i><i></i><b>novaadmin.app/dashboards/analytics</b></span>
+          <img src="${url('assets/img/shots/analytics-dark.jpg')}" alt="" width="1440" height="900">
+        </figure>
+        <div class="lx-chip lx-chip--rev">
+          <span class="lx-chip__icon lx-chip__icon--green"><i class="bi bi-graph-up-arrow"></i></span>
+          <div><small>درآمد این ماه</small><strong>۱۸٫۶ میلیارد</strong></div>
+          <b class="lx-chip__delta">+۱۲٫۴٪</b>
+        </div>
+        <div class="lx-chip lx-chip--ai">
+          <span class="lx-chip__icon lx-chip__icon--ai"><i class="bi bi-stars"></i></span>
+          <div><small>دستیار هوشمند</small><strong>۳ بینش جدید برای امروز</strong></div>
+        </div>
+      </div>
+      <figure class="lx-quote">
+        <div class="lx-quote__stars">★★★★★</div>
+        <blockquote>«${escapeHtml(q.text)}»</blockquote>
+        <figcaption><img src="${url(q.avatar)}" alt="" width="40" height="40"><span><b>${escapeHtml(q.name)}</b><small>${escapeHtml(q.role)}</small></span></figcaption>
+      </figure>
+    </section>`;
+  }
+
+  function topBar() {
+    return `<div class="lx-top">
+      <a class="lx-back" href="${url('index.html')}"><i class="bi bi-arrow-right"></i> صفحه اصلی</a>
+      <div class="lx-top__tools">
+        <button class="lx-icon-btn" type="button" data-lx-theme aria-label="تغییر تم"><i class="bi bi-moon-stars"></i></button>
+      </div>
+    </div>`;
+  }
+
+  function logo() {
+    return `<a class="lx-logo" href="${url('index.html')}" aria-label="NOVAADMIN">
+      <span class="lx-logo__mark"><img src="${url('assets/logo-mark.svg')}" alt="" width="30" height="30"></span>
+      <span class="lx-logo__text"><b>NOVA<em>ADMIN</em></b><small>پنل مدیریت هوشمند</small></span>
+    </a>`;
+  }
+
+  function divider(text) {
+    return `<div class="lx-divider"><span>${text}</span></div>`;
+  }
+
+  function socialRow() {
+    return `<div class="lx-social">
+      <button type="button" class="lx-social__btn" data-lx-social="Google">${GOOGLE_SVG}<span>گوگل</span></button>
+      <button type="button" class="lx-social__btn" data-lx-social="GitHub"><i class="bi bi-github"></i><span>گیت‌هاب</span></button>
+      <button type="button" class="lx-social__btn" data-lx-social="Microsoft">${MS_SVG}<span>مایکروسافت</span></button>
+    </div>`;
+  }
+
+  function trustRow() {
+    return `<ul class="lx-trust">
+      <li><i class="bi bi-shield-check"></i> اتصال رمزنگاری‌شده SSL</li>
+      <li><i class="bi bi-fingerprint"></i> ورود دومرحله‌ای</li>
+      <li><i class="bi bi-lock"></i> حریم خصوصی داده‌ها</li>
+    </ul>`;
+  }
+
+  function otpMarkup() {
+    return `<div class="form-field">
+      <label class="form-label">کد تأیید ۶ رقمی</label>
+      <div class="otp-row" data-otp>${Array.from({ length: 6 }, (_, i) => `<input class="form-control otp-input numeric" inputmode="numeric" maxlength="1" aria-label="رقم ${i+1}">`).join('')}</div>
+      <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--nv-text-muted);"><span>کد به ایمیل شما ارسال شد</span><button type="button" class="btn btn-ghost btn-sm" data-resend style="font-size:11px; padding:2px 8px;">ارسال مجدد</button></div>
+    </div>`;
+  }
+
+  const normalized = (() => {
+    const map = {
+      'auth-login': 'auth-login',
+      'auth/login.html': 'auth-login',
+      'auth-login-split': 'auth-login-split',
+      'auth/login-split.html': 'auth-login-split',
+      'auth-login-minimal': 'auth-login-minimal',
+      'auth/login-minimal.html': 'auth-login-minimal',
+      'auth-register': 'auth-register',
+      'auth/register.html': 'auth-register',
+      'auth-forgot': 'auth-forgot',
+      'auth/forgot-password.html': 'auth-forgot',
+      'auth-reset': 'auth-reset',
+      'auth/reset-password.html': 'auth-reset',
+      'auth-verify': 'auth-verify',
+      'auth/verify-email.html': 'auth-verify',
+      'auth-verify-email': 'auth-verify',
+      'auth-2fa': 'auth-2fa',
+      'auth/two-factor.html': 'auth-2fa',
+      'auth-login-2fa': 'auth-2fa',
+      'auth-two-factor': 'auth-2fa',
+      'auth-lock': 'auth-lock',
+      'auth/lock-screen.html': 'auth-lock',
+      'auth-lock-screen': 'auth-lock',
+      'auth-logout': 'auth-logout',
+      'auth/logout.html': 'auth-logout',
+    };
+    return map[page] || page;
+  })();
+
+  let formHtml = '';
+  let headTitle = '';
+  let headSub = '';
+  let footLink = '';
+  let showSocial = false;
+
+  switch (normalized) {
+    case 'auth-register':
+      headTitle = 'ساخت حساب جدید ✨';
+      headSub = 'در چند ثانیه حساب خود را بسازید و به پنل دسترسی پیدا کنید.';
+      showSocial = true;
+      formHtml = `
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="name">
+            <i class="bi bi-person lx-field__icon"></i>
+            <input id="lx-name" class="lx-field__input" type="text" name="name" placeholder=" " autocomplete="name" required>
+            <label for="lx-name" class="lx-field__label">نام و نام خانوادگی</label>
           </div>
-          <button class="btn btn-primary w-100" type="submit" data-submit><i class="bi bi-check2-circle" aria-hidden="true"></i> <span data-i18n="auth.verifyAction">تأیید کد</span></button>
-          <button class="btn btn-light w-100" type="button" data-resend><i class="bi bi-arrow-repeat" aria-hidden="true"></i> <span data-i18n="auth.resendCode">ارسال دوباره کد</span></button>
-          <a class="btn btn-ghost w-100" href="login.html"><i class="bi bi-arrow-right" aria-hidden="true"></i> <span data-i18n="auth.backToSignIn">بازگشت به ورود</span></a>
-        </form>
-        ${authNote('envelope-check')}
-      </div>`,
-    );
+          <p class="lx-error" data-error="name" hidden></p>
+          <div class="lx-field" data-field="email">
+            <i class="bi bi-envelope lx-field__icon"></i>
+            <input id="lx-email" class="lx-field__input" type="email" name="email" placeholder=" " autocomplete="email" dir="ltr" required>
+            <label for="lx-email" class="lx-field__label">آدرس ایمیل</label>
+          </div>
+          <p class="lx-error" data-error="email" hidden></p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="lx-field" data-field="password">
+              <i class="bi bi-shield-lock lx-field__icon"></i>
+              <input id="lx-password" class="lx-field__input" type="password" name="password" placeholder=" " autocomplete="new-password" dir="ltr" required minlength="8">
+              <label for="lx-password" class="lx-field__label">رمز عبور</label>
+              <button class="lx-eye" type="button" data-lx-eye aria-label="نمایش رمز"><i class="bi bi-eye"></i></button>
+            </div>
+            <div class="lx-field" data-field="confirm">
+              <i class="bi bi-shield-check lx-field__icon"></i>
+              <input id="lx-confirm" class="lx-field__input" type="password" name="confirm" placeholder=" " autocomplete="new-password" dir="ltr" required>
+              <label for="lx-confirm" class="lx-field__label">تکرار رمز</label>
+            </div>
+          </div>
+          <p class="lx-error" data-error="password" hidden></p>
+          <label class="lx-switch" style="font-size:12px;"><input type="checkbox" name="terms" required><span class="lx-switch__track"><span></span></span> <span><a href="${url('system/terms.html')}" target="_blank">قوانین و مقررات</a> را می‌پذیرم</span></label>
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">ساخت حساب</span>
+            <i class="bi bi-arrow-left lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot">قبلاً ثبت‌نام کرده‌اید؟ <a href="${url('auth/login.html')}">ورود به حساب</a></p>`;
+      break;
 
-    const inputs = $$('[data-otp] input', node);
-    inputs.forEach((input, index) =>
-      on(input, 'input', () => {
-        if (input.value && inputs[index + 1]) inputs[index + 1].focus();
-      }),
-    );
-    on($('[data-otp]', node), 'paste', (event) => {
-      const text = event.clipboardData?.getData('text')?.replace(/\D/g, '').slice(0, 6) ?? '';
-      if (!text) return;
-      event.preventDefault();
-      inputs.forEach((input, index) => {
-        input.value = text[index] ?? '';
-      });
-      inputs[Math.min(text.length, 5)]?.focus();
+    case 'auth-forgot':
+      headTitle = 'بازیابی رمز عبور 🔑';
+      headSub = 'ایمیل خود را وارد کنید تا لینک بازیابی برای شما ارسال شود.';
+      formHtml = `
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="email">
+            <i class="bi bi-envelope lx-field__icon"></i>
+            <input id="lx-email" class="lx-field__input" type="email" name="email" placeholder=" " autocomplete="email" dir="ltr" required>
+            <label for="lx-email" class="lx-field__label">آدرس ایمیل</label>
+          </div>
+          <p class="lx-error" data-error="email" hidden></p>
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">ارسال لینک بازیابی</span>
+            <i class="bi bi-send lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot"><a href="${url('auth/login.html')}"><i class="bi bi-arrow-right"></i> بازگشت به ورود</a></p>`;
+      break;
+
+    case 'auth-reset':
+      headTitle = 'رمز عبور جدید 🛡️';
+      headSub = 'رمز عبور قوی و امن برای حساب خود انتخاب کنید.';
+      formHtml = `
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="password">
+            <i class="bi bi-shield-lock lx-field__icon"></i>
+            <input id="lx-password" class="lx-field__input" type="password" name="password" placeholder=" " autocomplete="new-password" dir="ltr" required minlength="8">
+            <label for="lx-password" class="lx-field__label">رمز عبور جدید</label>
+            <button class="lx-eye" type="button" data-lx-eye><i class="bi bi-eye"></i></button>
+          </div>
+          <div class="lx-field" data-field="confirm">
+            <i class="bi bi-shield-check lx-field__icon"></i>
+            <input id="lx-confirm" class="lx-field__input" type="password" name="confirm" placeholder=" " autocomplete="new-password" dir="ltr" required>
+            <label for="lx-confirm" class="lx-field__label">تکرار رمز عبور</label>
+          </div>
+          <p class="lx-error" data-error="password" hidden></p>
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">به‌روزرسانی رمز عبور</span>
+            <i class="bi bi-check2-circle lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot"><a href="${url('auth/login.html')}">بازگشت به ورود</a></p>`;
+      break;
+
+    case 'auth-verify':
+      headTitle = 'تأیید ایمیل ✉️';
+      headSub = 'کد ۶ رقمی ارسال شده به ایمیل خود را وارد کنید.';
+      formHtml = `
+        <form class="lx-form" data-lx-form novalidate>
+          ${otpMarkup()}
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">تأیید و ادامه</span>
+            <i class="bi bi-check2-circle lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot">کد را دریافت نکردید؟ <a href="#" data-resend>ارسال مجدد</a> • <a href="${url('auth/login.html')}">بازگشت</a></p>`;
+      break;
+
+    case 'auth-2fa':
+      headTitle = 'احراز هویت دو مرحله‌ای 🔐';
+      headSub = 'کد ۶ رقمی برنامه احراز هویت خود را وارد کنید.';
+      formHtml = `
+        <form class="lx-form" data-lx-form novalidate>
+          ${otpMarkup()}
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">تأیید کد</span>
+            <i class="bi bi-shield-check lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot"><a href="${url('auth/login.html')}">استفاده از حساب دیگر</a></p>`;
+      break;
+
+    case 'auth-lock':
+      headTitle = 'صفحه قفل است 🔒';
+      headSub = 'برای ادامه، رمز عبور خود را وارد کنید.';
+      formHtml = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <img src="${url('assets/img/avatars/avatar-08.svg')}" alt="" width="88" height="88" style="border-radius:28px; border:3px solid var(--nv-surface); box-shadow:var(--nv-shadow-lg);">
+          <h3 style="margin:12px 0 4px; font-weight:900; font-size:16px;">سارا محمدی</h3>
+          <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">مدیر محصول • sara@novaadmin.dev</p>
+        </div>
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="password">
+            <i class="bi bi-shield-lock lx-field__icon"></i>
+            <input id="lx-password" class="lx-field__input" type="password" name="password" placeholder=" " autocomplete="current-password" dir="ltr" required>
+            <label for="lx-password" class="lx-field__label">رمز عبور</label>
+            <button class="lx-eye" type="button" data-lx-eye><i class="bi bi-eye"></i></button>
+          </div>
+          <p class="lx-error" data-error="password" hidden></p>
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">باز کردن قفل</span>
+            <i class="bi bi-unlock lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot"><a href="${url('auth/login.html')}">ورود با حساب دیگر</a></p>`;
+      break;
+
+    case 'auth-logout':
+      headTitle = 'خارج شدید 👋';
+      headSub = 'نشست شما با موفقیت بسته شد. داده‌های شما محفوظ است.';
+      formHtml = `
+        <div style="text-align:center; padding:20px 0;">
+          <div style="width:80px; height:80px; border-radius:28px; background:var(--nv-success-soft); color:var(--nv-success); display:grid; place-items:center; font-size:36px; margin:0 auto 16px;"><i class="bi bi-check2-circle"></i></div>
+          <p style="font-size:13px; color:var(--nv-text-muted); line-height:1.8;">از اینکه از نواادمین استفاده کردید سپاسگزاریم. برای ورود مجدد، یکی از گزینه‌های زیر را انتخاب کنید.</p>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+            <a class="lx-submit" href="${url('auth/login.html')}" style="text-decoration:none;"><span class="lx-submit__label">بازگشت به ورود</span><i class="bi bi-box-arrow-in-right lx-submit__icon"></i></a>
+            <a class="btn btn-light w-100" href="${url('index.html')}" style="height:48px; border-radius:12px; font-weight:700;"><i class="bi bi-house-door"></i> صفحه اصلی</a>
+          </div>
+        </div>`;
+      break;
+
+    default:
+      headTitle = 'ورود به حساب';
+      headSub = 'برای ادامه وارد شوید.';
+      formHtml = `<form class="lx-form" data-lx-form><div class="lx-field"><input class="lx-field__input" name="email" placeholder=" "><label class="lx-field__label">ایمیل</label></div><button class="lx-submit" type="submit"><span class="lx-submit__label">ورود</span></button></form>`;
+  }
+
+  const markup = `
+    <div class="lx">
+      <section class="lx-side" aria-label="فرم احراز هویت">
+        ${topBar()}
+        <div class="lx-card" data-lx-card>
+          ${logo()}
+          <header class="lx-head">
+            <h1>${headTitle}</h1>
+            <p>${headSub}</p>
+          </header>
+          ${formHtml}
+          ${showSocial ? divider('یا ادامه با') : ''}
+          ${showSocial ? socialRow() : ''}
+          ${footLink}
+        </div>
+        ${trustRow()}
+        <div class="lx-success" data-lx-success hidden>
+          <div class="lx-success__inner">
+            <svg class="lx-check" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="none"/><path fill="none" d="M15 27l7 7 15-16"/></svg>
+            <h2>خوش آمدید!</h2>
+            <p>در حال انتقال به داشبورد…</p>
+            <div class="lx-progress"><span></span></div>
+          </div>
+        </div>
+      </section>
+      ${visualSide()}
+    </div>`;
+
+  const mainEl = document.getElementById('main-content') ?? document.querySelector('.auth-page') ?? node;
+  if (mainEl.id === 'main-content' || mainEl.classList.contains('auth-page')) {
+    mainEl.className = 'lx-page';
+    mainEl.innerHTML = `<h1 class="visually-hidden">${headTitle}</h1>${markup}`;
+    document.body.classList.add('lx-body');
+  } else {
+    render(node, markup);
+  }
+
+  const rootEl = document.querySelector('.lx');
+  if (!rootEl) return;
+
+  const form = rootEl.querySelector('[data-lx-form]');
+  const email = form ? form.querySelector('[name="email"]') : null;
+  const password = form ? form.querySelector('[name="password"]') : null;
+  const submit = form ? form.querySelector('[data-lx-submit]') : null;
+
+  const setError = (name, message) => {
+    const field = form ? form.querySelector(`[data-field="${name}"]`) : null;
+    const box = form ? form.querySelector(`[data-error="${name}"]`) : null;
+    if (field) field.classList.toggle('is-invalid', Boolean(message));
+    if (box) {
+      box.hidden = !message;
+      box.innerHTML = message ? `<i class="bi bi-exclamation-circle"></i> ${message}` : '';
+    }
+  };
+
+  const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+
+  if (form) {
+    on(form, 'input', () => {
+      if (email && validEmail(email.value.trim())) setError('email','');
+      if (password && password.value.length >= 6) setError('password','');
     });
-    on($('[data-otp-form]', node), 'submit', (event) => {
-      event.preventDefault();
-      const code = inputs.map((input) => input.value).join('');
-      if (code.length < 6) {
-        toast.warning('کد ناقص است', 'کد ۶ رقمی را کامل وارد کنید.');
+    on(form.querySelector('[data-lx-eye]'), 'click', (e) => {
+      const btn = e.currentTarget;
+      const input = btn.closest('.lx-field')?.querySelector('input');
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.innerHTML = `<i class="bi bi-${show ? 'eye-slash' : 'eye'}"></i>`;
+    });
+  }
+
+  const otpInputs = rootEl.querySelectorAll('[data-otp] input');
+  if (otpInputs.length) {
+    otpInputs.forEach((input, idx) => {
+      on(input, 'input', () => {
+        if (input.value && otpInputs[idx+1]) otpInputs[idx+1].focus();
+      });
+      on(input, 'keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && otpInputs[idx-1]) otpInputs[idx-1].focus();
+      });
+    });
+    on(rootEl.querySelector('[data-otp]'), 'paste', (e) => {
+      const txt = e.clipboardData?.getData('text')?.replace(/\D/g,'').slice(0,6) ?? '';
+      if (!txt) return;
+      e.preventDefault();
+      otpInputs.forEach((inp,i)=> inp.value = txt[i] ?? '');
+      otpInputs[Math.min(txt.length,5)]?.focus();
+    });
+  }
+
+  on(rootEl, 'click', (e) => {
+    const social = e.target.closest('[data-lx-social]');
+    if (social) {
+      toast.info('ورود اجتماعی', `سرویس ${social.dataset.lxSocial} در نسخه نمایشی غیرفعال است.`);
+    }
+    const resend = e.target.closest('[data-resend]');
+    if (resend) {
+      toast.info('کد ارسال شد', 'کد جدید تا ۲ دقیقه دیگر می‌رسد.');
+    }
+  });
+
+  if (form) {
+    on(form, 'submit', async (ev) => {
+      ev.preventDefault();
+      let valid = true;
+      if (email && !validEmail(email.value.trim())) {
+        setError('email','ایمیل معتبر وارد کنید');
+        valid = false;
+      }
+      if (password && password.value.length < 6 && normalized !== 'auth-forgot') {
+        setError('password','رمز عبور حداقل ۶ کاراکتر');
+        valid = false;
+      }
+      if (otpInputs.length) {
+        const code = Array.from(otpInputs).map(i=>i.value).join('');
+        if (code.length < 6) {
+          toast.warning('کد ناقص است','کد ۶ رقمی را کامل وارد کنید');
+          return;
+        }
+      }
+      if (!valid) {
+        toast.warning('فرم کامل نیست','فیلدها را بررسی کنید');
         return;
       }
-      toast.success('تأیید شد', 'در حال انتقال به داشبورد…');
-      setTimeout(() => goTo(spec.redirect ?? 'dashboards/analytics.html'), 900);
-    });
-    on($('[data-resend]', node), 'click', () => toast.info('کد ارسال شد', 'کد جدید تا ۲ دقیقه دیگر می‌رسد.'));
-    return;
-  }
-
-  // ------------------------------------------------- simple status card only
-  if (spec.actions?.length) {
-    render(
-      node,
-      `<div class="${cardClasses}">
-        ${authBrandMark()}
-        ${authHead(spec.head)}
-        ${spec.success ? `<p class="auth-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> <span data-i18n="${spec.success.key}">${spec.success.text}</span></p>` : ''}
-        <div class="auth-card__actions">${spec.actions
-          .map(
-            (action) =>
-              `<a class="btn ${action.className} w-100" href="${action.href}"><i class="bi bi-${action.icon}" aria-hidden="true"></i> <span data-i18n="${action.key}">${action.text}</span></a>`,
-          )
-          .join('')}</div>
-        ${authNote()}
-      </div>`,
-    );
-    return;
-  }
-
-  // ------------------------------------------------------------- form cards
-  const head = spec.avatar
-    ? `<header class="auth-card__head">
-        <img class="avatar avatar--2xl" src="${url(spec.avatar)}" alt="" width="72" height="72">
-        <h2 class="auth-card__title">${escapeHtml(spec.person ?? '')}</h2>
-        <p class="auth-card__text" data-i18n="${spec.head.textKey}">${spec.head.text}</p>
-      </header>`
-    : `${authBrandMark()}${authHead(spec.head)}`;
-
-  render(
-    node,
-    `<div class="${cardClasses}">
-      ${head}
-      ${spec.fields.some((field) => field.name === 'email') && variation !== 'minimal' ? authDemoBox() : ''}
-      ${variation === 'social-first' ? authSocial() : ''}
-      <form data-auth-form class="form-stack" novalidate>
-        <div class="form-grid">${spec.fields.map(authField).join('')}</div>
-        ${
-          spec.terms
-            ? `<label class="form-check"><input type="checkbox" class="form-check-input" name="terms" required><span class="form-check-label" data-i18n="auth.acceptTerms">قوانین و مقررات را می‌پذیرم</span></label>`
-            : ''
-        }
-        ${
-          spec.fields.some((field) => field.name === 'password') && page.startsWith('auth-login')
-            ? `<div class="auth-meta">
-                <label class="form-check"><input type="checkbox" class="form-check-input" name="remember" checked><span class="form-check-label" data-i18n="auth.remember">مرا به خاطر بسپار</span></label>
-                <a class="fs-caption" href="forgot-password.html" data-i18n="auth.forgot">رمز عبور را فراموش کرده‌اید؟</a>
-              </div>`
-            : ''
-        }
-        <button class="btn btn-primary w-100" type="submit" data-submit><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span data-i18n="${spec.submitKey}">${spec.submit}</span></button>
-        ${
-          spec.secondary
-            ? `<a class="btn btn-ghost w-100" href="${spec.secondary.href}"><i class="bi bi-person" aria-hidden="true"></i> <span data-i18n="${spec.secondary.key}">${spec.secondary.text}</span></a>`
-            : ''
-        }
-      </form>
-      ${variation === 'social-first' ? '' : authSocial()}
-      ${variation === 'social-first' ? authWhyList() : ''}
-      ${authNote()}
-      ${
-        spec.backLink
-          ? `<div class="auth-card__foot"><a href="login.html" data-i18n="auth.backToLogin"><i class="bi bi-arrow-right" aria-hidden="true"></i> بازگشت به ورود</a></div>`
-          : `<div class="auth-card__foot"><span data-i18n="${page === 'auth-register' ? 'auth.hasAccount' : 'auth.noAccount'}">${page === 'auth-register' ? 'قبلاً ثبت‌نام کرده‌اید؟' : 'حساب کاربری ندارید؟'}</span> <a href="${page === 'auth-register' ? 'login.html' : 'register.html'}" data-i18n="${page === 'auth-register' ? 'auth.login' : 'auth.register'}">${page === 'auth-register' ? 'ورود' : 'ثبت‌نام'}</a></div>`
+      if (submit) {
+        submit.classList.add('is-loading');
+        submit.disabled = true;
       }
-    </div>`,
-  );
-
-  // ------------------------------------------------------------ interactions
-  const demoBox = $('[data-demo-box]', node);
-  if (demoBox) {
-    const fillDemo = () => {
-      const form = $('[data-auth-form]', node);
-      if (!form) return null;
-      const filled = [];
-      for (const [name, value] of Object.entries(AUTH_DEMO)) {
-        const input = $(`[name="${name}"]`, form);
-        if (!input) continue;
-        input.value = value;
-        /* Real events, so validation, the password meter and the submit state
-           all react exactly as they do on typed input. */
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        filled.push(input);
+      const syncEmail = email ? email.value.trim() : 'demo@novaadmin.dev';
+      const syncSession = JSON.stringify({ email: syncEmail, name: 'سارا محمدی', token: `demo-${Date.now().toString(36)}`, at: Date.now() });
+      try { window.localStorage.setItem('nova:session', syncSession); } catch {}
+      try { window.sessionStorage.setItem('nova:session', syncSession); } catch {}
+      try { document.cookie = `nova_session=${encodeURIComponent(syncSession)}; path=/; max-age=86400; SameSite=Lax`; } catch {}
+      try { window.localStorage.setItem('nova:lastLogin', String(Date.now())); } catch {}
+      try { window.sessionStorage.setItem('nova:lastLogin', String(Date.now())); } catch {}
+      try { window.__nova_session = syncSession; } catch {}
+      try {
+        if (services.authService?.login && email) {
+          await services.authService.login({ email: email.value, password: password?.value ?? '' }).catch(()=>null);
+        }
+      } catch {}
+      const successEl = rootEl.querySelector('[data-lx-success]');
+      if (successEl) {
+        successEl.hidden = false;
+        rootEl.querySelector('[data-lx-card]')?.setAttribute('hidden','');
       }
-      return { form, filled };
-    };
-
-    on($('[data-demo-fill]', demoBox), 'click', () => {
-      const result = fillDemo();
-      if (!result) return;
-      toast.info('اطلاعات آزمایشی وارد شد', 'فرم پر شد؛ با دکمه «ورود و ادامه» مستقیم وارد شوید.');
-      const more = document.createElement('button');
-      more.type = 'submit';
-      more.className = 'btn btn-primary btn-sm w-100 auth-demo__go';
-      more.innerHTML = '<i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> ورود و ادامه';
-      more.addEventListener('click', (event) => {
-        event.preventDefault();
-        if (typeof result.form.requestSubmit === 'function') result.form.requestSubmit();
-        else result.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      });
-      demoBox.append(more);
+      let target = 'dashboards/analytics.html';
+      if (normalized === 'auth-register') target = 'auth/verify-email.html';
+      else if (normalized === 'auth-forgot') target = 'auth/login.html';
+      else if (normalized === 'auth-reset') target = 'auth/login.html';
+      else if (normalized === 'auth-verify') target = 'dashboards/analytics.html';
+      else if (normalized === 'auth-2fa') target = 'dashboards/analytics.html';
+      else if (normalized === 'auth-lock') target = 'dashboards/analytics.html';
+      const next = new URLSearchParams(window.location.search).get('next');
+      const safeNext = next && /^[a-z0-9][a-z0-9./_-]*\.html$/i.test(next) && !/^\/\//.test(next) ? next : target;
+      try { toast.success('موفق', 'در حال انتقال…'); } catch {}
+      setTimeout(() => goTo(safeNext), 900);
     });
   }
 
-  on($('[data-auth-form]', node), 'submit', async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const { validateForm } = await import('../core/form.js');
-    if (!validateForm(form).valid) {
-      toast.warning('فرم کامل نیست', 'فیلدها را بررسی کنید.');
-      return;
+  on(rootEl.querySelector('[data-lx-theme]'), 'click', async () => {
+    const { toggleTheme } = await import('../core/theme.js');
+    toggleTheme();
+  });
+
+  // FIX: Ensure all auth links work correctly - landing, login, etc
+  // Fix topBar "صفحه اصلی" -> should go to landing (index.html)
+  on(rootEl, 'click', (e) => {
+    const backLink = e.target.closest('.lx-back, [data-lx-home]');
+    if (backLink) {
+      e.preventDefault();
+      const href = backLink.getAttribute('href');
+      if (href) {
+        // Always go to landing page
+        goTo('index.html');
+      }
     }
-    const button = $('[data-submit]', form);
-    const label = button.querySelector('[data-i18n]');
-    const original = label?.textContent;
-    button.classList.add('is-loading');
-    button.disabled = true;
-    if (label) label.textContent = page === 'auth-register' ? 'در حال ساخت حساب…' : 'در حال ورود…';
-    // The template has no backend: the mock service answers, then the demo
-    // dashboard opens. Swap this call for your own authentication endpoint.
-    await services.authService.login({ email: form.email?.value ?? '', password: form.password?.value ?? '' }).catch(() => null);
-    toast.success('ورود موفق', 'در حال انتقال به داشبورد…');
-    /*
-     * `?next=` lets a timed-out session come back to the page it was on. Only a
-     * in-template relative path is accepted, so the parameter can never be used
-     * to push somebody to another host.
-     */
-    const next = new URLSearchParams(window.location.search).get('next');
-    const target = next && /^[a-z0-9][a-z0-9./_-]*\.html$/i.test(next) && !/^\/\//.test(next) ? next : spec.redirect ?? 'dashboards/analytics.html';
-    setTimeout(() => goTo(target), 800);
-    button.classList.remove('is-loading');
-    button.disabled = false;
-    if (label && original) label.textContent = original;
+    // Fix foot links like "بازگشت به ورود", "بازگشت به صفحه اصلی"
+    const footLink = e.target.closest('.lx-foot a, .lx-card a[href*="login"], .lx-card a[href*="index"]');
+    if (footLink && !footLink.hasAttribute('data-resend') && !footLink.hasAttribute('data-lx-social')) {
+      const href = footLink.getAttribute('href');
+      if (href && href.includes('login.html')) {
+        e.preventDefault();
+        goTo('auth/login.html');
+      } else if (href && href.includes('index.html')) {
+        e.preventDefault();
+        goTo('index.html');
+      } else if (href && href.includes('register.html')) {
+        e.preventDefault();
+        goTo('auth/register.html');
+      }
+    }
   });
 
-  on(node, 'click', (event) => {
-    const social = event.target.closest('[data-social]');
-    if (social) toast.info('ورود اجتماعی', `سرویس ${social.dataset.social.toUpperCase()} در نسخه نمایشی غیرفعال است.`);
-  });
+  // Ensure fixLinks runs for auth pages
+  try {
+    const { fixLinks } = await import('../core/links.js');
+    fixLinks(rootEl);
+  } catch {}
 }
+
+
 
 /* ============================================================= system pages */
 
