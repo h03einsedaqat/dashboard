@@ -434,7 +434,152 @@ function authAside(page) {
     </aside>`;
 }
 
+function loginProShell(page) {
+  return `<!doctype html>
+<html lang="{{DEFAULT_LANG}}" dir="{{DEFAULT_DIR}}" data-theme="{{DEFAULT_THEME}}" data-theme-mode="{{DEFAULT_THEME}}" data-primary="{{DEFAULT_PRIMARY}}" data-direction="{{DEFAULT_DIR}}" data-density="comfortable" data-font-size="md" data-calendar="{{DEFAULT_CALENDAR}}">
+<head>
+  <!-- @include head.html -->
+  <title>ورود | {{APP_NAME}}</title>
+</head>
+<body class="app-body app-body--auth lx-body" data-page="auth/login.html" data-section="auth" data-kind="auth">
+  <a class="skip-link" href="#main-content" data-i18n="ui.skipToContent">پرش به محتوای اصلی</a>
+  <main id="main-content" class="lx-page">
+    <h1 class="visually-hidden">ورود به {{APP_NAME}}</h1>
+    <div class="lx">
+    <section class="lx-side" aria-label="فرم ورود">
+      <div class="lx-top">
+        <a class="lx-back" href="${href('index.html')}"><i class="bi bi-arrow-right" aria-hidden="true"></i> صفحه اصلی</a>
+        <div class="lx-top__tools">
+          <button class="lx-icon-btn" type="button" data-lx-theme aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
+        </div>
+      </div>
+
+      <div class="lx-card" data-lx-card>
+        <a class="lx-logo" href="${href('index.html')}" aria-label="{{APP_NAME}}">
+          <span class="lx-logo__mark"><img src="${href('assets/logo-mark.svg')}" alt="" width="30" height="30"></span>
+          <span class="lx-logo__text"><b>NOVA<em>ADMIN</em></b><small>پنل مدیریت هوشمند</small></span>
+        </a>
+        <header class="lx-head">
+          <h1>خوش برگشتید <span class="lx-wave" aria-hidden="true">👋</span></h1>
+          <p>برای ورود به پنل مدیریت، اطلاعات حساب خود را وارد کنید.</p>
+        </header>
+
+        <button class="lx-demo" type="button" data-lx-demo>
+          <span class="lx-demo__icon"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i></span>
+          <span class="lx-demo__text"><strong>ورود سریع با حساب دمو</strong><small dir="ltr">demo@novaadmin.dev</small></span>
+          <i class="bi bi-arrow-left lx-demo__arrow" aria-hidden="true"></i>
+        </button>
+
+        <div class="lx-divider"><span>یا ورود با ایمیل</span></div>
+
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="email">
+            <i class="bi bi-envelope lx-field__icon" aria-hidden="true"></i>
+            <input id="lx-email" class="lx-field__input" type="email" name="email" placeholder=" " autocomplete="email" dir="ltr" required>
+            <label for="lx-email" class="lx-field__label">آدرس ایمیل</label>
+            <span class="lx-field__ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></span>
+          </div>
+          <p class="lx-error" data-error="email" hidden></p>
+
+          <div class="lx-field" data-field="password">
+            <i class="bi bi-shield-lock lx-field__icon" aria-hidden="true"></i>
+            <input id="lx-password" class="lx-field__input" type="password" name="password" placeholder=" " autocomplete="current-password" dir="ltr" required minlength="6">
+            <label for="lx-password" class="lx-field__label">رمز عبور</label>
+            <button class="lx-eye" type="button" data-lx-eye aria-label="نمایش رمز عبور"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+          <p class="lx-error" data-error="password" hidden></p>
+          <p class="lx-caps" data-lx-caps hidden><i class="bi bi-capslock-fill" aria-hidden="true"></i> Caps Lock روشن است</p>
+
+          <div class="lx-row">
+            <label class="lx-switch"><input type="checkbox" name="remember" checked><span class="lx-switch__track"><span></span></span> مرا به خاطر بسپار</label>
+            <a class="lx-link" href="${href('auth/forgot-password.html')}">فراموشی رمز؟</a>
+          </div>
+
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">ورود به پنل</span>
+            <i class="bi bi-arrow-left lx-submit__icon" aria-hidden="true"></i>
+            <span class="lx-submit__spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <div class="lx-divider"><span>یا ادامه با</span></div>
+        <div class="lx-social">
+          <button type="button" class="lx-social__btn" data-lx-social="Google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span>گوگل</span></button>
+          <button type="button" class="lx-social__btn" data-lx-social="GitHub"><i class="bi bi-github" aria-hidden="true"></i><span>گیت‌هاب</span></button>
+          <button type="button" class="lx-social__btn" data-lx-social="Microsoft"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg><span>مایکروسافت</span></button>
+        </div>
+
+        <p class="lx-foot">حساب کاربری ندارید؟ <a href="${href('auth/register.html')}">ایجاد حساب رایگان</a></p>
+      </div>
+
+      <ul class="lx-trust">
+        <li><i class="bi bi-shield-check" aria-hidden="true"></i> اتصال رمزنگاری‌شده SSL</li>
+        <li><i class="bi bi-fingerprint" aria-hidden="true"></i> ورود دومرحله‌ای</li>
+        <li><i class="bi bi-lock" aria-hidden="true"></i> حریم خصوصی داده‌ها</li>
+      </ul>
+
+      <div class="lx-success" data-lx-success hidden>
+        <div class="lx-success__inner">
+          <svg class="lx-check" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="none"/><path fill="none" d="M15 27l7 7 15-16"/></svg>
+          <h2>خوش آمدید، سارا!</h2>
+          <p>در حال آماده‌سازی داشبورد شما…</p>
+          <div class="lx-progress"><span></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lx-visual" aria-hidden="true">
+      <div class="lx-aurora"><span></span><span></span><span></span></div>
+      <div class="lx-grid"></div>
+      <div class="lx-particles"></div>
+
+      <div class="lx-copy">
+        <span class="lx-pill"><span class="lx-pill__dot"></span> نسخه ۱٫۰٫۲ · همه سرویس‌ها فعال</span>
+        <h2>کسب‌وکارتان را <span class="lx-grad">هوشمندتر</span> مدیریت کنید</h2>
+        <p>۱۰ داشبورد تخصصی، کارگاه هوش مصنوعی، گزارش‌های لحظه‌ای و ده‌ها ماژول آماده — همه در یک پنل فارسی.</p>
+      </div>
+
+      <div class="lx-stage">
+        <figure class="lx-shot lx-shot--back"><img src="${href('assets/img/shots/ai-studio-dark.jpg')}" alt="" width="1440" height="900"></figure>
+        <figure class="lx-shot lx-shot--front">
+          <span class="lx-shot__bar"><i></i><i></i><i></i><b>novaadmin.app/dashboards/analytics</b></span>
+          <img src="${href('assets/img/shots/analytics-dark.jpg')}" alt="" width="1440" height="900">
+        </figure>
+        <div class="lx-chip lx-chip--rev">
+          <span class="lx-chip__icon lx-chip__icon--green"><i class="bi bi-graph-up-arrow"></i></span>
+          <div><small>درآمد این ماه</small><strong>۱۸٫۶ میلیارد</strong></div>
+          <b class="lx-chip__delta">+۱۲٫۴٪</b>
+        </div>
+        <div class="lx-chip lx-chip--ai">
+          <span class="lx-chip__icon lx-chip__icon--ai"><i class="bi bi-stars"></i></span>
+          <div><small>دستیار هوشمند</small><strong>۳ بینش جدید برای امروز</strong></div>
+        </div>
+        <div class="lx-chip lx-chip--sec">
+          <span class="lx-chip__icon lx-chip__icon--blue"><i class="bi bi-shield-lock-fill"></i></span>
+          <div><small>امنیت حساب</small><strong>محافظت‌شده</strong></div>
+        </div>
+      </div>
+
+      <figure class="lx-quote" data-lx-quote>
+        <div class="lx-quote__stars">★★★★★</div>
+        <blockquote data-lx-quote-text>«ساخت پنل داخلی که قبلاً دو هفته طول می‌کشید، با نوا ادمین در دو روز تحویل شد.»</blockquote>
+        <figcaption><img data-lx-quote-avatar src="${href('assets/img/avatars/avatar-11.svg')}" alt="" width="40" height="40"><span><b data-lx-quote-name>مهدی رضایی</b><small data-lx-quote-role>مدیر فنی، داده‌پردازان پارس</small></span>
+          <span class="lx-quote__dots"><i class="is-active"></i><i></i><i></i></span></figcaption>
+      </figure>
+    </section>
+  </div>
+  </main>
+  <!-- @include overlays.html -->
+  <!-- @include customizer.html -->
+  <!-- @include scripts.html -->
+</body>
+</html>`;
+}
+
 function authShell(page, body) {
+  if (page.url === 'auth/login.html') {
+    return loginProShell(page);
+  }
   const centered = AUTH_CENTERED.has(page.id);
   const minimal = AUTH_MINIMAL.has(page.id);
   const classes = ['auth-page', centered ? 'auth-page--centered' : '', minimal ? 'auth-page--minimal' : ''].filter(Boolean).join(' ');

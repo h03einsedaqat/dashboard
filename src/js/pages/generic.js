@@ -167,7 +167,7 @@ function statusBreakdown(items) {
 /** Trend + breakdown for an overview, both derived from the loaded rows. */
 function overviewCharts(resource, title, items) {
   const buckets = monthlyBuckets(items, {
-    dates: ['placedAt', 'createdAt', 'paidAt', 'shippedAt', 'at', 'date', 'since', 'dueDate'],
+    dates: ['placedAt', 'createdAt', 'paidAt', 'shippedAt', 'at', 'date', 'since', 'dueDate', 'issuedAt', 'dueAt'],
     amounts: ['total', 'amount', 'value', 'price', 'quantity', 'sold'],
   });
   const hasData = buckets.some((bucket) => bucket.count > 0);
@@ -301,7 +301,7 @@ function dashboardHarness(slug) {
       ${charts
         .map(
           (key) => `<section class="card" data-widget="chart-${key}" data-widget-title="نمودار ${key}">
-            <header class="card__head"><div><h2 class="card__title">${escapeHtml(chartTitle(key))}</h2><p class="card__subtitle">بازه فعال: <span data-range-label>۳۰ روز</span></p></div>
+            <header class="card__head"><div><h2 class="card__title">${escapeHtml(chartTitle(key))}</h2><p class="card__subtitle">بازه فعال: <span data-range-label data-range-display-label>۳۰ روز</span></p></div>
               <div class="card__actions"><div class="dropdown"><button class="icon-btn icon-btn--sm" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="گزینه‌های نمودار"><i class="bi bi-three-dots-vertical"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end" data-dropdown-menu><li><button class="dropdown-item" type="button" data-chart-toggle="area">نمودار ناحیه‌ای</button></li><li><button class="dropdown-item" type="button" data-chart-toggle="column">نمودار ستونی</button></li><li><button class="dropdown-item" type="button" data-chart-toggle="line">نمودار خطی</button></li></ul></div></div></header>
             <div class="card__body"><div class="chart" data-chart-key="${escapeHtml(key)}" data-chart-height="300"></div></div>

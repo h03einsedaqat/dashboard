@@ -233,8 +233,9 @@ function bindRange(instance) {
     if (!preset) return;
     instance.range = preset.dataset.rangePreset;
     $$('[data-range-preset]', instance.node).forEach((node) => node.classList.toggle('is-active', node === preset));
-    const label = $('[data-range-label]', instance.node);
-    if (label) label.textContent = preset.dataset.rangeLabel ?? preset.textContent.trim();
+    $$('span[data-range-label], [data-range-display-label]', instance.node).forEach((label) => {
+      label.textContent = preset.dataset.rangeLabel ?? preset.textContent.trim();
+    });
     instance.charts.forEach((chart) => chart.destroy());
     instance.charts = [];
     paintCharts(instance);

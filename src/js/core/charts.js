@@ -27,19 +27,37 @@ const instances = new Map();
 const lastPayload = new WeakMap();
 let apexPromise = null;
 
-const tokens = () => getComputedStyle(document.documentElement);
-const token = (name, fallback = '') => tokens().getPropertyValue(name).trim() || fallback;
+let _tokenCache = null;
+function getStyleTokens() {
+  if (!_tokenCache) {
+    const styles = getComputedStyle(document.documentElement);
+    _tokenCache = {
+      fontSans: styles.getPropertyValue('--nv-font-sans').trim() || 'inherit',
+      text2: styles.getPropertyValue('--nv-text-2').trim() || '#55617a',
+      divider: styles.getPropertyValue('--nv-divider').trim() || '#eef1f6',
+      textMuted: styles.getPropertyValue('--nv-text-muted').trim() || '#7b8798',
+      surface3: styles.getPropertyValue('--nv-surface-3').trim() || '#f1f5f9',
+      palettes: PALETTE_TOKENS.map((key) => styles.getPropertyValue(key).trim() || '#6366f1'),
+    };
+  }
+  return _tokenCache;
+}
+
+function invalidateTokenCache() {
+  _tokenCache = null;
+}
 
 export function chartColors(count = 6) {
-  return Array.from({ length: count }, (_, index) => token(PALETTE_TOKENS[index % PALETTE_TOKENS.length], '#6366f1'));
+  const cached = getStyleTokens();
+  return Array.from({ length: count }, (_, index) => cached.palettes[index % cached.palettes.length]);
 }
 
 function baseOptions() {
-  const styles = tokens();
+  const styles = getStyleTokens();
   return {
     chart: {
-      fontFamily: styles.getPropertyValue('--nv-font-sans').trim() || 'inherit',
-      foreColor: token('--nv-text-2', '#55617a'),
+      fontFamily: styles.fontSans,
+      foreColor: styles.text2,
       background: 'transparent',
       /* Charts mirror the document direction so axes, legends and tooltips
          follow the RTL/LTR switch without per-page configuration. */
@@ -48,13 +66,13 @@ function baseOptions() {
       animations: {
         enabled: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
         easing: 'easeinout',
-        speed: 420,
+        speed: 260,
       },
       parentHeightOffset: 0,
     },
     theme: { mode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light' },
     grid: {
-      borderColor: token('--nv-divider', '#eef1f6'),
+      borderColor: styles.divider,
       strokeDashArray: 4,
       padding: { left: 4, right: 4, top: 0, bottom: 0 },
       xaxis: { lines: { show: false } },
@@ -67,7 +85,7 @@ function baseOptions() {
       markers: { width: 9, height: 9, radius: 3 },
       itemMargin: { horizontal: 8, vertical: 2 },
       fontSize: '12px',
-      labels: { colors: token('--nv-text-2', '#55617a') },
+      labels: { colors: styles.text2 },
     },
     tooltip: {
       theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
@@ -173,11 +191,12 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
   const palette = colors ?? chartColors(series2.length || 3);
   const localised = localiseSeries(series2);
   const localisedLabels = localiseLabels(labels2);
+  const styles = getStyleTokens();
   const common = {
     series: localised,
     labels: localisedLabels,
     colors: palette,
-    noData: { text: t('common.noData'), align: 'center', verticalAlign: 'middle', style: { fontSize: '13px', color: token('--nv-text-muted', '#7b8798') } },
+    noData: { text: t('common.noData'), align: 'center', verticalAlign: 'middle', style: { fontSize: '13px', color: styles.textMuted } },
     chart: { ...base.chart, type: chartType, height },
     stroke: { curve: 'smooth', width: chartType === 'line' || chartType === 'area' ? 2.5 : 0 },
     fill: { type: chartType === 'area' ? 'gradient' : 'solid', gradient: { shadeIntensity: 0.6, opacityFrom: 0.32, opacityTo: 0.04, stops: [0, 92] } },
@@ -217,8 +236,8 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
     donut: { legend: { position: 'bottom' }, stroke: { width: 0 }, plotOptions: { pie: { donut: { size: '72%', labels: { show: true, name: { fontSize: '12px' }, value: { fontSize: '20px', fontWeight: 700, formatter: (value) => formatCompact(value) }, total: { show: true, label: t('charts.total'), formatter: (w) => formatCompact(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) } } } } } },
     pie: { legend: { position: 'bottom' } },
     radar: { stroke: { width: 2 }, fill: { opacity: 0.22 }, markers: { size: 3 } },
-    radialBar: { plotOptions: { radialBar: { hollow: { size: '42%' }, dataLabels: { name: { fontSize: '13px' }, value: { fontSize: '20px', formatter: (value) => formatNumber(value) } }, track: { background: token('--nv-surface-3', '#f1f5f9'), strokeWidth: '100%' } } }, legend: { show: true, position: 'bottom' } },
-    heatmap: { plotOptions: { heatmap: { radius: 6, enableShades: true, colorScale: { ranges: [{ from: 0, to: 40, color: token('--nv-chart-1', '#6366f1'), name: t('charts.low') }, { from: 41, to: 75, color: token('--nv-chart-3', '#10b981'), name: t('charts.medium') }, { from: 76, to: 100, color: token('--nv-warning', '#d97706'), name: t('charts.high') }] } } }, legend: { show: false } },
+    radialBar: { plotOptions: { radialBar: { hollow: { size: '42%' }, dataLabels: { name: { fontSize: '13px' }, value: { fontSize: '20px', formatter: (value) => formatNumber(value) } }, track: { background: styles.surface3, strokeWidth: '100%' } } }, legend: { show: true, position: 'bottom' } },
+    heatmap: { plotOptions: { heatmap: { radius: 6, enableShades: true, colorScale: { ranges: [{ from: 0, to: 40, color: styles.palettes[0], name: t('charts.low') }, { from: 41, to: 75, color: styles.palettes[2] ?? '#10b981', name: t('charts.medium') }, { from: 76, to: 100, color: '#d97706', name: t('charts.high') }] } } }, legend: { show: false } },
     sparkline: {
       chart: { sparkline: { enabled: true } },
       stroke: { width: 2.5, curve: 'smooth' },
@@ -318,13 +337,20 @@ export function resyncCharts() {
 }
 
 if (typeof window !== 'undefined') {
-  const passes = () => [120, 400, 900, 1800, 3200].forEach((delay) => window.setTimeout(resyncCharts, delay));
+  // Eager pre-load ApexCharts on idle so chart rendering is instant
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(() => getApex(), { timeout: 1200 });
+  } else {
+    setTimeout(getApex, 150);
+  }
+
+  const passes = () => [100, 450].forEach((delay) => window.setTimeout(resyncCharts, delay));
   window.addEventListener('load', passes, { once: true });
   document.fonts?.ready?.then(() => window.setTimeout(resyncCharts, 50));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') window.setTimeout(resyncCharts, 80);
   });
-  window.addEventListener('nova:layout', () => [80, 360].forEach((delay) => window.setTimeout(resyncCharts, delay)));
+  window.addEventListener('nova:layout', () => [60, 240].forEach((delay) => window.setTimeout(resyncCharts, delay)));
 }
 
 /**
@@ -509,6 +535,7 @@ export function settlePendingCharts(root = document) {
 
 /** Re-themes existing charts after theme/colour/direction changes. */
 export function refreshCharts() {
+  invalidateTokenCache();
   instances.forEach(async (chart, node) => {
     try {
       await chart.updateOptions(buildOptions(lastPayload.get(node) ?? payloadFromNode(node)), false, true);

@@ -52,14 +52,29 @@
         <i class="bi bi-bell" aria-hidden="true"></i>
         <span class="icon-btn__dot" data-notif-count hidden>0</span>
       </button>
-      <div class="dropdown-menu dropdown-menu--notifications" data-dropdown-menu>
-        <div class="dropdown-menu__head">
-          <span data-i18n="ui.notifications">اعلان‌ها</span>
-          <button class="btn btn-link btn-sm" type="button" data-notif-read-all data-i18n="ui.markAllRead">همه خوانده شد</button>
+      <div class="dropdown-menu dropdown-menu--notifications dropdown-menu--wide" data-dropdown-menu>
+        <div class="notif-panel__head">
+          <div class="d-flex align-items-center justify-content-between w-100 mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <span class="notif-panel__title">مرکز اعلان‌ها</span>
+              <span class="badge badge--soft-primary rounded-pill notif-panel__unread-badge" data-notif-badge>۳ جدید</span>
+            </div>
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-primary" type="button" data-notif-read-all title="علامت‌گذاری همه به عنوان خوانده‌شده">
+              <i class="bi bi-check2-all me-1"></i>خواندن همه
+            </button>
+          </div>
+          <div class="notif-panel__tabs" data-notif-tabs>
+            <button class="notif-tab is-active" type="button" data-notif-filter="all">همه</button>
+            <button class="notif-tab" type="button" data-notif-filter="unread">خوانده نشده</button>
+            <button class="notif-tab" type="button" data-notif-filter="system">سیستم</button>
+            <button class="notif-tab" type="button" data-notif-filter="orders">سفارش‌ها</button>
+          </div>
         </div>
         <div class="notification-list" data-notification-list role="list"></div>
-        <div class="dropdown-menu__foot">
-          <a class="btn btn-ghost btn-sm w-100" href="{{ROOT}}apps/notifications.html" data-i18n="ui.viewAll">مشاهده همه اعلان‌ها</a>
+        <div class="notif-panel__foot">
+          <a class="btn btn-light btn-sm w-100 fw-semibold" href="{{ROOT}}apps/notifications.html">
+            <i class="bi bi-archive me-1"></i>مشاهده تمام اعلان‌ها و آرشیو
+          </a>
         </div>
       </div>
     </div>

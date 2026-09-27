@@ -33,7 +33,6 @@ import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './j
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
 import { renderGenericApps } from './js/pages/generic.js';
-import { initDashboard, initDashboardTables } from './js/pages/dashboards.js';
 import { config } from './config/config.js';
 import * as services from './services/index.js';
 
@@ -198,6 +197,7 @@ function renderRouteFailure(error) {
 
 const AREA_CONTROLLERS = {
   'dashboards/': async () => {
+    const { initDashboard, initDashboardTables } = await import('./js/pages/dashboards.js');
     await initDashboard();
     initDashboardTables();
   },
@@ -216,7 +216,14 @@ const AREA_CONTROLLERS = {
   'settings/': async () => (await import('./js/pages/content.js')).initSettings(),
   'profile/': async () => (await import('./js/pages/content.js')).initProfile(),
   'docs/': async () => (await import('./js/pages/content.js')).initDocs(),
-  'auth/': async () => (await import('./js/pages/content.js')).initAuth(),
+  'auth/': async () => {
+    const page = document.body?.dataset.page ?? '';
+    if (page.includes('login')) {
+      const { initLoginPro } = await import('./js/pages/login.js');
+      if (initLoginPro()) return;
+    }
+    return (await import('./js/pages/content.js')).initAuth();
+  },
   'ui/': async () => (await import('./js/pages/ui-kit.js')).initUiKit(),
   'system/': async () => (await import('./js/pages/content.js')).initSystemPages(),
   'customers/': async () => (await import('./js/pages/modules.js')).initCustomers(),
@@ -393,8 +400,10 @@ async function boot() {
    * placeholder left over gets a readable empty state instead of a blank box.
    */
   markControllerOwned(document);
-  await initCharts();
-  settlePendingCharts(document);
+  if (document.querySelector('[data-chart], [data-chart-key]')) {
+    await initCharts();
+    settlePendingCharts(document);
+  }
   /** Late content (tables, footers, badges) gets the active language too. */
   applyPhrases(document.body);
   /** Header dedup: the controller's own header card is folded into the page

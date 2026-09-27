@@ -23,6 +23,7 @@ import { createDataTable } from '../core/datatable.js';
 import { createChart } from '../core/charts.js';
 import { validateForm, validateField } from '../core/form.js';
 import * as serviceModule from '../../services/index.js';
+export { url, resolveUrl, goTo } from '../core/links.js';
 
 /**
  * Normalises a service payload to an array. Collections come back in three
@@ -489,13 +490,15 @@ export function paint(target, markup) {
 
 /** Tab strip + panels wired by core/ui.js (`[data-tabs]`, `[data-tab]`). */
 export function tabs(items, { id = 'page-tabs', pills = false } = {}) {
+  const activeIndex = items.findIndex((i) => i.active);
+  const activeIdx = activeIndex !== -1 ? activeIndex : 0;
   const links = items
     .map(
-      (item, index) => `<button type="button" class="nav-link ${index === 0 ? 'active' : ''}" data-tab="${escapeHtml(item.id)}" role="tab" aria-selected="${index === 0 ? 'true' : 'false'}" aria-controls="panel-${escapeHtml(item.id)}">${item.icon ? `<i class="bi bi-${escapeHtml(item.icon)}"></i>` : ''}<span>${escapeHtml(item.label)}</span>${item.badge ? `<span class="badge badge--soft-primary">${escapeHtml(String(item.badge))}</span>` : ''}</button>`,
+      (item, index) => `<button type="button" class="nav-link ${index === activeIdx ? 'active' : ''}" data-tab="${escapeHtml(item.id)}" role="tab" aria-selected="${index === activeIdx ? 'true' : 'false'}" aria-controls="panel-${escapeHtml(item.id)}">${item.icon ? `<i class="bi bi-${escapeHtml(item.icon)}"></i>` : ''}<span>${escapeHtml(item.label)}</span>${item.badge ? `<span class="badge badge--soft-primary">${escapeHtml(String(item.badge))}</span>` : ''}</button>`,
     )
     .join('');
   const panels = items
-    .map((item, index) => `<div class="tab-pane ${index === 0 ? 'active' : ''}" id="panel-${escapeHtml(item.id)}" data-tab-panel="${escapeHtml(item.id)}" role="tabpanel" ${index === 0 ? '' : 'hidden'}>${item.body ?? ''}</div>`)
+    .map((item, index) => `<div class="tab-pane ${index === activeIdx ? 'active' : ''}" id="panel-${escapeHtml(item.id)}" data-tab-panel="${escapeHtml(item.id)}" role="tabpanel" ${index === activeIdx ? '' : 'hidden'}>${item.body ?? ''}</div>`)
     .join('');
   return `<div class="tabs" data-tabs id="${escapeHtml(id)}">
     <nav class="nav ${pills ? 'nav-pills' : 'nav-tabs'}" role="tablist" aria-label="بخش‌های صفحه">${links}</nav>

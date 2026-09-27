@@ -83,6 +83,20 @@ export async function initLanding() {
   initHeroShowcase(node);
   initFaqControls(node);
 
+  on(node, 'click', (event) => {
+    const demoBtn = event.target.closest('[data-cta="demo"]');
+    if (demoBtn) {
+      let session = null;
+      try {
+        session = window.localStorage.getItem('nova:session') || window.sessionStorage.getItem('nova:session');
+      } catch {}
+      if (session) {
+        event.preventDefault();
+        goTo('dashboards/analytics.html');
+      }
+    }
+  });
+
   const block = (selector, load, options = {}) => {
     const target = $(selector, node);
     if (!target) return Promise.resolve();
@@ -909,14 +923,27 @@ export async function initDocs() {
   const nav = await services.docsService.nav('fa');
   const info = await services.docsService.page(page);
 
+  // Add reading progress indicator at top of docs
+  if (!$('#docs-reading-progress')) {
+    document.body.insertAdjacentHTML('afterbegin', '<div id="docs-reading-progress" style="position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--nv-primary),#8b5cf6);z-index:9999;width:0%;transition:width 0.1s;"></div>');
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      if (h > 0) {
+        const p = Math.min(100, Math.max(0, (window.scrollY / h) * 100));
+        const bar = document.getElementById('docs-reading-progress');
+        if (bar) bar.style.width = `${p}%`;
+      }
+    }, { passive: true });
+  }
+
   const navHost = $('[data-docs-nav]');
   if (navHost && nav?.length) {
     render(
       navHost,
       nav
         .map(
-          (group) => `<div class="docs-nav__group"><p class="docs-nav__label">${escapeHtml(group.title)}</p><ul class="list-group">${group.items
-            .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}"><i class="bi bi-file-earmark-text"></i><span>${escapeHtml(item.title)}</span></a></li>`)
+          (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
+            .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
             .join('')}</ul></div>`,
         )
         .join(''),
@@ -930,15 +957,26 @@ export async function initDocs() {
       debounce(async (event) => {
         const term = event.target.value.trim();
         if (!term) {
-          render($('[data-docs-nav]'), '');
+          if (navHost && nav?.length) {
+            render(
+              navHost,
+              nav
+                .map(
+                  (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
+                    .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
+                    .join('')}</ul></div>`,
+                )
+                .join(''),
+            );
+          }
           return;
         }
         const found = await searchService.search(term, { limit: 10 });
         render(
-          $('[data-docs-nav]'),
-          `<p class="docs-nav__label">نتایج جستجو</p><ul class="list-group">${found.items
-            .map((item) => `<li><a class="files-nav__link" href="${escapeHtml(item.url)}"><i class="bi bi-search"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-            .join('') || '<li class="list-item text-muted">نتیجه‌ای یافت نشد</li>'}</ul>`,
+          navHost,
+          `<p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-primary); margin-bottom:8px;">نتایج جستجو (${toDigits(found.items.length)})</p><ul class="list-group" style="gap:4px;">${found.items
+            .map((item) => `<li><a class="files-nav__link" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 10px; font-size:12px;"><i class="bi bi-search text-primary"></i><span>${escapeHtml(item.title)}</span></a></li>`)
+            .join('') || '<li class="list-item text-muted" style="font-size:12px; padding:8px;">نتیجه‌ای یافت نشد</li>'}</ul>`,
         );
       }, 220),
     );
@@ -946,9 +984,10 @@ export async function initDocs() {
 
   const toc = $('[data-docs-toc]');
   if (toc) {
+    toc.innerHTML = '<div style="font-size:12px; font-weight:800; margin-bottom:10px; color:var(--nv-heading);"><i class="bi bi-list-nested me-1"></i> سرفصل‌های این صفحه</div>';
     $$('h2, h3', node).forEach((heading) => {
       heading.id = heading.id || heading.textContent.trim().replace(/\s+/g, '-').slice(0, 40);
-      toc.insertAdjacentHTML('beforeend', `<a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${heading.id}">${escapeHtml(heading.textContent.trim())}</a>`);
+      toc.insertAdjacentHTML('beforeend', `<a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${heading.id}" style="display:block; font-size:12px; padding:${heading.tagName==='H3'?'3px 14px 3px 0':'4px 0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a>`);
     });
   }
 
@@ -956,18 +995,20 @@ export async function initDocs() {
   if (pager) {
     render(
       pager,
-      `<div class="docs-pager">
-        ${info?.prev ? `<a class="btn btn-light" href="${escapeHtml(info.prev)}"><i class="bi bi-arrow-right"></i> قبلی</a>` : '<span></span>'}
-        ${info?.next ? `<a class="btn btn-primary" href="${escapeHtml(info.next)}">بعدی <i class="bi bi-arrow-left"></i></a>` : '<span></span>'}
+      `<div class="docs-pager" style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; padding-top:20px; border-top:1px solid var(--nv-border);">
+        ${info?.prev ? `<a class="btn btn-light btn-sm" href="${escapeHtml(info.prev)}"><i class="bi bi-arrow-right"></i> بخش قبلی</a>` : '<span></span>'}
+        ${info?.next ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(info.next)}">بخش بعدی <i class="bi bi-arrow-left"></i></a>` : '<span></span>'}
       </div>`,
     );
   }
 
   $$('[data-copy]').forEach((button) =>
     on(button, 'click', async () => {
-      const pre = button.closest('.code-block')?.querySelector('code');
+      const pre = button.closest('.code-block')?.querySelector('code') || button.parentElement?.querySelector('code');
       if (!pre) return;
-      await navigator.clipboard?.writeText(pre.textContent);
+      await navigator.clipboard?.writeText(pre.textContent).catch(()=>null);
+      button.innerHTML = '<i class="bi bi-check2 text-success"></i> کپی شد';
+      setTimeout(() => { button.innerHTML = '<i class="bi bi-copy"></i> کپی'; }, 2000);
       toast.success('کد کپی شد', 'نمونه کد در حافظه موقت قرار گرفت.');
     }),
   );
@@ -981,42 +1022,494 @@ export async function initSettings() {
   const section = kit.pageId().split('/').pop().replace('.html', '');
   /* `get()` is grouped per settings section; a page shows its own slice. */
   const values = { ...(all?.[section] ?? {}), ...(all?.general ?? {}), ...(all?.features ?? {}) };
+
+  const settingsNav = [
+    { id: 'general', label: 'عمومی', icon: 'gear' },
+    { id: 'appearance', label: 'ظاهر و تم', icon: 'palette2' },
+    { id: 'layout', label: 'چیدمان', icon: 'layout-split' },
+    { id: 'system', label: 'سیستم', icon: 'cpu' },
+    { id: 'billing', label: 'صورتحساب و پلن', icon: 'credit-card-2-front' },
+    { id: 'security', label: 'امنیت', icon: 'shield-check' },
+    { id: 'notifications', label: 'اعلان‌ها', icon: 'bell' },
+    { id: 'localization', label: 'بومی‌سازی', icon: 'translate' },
+    { id: 'api', label: 'API', icon: 'plug' },
+  ];
+
+  const navHtml = `
+    <div class="mb-4" style="overflow-x:auto; padding-bottom:4px;">
+      <div class="nav nav-pills flex-nowrap" style="gap:8px;">
+        ${settingsNav.map(n => `
+          <a class="nav-link ${n.id === section ? 'active' : ''}" href="settings/${n.id}.html" style="white-space:nowrap; border-radius:12px; font-weight:700; font-size:13px; padding:8px 16px;">
+            <i class="bi bi-${n.icon} me-1"></i> ${n.label}
+          </a>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Bespoke view for Appearance
+  if (section === 'appearance') {
+    const curTheme = theme.getTheme?.() || 'dark';
+    const curPrimary = theme.getPrimary?.() || 'indigo';
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'تنظیمات ظاهر و تم',
+          subtitle: 'شخصی‌سازی حالت روز/شب، رنگ‌های برند و سبک نمایش داشبورد',
+          icon: 'palette2',
+          actions: '<button class="btn btn-primary" type="button" data-save-settings><i class="bi bi-check2"></i> ذخیره تغییرات</button>',
+        })}
+        ${navHtml}
+
+        <div class="grid grid--2 mb-4" style="gap:20px;">
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">حالت پوسته (Theme Mode)</h3>
+            </div>
+            <div class="card__body" style="padding:20px;">
+              <div class="grid grid--3" style="gap:12px;">
+                <div class="theme-choice-card ${curTheme==='light'?'is-active':''}" data-set-theme="light" style="cursor:pointer; border:2px solid ${curTheme==='light'?'var(--nv-primary)':'var(--nv-border)'}; border-radius:14px; padding:16px 14px; text-align:center; background:var(--nv-surface-2); color:var(--nv-heading); transition:all 0.2s;">
+                  <div style="width:48px; height:32px; border-radius:8px; margin:0 auto; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #e2e8f0; box-shadow:var(--nv-shadow-xs);">
+                    <i class="bi bi-sun-fill" style="font-size:16px; color:#f59e0b;"></i>
+                  </div>
+                  <div style="font-weight:800; font-size:13px; margin-top:10px; color:var(--nv-heading);">روشن (Light)</div>
+                  <small style="font-size:10px; color:var(--nv-text-muted);">پوسته سفید و درخشان</small>
+                </div>
+                <div class="theme-choice-card ${curTheme==='dark'?'is-active':''}" data-set-theme="dark" style="cursor:pointer; border:2px solid ${curTheme==='dark'?'var(--nv-primary)':'var(--nv-border)'}; border-radius:14px; padding:16px 14px; text-align:center; background:var(--nv-surface-2); color:var(--nv-heading); transition:all 0.2s;">
+                  <div style="width:48px; height:32px; border-radius:8px; margin:0 auto; display:flex; align-items:center; justify-content:center; background:#0f172a; border:1px solid #334155; box-shadow:var(--nv-shadow-xs);">
+                    <i class="bi bi-moon-stars-fill" style="font-size:16px; color:#818cf8;"></i>
+                  </div>
+                  <div style="font-weight:800; font-size:13px; margin-top:10px; color:var(--nv-heading);">تیره (Dark)</div>
+                  <small style="font-size:10px; color:var(--nv-text-muted);">حالت شب و کاهش خستگی چشم</small>
+                </div>
+                <div class="theme-choice-card ${curTheme==='system'?'is-active':''}" data-set-theme="system" style="cursor:pointer; border:2px solid ${curTheme==='system'?'var(--nv-primary)':'var(--nv-border)'}; border-radius:14px; padding:16px 14px; text-align:center; background:var(--nv-surface-2); color:var(--nv-heading); transition:all 0.2s;">
+                  <div style="width:48px; height:32px; border-radius:8px; margin:0 auto; overflow:hidden; display:flex; border:1px solid var(--nv-border); box-shadow:var(--nv-shadow-xs);">
+                    <div style="flex:1; background:#ffffff; display:flex; align-items:center; justify-content:center;"><i class="bi bi-sun-fill" style="font-size:12px; color:#f59e0b;"></i></div>
+                    <div style="flex:1; background:#0f172a; display:flex; align-items:center; justify-content:center;"><i class="bi bi-moon-stars-fill" style="font-size:12px; color:#818cf8;"></i></div>
+                  </div>
+                  <div style="font-weight:800; font-size:13px; margin-top:10px; color:var(--nv-heading);">سیستم (خودکار)</div>
+                  <small style="font-size:10px; color:var(--nv-text-muted);">هماهنگ با سیستم‌عامل کاربر</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">رنگ سازمانی و تأکیدی (Brand Accent)</h3>
+            </div>
+            <div class="card__body" style="padding:20px;">
+              <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                ${[
+                  { id: 'indigo', name: 'نیلی (Indigo)', color: '#6366f1' },
+                  { id: 'blue', name: 'آبی (Ocean Blue)', color: '#3b82f6' },
+                  { id: 'emerald', name: 'زمردی (Emerald)', color: '#10b981' },
+                  { id: 'violet', name: 'بنفش (Violet)', color: '#8b5cf6' },
+                  { id: 'rose', name: 'رز (Rose)', color: '#f43f5e' },
+                  { id: 'orange', name: 'نارنجی (Amber)', color: '#f59e0b' },
+                ].map(p => `
+                  <div data-set-primary="${p.id}" style="cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:12px; border:2px solid ${curPrimary===p.id?'var(--nv-primary)':'var(--nv-border)'}; background:var(--nv-surface-2);">
+                    <span style="width:18px; height:18px; border-radius:50%; background:${p.color};"></span>
+                    <span style="font-size:12px; font-weight:700;">${p.name}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">تراکم و اندازه فونت</h3>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div class="grid grid--2" style="gap:20px;">
+              <div>
+                <label class="form-label">تراکم المان‌ها و جدول‌ها</label>
+                <select class="form-select" data-setting-density>
+                  <option value="comfortable" selected>راحت و جادار (Comfortable)</option>
+                  <option value="compact">فشرده سازمانی (Compact)</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">مقیاس فونت رابط کاربری</label>
+                <select class="form-select" data-setting-fontsize>
+                  <option value="sm">کوچک (13px)</option>
+                  <option value="md" selected>استاندارد (14px - پیشنهادی)</option>
+                  <option value="lg">بزرگ (15px)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+
+    on(node, 'click', (e) => {
+      const themeBtn = e.target.closest('[data-set-theme]');
+      if (themeBtn) {
+        const t = themeBtn.dataset.setTheme;
+        theme.setTheme?.(t);
+        toast.success('تم تغییر کرد', `پوسته به حالت ${t} تنظیم شد.`);
+        $$('.theme-choice-card', node).forEach(c => c.style.borderColor = 'var(--nv-border)');
+        themeBtn.style.borderColor = 'var(--nv-primary)';
+      }
+      const primaryBtn = e.target.closest('[data-set-primary]');
+      if (primaryBtn) {
+        const p = primaryBtn.dataset.setPrimary;
+        theme.setPrimary?.(p);
+        toast.success('رنگ اصلی تغییر کرد', `رنگ به ${p} تنظیم شد.`);
+        initSettings();
+      }
+      if (e.target.closest('[data-save-settings]')) {
+        toast.success('تنظیمات ظاهر ذخیره شد');
+      }
+    });
+    return;
+  }
+
+  // Bespoke view for Layout
+  if (section === 'layout') {
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'تنظیمات چیدمان و سایدبار',
+          subtitle: 'پیکربندی ساختار بدنه، سبک منوها و رفتار هدر داشبورد',
+          icon: 'layout-split',
+          actions: '<button class="btn btn-primary" type="button" data-save-settings><i class="bi bi-check2"></i> ذخیره تغییرات</button>',
+        })}
+        ${navHtml}
+
+        <div class="card mb-4" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">سبک ساختار و سایدبار</h3>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div class="grid grid--3" style="gap:16px;">
+              ${[
+                { id: 'sidebar', name: 'سایدبار پیش‌فرض', desc: 'منوی کناری کامل با زیرمنوهای آکاردئونی', icon: 'layout-sidebar' },
+                { id: 'mini', name: 'سایدبار فشرده (مینی)', desc: 'فقط آیکون‌ها با بازشدن بازشو روی ماوس', icon: 'layout-sidebar-inset' },
+                { id: 'horizontal', name: 'چیدمان افقی (Top Nav)', desc: 'منوی سراسری در بالای صفحه برای پورتال‌ها', icon: 'layout-text-sidebar' },
+              ].map((l, i) => `
+                <div class="layout-card ${i===0?'is-active':''}" data-set-layout="${l.id}" style="cursor:pointer; border:2px solid ${i===0?'var(--nv-primary)':'var(--nv-border)'}; border-radius:14px; padding:16px; background:var(--nv-surface-2);">
+                  <div style="font-size:28px; color:var(--nv-primary); margin-bottom:8px;"><i class="bi bi-${l.icon}"></i></div>
+                  <h4 style="margin:0 0 4px; font-size:14px; font-weight:800; color:var(--nv-heading);">${l.name}</h4>
+                  <p style="margin:0; font-size:11px; color:var(--nv-text-muted); line-height:1.6;">${l.desc}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">رفتار هدر و محتوا</h3>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div class="grid grid--2" style="gap:24px;">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="sticky-header" checked>
+                <label class="form-check-label" for="sticky-header" style="font-size:13px; font-weight:700;">هدر ثابت و چسبان (Sticky Header)</label>
+                <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">هنگام پیمایش صفحه، نوار ابزار بالا همیشه در دسترس می‌ماند.</div>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="boxed-container">
+                <label class="form-check-label" for="boxed-container" style="font-size:13px; font-weight:700;">حالت محصور با عرض محدود (Boxed Layout)</label>
+                <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">محتوای صفحات در نمایشگرهای عریض بیش از ۱۴۰۰ پیکسل کشیده نمی‌شود.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+
+    on(node, 'click', (e) => {
+      const card = e.target.closest('[data-set-layout]');
+      if (card) {
+        $$('.layout-card', node).forEach(c => c.style.borderColor = 'var(--nv-border)');
+        card.style.borderColor = 'var(--nv-primary)';
+        theme.setLayout?.(card.dataset.setLayout);
+        toast.success('چیدمان اعمال شد');
+      }
+      if (e.target.closest('[data-save-settings]')) {
+        toast.success('تنظیمات چیدمان ذخیره شد');
+      }
+    });
+    return;
+  }
+
+  // Bespoke view for General
+  if (section === 'general') {
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'تنظیمات عمومی پلتفرم',
+          subtitle: 'نام تجاری، لوگو، زمان پیش‌فرض و هویت سازمانی داشبورد',
+          icon: 'gear-fill',
+          actions: '<button class="btn btn-primary" type="button" data-save-settings><i class="bi bi-check2"></i> ذخیره تنظیمات عمومی</button>',
+        })}
+        ${navHtml}
+
+        <div class="grid grid--3 mb-4" style="gap:20px;">
+          <div class="card" style="border-radius:18px; grid-column: span 1;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">لوگو و نماد تجاری</h3>
+            </div>
+            <div class="card__body" style="padding:20px; text-align:center;">
+              <div style="width:96px; height:96px; border-radius:20px; background:var(--nv-surface-2); border:2px dashed var(--nv-border); display:grid; place-items:center; margin:0 auto 16px;">
+                <img src="assets/logo-mark.svg" style="width:48px; height:48px;" alt="Logo">
+              </div>
+              <label class="btn btn-sm btn-light">
+                <i class="bi bi-upload"></i> بارگذاری لوگوی جدید
+                <input type="file" hidden accept="image/*">
+              </label>
+              <div style="font-size:11px; color:var(--nv-text-muted); margin-top:8px;">فرمت‌های SVG, PNG یا WebP تا حجم ۱ مگابایت</div>
+            </div>
+          </div>
+
+          <div class="card" style="border-radius:18px; grid-column: span 2;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">مشخصات اصلی سامانه</h3>
+            </div>
+            <div class="card__body" style="padding:20px;">
+              <form class="form-stack">
+                <div class="grid grid--2" style="gap:16px;">
+                  <div class="form-field"><label class="form-label">نام سامانه (Title) *</label><input class="form-control" value="نواادمین — پنل مدیریت هوشمند"></div>
+                  <div class="form-field"><label class="form-label">ایمیل پشتیبانی عمومی</label><input class="form-control" value="support@novaadmin.dev" dir="ltr"></div>
+                  <div class="form-field"><label class="form-label">منطقه زمانی پیش‌فرض</label><select class="form-select"><option selected>تهران (GMT+3:30)</option><option>استانبول (GMT+3:00)</option><option>دبی (GMT+4:00)</option></select></div>
+                  <div class="form-field"><label class="form-label">قالب نمایش تاریخ</label><select class="form-select"><option selected>۱۴۰۳/۰۷/۰۴ (شمسی رسمی)</option><option>۴ مهر ۱۴۰۳</option><option>2026-09-26 (میلادی)</option></select></div>
+                </div>
+                <div class="form-field mt-3"><label class="form-label">توضیحات متای پلتفرم</label><textarea class="form-control" rows="2">جامع‌ترین و سریع‌ترین سیستم طراحی و داشبورد مدیریتی سازمانی با پشتیبانی کامل از زبان فارسی و تقویم جلالی.</textarea></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+
+    on(node, 'click', (e) => {
+      if (e.target.closest('[data-save-settings]')) {
+        toast.success('تنظیمات عمومی با موفقیت ذخیره شد');
+      }
+    });
+    return;
+  }
+
+  // Bespoke view for System
+  if (section === 'system') {
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'وضعیت و تنظیمات پیشرفته سیستم',
+          subtitle: 'پایش سلامت سرورها، کش، نگهداری دوره‌ای و نسخه‌های نرم‌افزاری',
+          icon: 'cpu-fill',
+          actions: '<button class="btn btn-outline-danger btn-sm" type="button" data-clear-cache><i class="bi bi-trash3"></i> پاک‌سازی حافظه کش</button>',
+        })}
+        ${navHtml}
+
+        <div class="grid grid--4 mb-4" style="gap:16px;">
+          ${statCard({ label: 'وضعیت سلامت سرور', value: '۱۰۰٪ پایدار', hint: 'آپ‌تایم: ۹۹٫۹۸٪ در سال جاری', tone: 'success', icon: 'activity' })}
+          ${statCard({ label: 'مصرف حافظه RAM', value: '۱٫۲ / ۴ GB', hint: '۲۸٪ مصرف شده (نرمال)', tone: 'info', icon: 'memory' })}
+          ${statCard({ label: 'پایگاه داده', value: 'PostgreSQL 16', hint: 'اتصال فعال و همگام', tone: 'primary', icon: 'database' })}
+          ${statCard({ label: 'نسخه پلتفرم', value: 'v1.0.2 Pro', hint: 'آخرین پچ امنیتی نصب است', tone: 'warning', icon: 'patch-check' })}
+        </div>
+
+        <div class="grid grid--2 mb-4" style="gap:20px;">
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">حالت‌های اجرایی و محیط</h3>
+            </div>
+            <div class="card__body" style="padding:20px;">
+              <div class="form-stack" style="gap:16px;">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="maint-mode">
+                  <label class="form-check-label" for="maint-mode" style="font-weight:700; font-size:13px;">حالت تعمیرات و نگهداری (Maintenance Mode)</label>
+                  <p style="font-size:11px; color:var(--nv-text-muted); margin:2px 0 0;">در صورت فعال‌سازی، فقط مدیران ارشد به سامانه دسترسی خواهند داشت.</p>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="debug-mode">
+                  <label class="form-check-label" for="debug-mode" style="font-weight:700; font-size:13px;">حالت اشکال‌زدایی (Debug Mode)</label>
+                  <p style="font-size:11px; color:var(--nv-text-muted); margin:2px 0 0;">لاگ‌های تفصیلی در کنسول و پاسخ‌های API برای خطایابی نمایش داده می‌شوند.</p>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="auto-backup" checked>
+                  <label class="form-check-label" for="auto-backup" style="font-weight:700; font-size:13px;">پشتیبان‌گیری خودکار روزانه ابری</label>
+                  <p style="font-size:11px; color:var(--nv-text-muted); margin:2px 0 0;">هر بامداد ساعت ۰۳:۰۰ نسخه پشتیبان رمزنگاری‌شده تهیه می‌شود.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">عملیات نگهداری فوری</h3>
+            </div>
+            <div class="card__body" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:12px; background:var(--nv-surface-2);">
+                <div>
+                  <strong style="font-size:13px;">پشتیبان‌گیری اضطراری</strong>
+                  <div style="font-size:11px; color:var(--nv-text-muted);">ذخیره آنی پایگاه داده و فایل‌ها در فضای S3</div>
+                </div>
+                <button class="btn btn-sm btn-primary" type="button" data-instant-backup><i class="bi bi-cloud-arrow-down"></i> شروع بک‌آپ</button>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:12px; background:var(--nv-surface-2);">
+                <div>
+                  <strong style="font-size:13px;">بهینه‌سازی شاخص‌های دیتابیس</strong>
+                  <div style="font-size:11px; color:var(--nv-text-muted);">اجرای VACUUM و Reindex روی جدول‌ها</div>
+                </div>
+                <button class="btn btn-sm btn-light" type="button" data-opt-db><i class="bi bi-speedometer2"></i> بهینه‌سازی</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+
+    on(node, 'click', (e) => {
+      if (e.target.closest('[data-clear-cache]')) {
+        toast.success('حافظه کش با موفقیت پاک شد');
+      }
+      if (e.target.closest('[data-instant-backup]')) {
+        toast.info('پشتیبان‌گیری آغاز شد', 'فایل ZIP پس از آماده‌سازی ایمیل خواهد شد.');
+      }
+      if (e.target.closest('[data-opt-db]')) {
+        toast.success('دیتابیس بهینه‌سازی شد', 'شاخص‌های جدول‌ها بازسازی گردید.');
+      }
+    });
+    return;
+  }
+
+  // Bespoke view for Billing
+  if (section === 'billing') {
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'اشتراک، پلن و صورتحساب‌ها',
+          subtitle: 'مدیریت طرح تجاری، سقف کاربران، فاکتورهای مالی و درگاه پرداخت',
+          icon: 'credit-card-2-front-fill',
+          actions: '<button class="btn btn-primary" type="button" data-upgrade-plan><i class="bi bi-star"></i> ارتقای پلن به VIP</button>',
+        })}
+        ${navHtml}
+
+        <div class="card mb-4" style="border-radius:20px; overflow:hidden; border:2px solid var(--nv-primary); background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.05) 100%);">
+          <div class="card__body" style="padding:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge badge--soft-primary" style="font-size:12px; padding:6px 12px; border-radius:999px;">طرح فعال</span>
+                <h2 style="margin:0; font-size:22px; font-weight:900; color:var(--nv-heading);">پلن سازمانی نامحدود (Enterprise Pro)</h2>
+              </div>
+              <p style="margin:8px 0 0; font-size:13px; color:var(--nv-text-muted);">تمدید سالانه خودکار • موعد تمدید بعدی: <strong>۱۵ اسفند ۱۴۰۳</strong></p>
+            </div>
+            <div style="text-align:end;">
+              <div style="font-size:24px; font-weight:900; color:var(--nv-primary);">۴۵,۰۰۰,۰۰۰ <span style="font-size:14px; font-weight:400; color:var(--nv-text-muted);">تومان / سالانه</span></div>
+              <span class="badge badge--soft-success" style="margin-top:4px;"><i class="bi bi-shield-check"></i> پرداخت موفق</span>
+            </div>
+          </div>
+          <div style="padding:16px 24px; background:var(--nv-surface); border-top:1px solid var(--nv-border); display:flex; gap:32px; flex-wrap:wrap;">
+            <div><span style="font-size:11px; color:var(--nv-text-muted);">کاربران مجاز:</span> <strong style="font-size:13px;">۲۴ / ۱۰۰ کاربر</strong></div>
+            <div><span style="font-size:11px; color:var(--nv-text-muted);">فضای ذخیره‌سازی ابری:</span> <strong style="font-size:13px;">۴۵ / ۱۰۰ گیگابایت</strong></div>
+            <div><span style="font-size:11px; color:var(--nv-text-muted);">درخواست‌های API ماهانه:</span> <strong style="font-size:13px;">۴۲۰k / ۱,۰۰۰k</strong></div>
+          </div>
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center;">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">تاریخچه فاکتورهای دوره‌ای</h3>
+            <span class="badge badge--soft-primary">۴ فاکتور صادر شده</span>
+          </div>
+          <div class="card__body" style="padding:0;">
+            <div class="table-responsive">
+              <table class="table table--hover">
+                <thead>
+                  <tr>
+                    <th>شماره فاکتور</th>
+                    <th>بابت</th>
+                    <th>تاریخ صدور</th>
+                    <th>مبلغ کل</th>
+                    <th>وضعیت</th>
+                    <th class="text-end">دریافت PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>INV-1403-908</strong></td>
+                    <td>اشتراک سالانه پلن سازمانی</td>
+                    <td style="font-size:12px; color:var(--nv-text-muted);">۱۵ اسفند ۱۴۰۲</td>
+                    <td class="numeric"><strong>۴۵,۰۰۰,۰۰۰ تومان</strong></td>
+                    <td><span class="badge badge--soft-success">پرداخت‌شده</span></td>
+                    <td class="text-end"><button class="btn btn-sm btn-light" type="button" data-download-inv><i class="bi bi-file-earmark-pdf"></i> دانلود</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>INV-1403-451</strong></td>
+                    <td>خرید بسته پیامک انبوه سازمانی</td>
+                    <td style="font-size:12px; color:var(--nv-text-muted);">۲۰ تیر ۱۴۰۳</td>
+                    <td class="numeric"><strong>۳,۲۰۰,۰۰۰ تومان</strong></td>
+                    <td><span class="badge badge--soft-success">پرداخت‌شده</span></td>
+                    <td class="text-end"><button class="btn btn-sm btn-light" type="button" data-download-inv><i class="bi bi-file-earmark-pdf"></i> دانلود</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+
+    on(node, 'click', (e) => {
+      if (e.target.closest('[data-upgrade-plan]')) {
+        toast.info('ارتقای پلن', 'درگاه پرداخت سازمانی در حال آماده‌سازی است.');
+      }
+      if (e.target.closest('[data-download-inv]')) {
+        toast.success('فاکتور رسمی دانلود شد');
+      }
+    });
+    return;
+  }
+
+  // Fallback for remaining settings (security, notifications, localization, api) with enhanced form markup
   const titles = {
     general: 'تنظیمات عمومی',
     appearance: 'ظاهر و تم',
     layout: 'چیدمان',
-    localization: 'بومی‌سازی',
-    notifications: 'اعلان‌ها',
-    security: 'امنیت',
+    localization: 'بومی‌سازی و زبان',
+    notifications: 'اعلان‌ها و پیام‌ها',
+    security: 'امنیت و کنترل دسترسی',
     integrations: 'یکپارچه‌سازی‌ها',
-    email: 'ایمیل',
-    api: 'API',
+    email: 'سرور ارسال ایمیل',
+    api: 'تنظیمات API و وب‌هوک',
     billing: 'صورتحساب',
     system: 'سیستم',
   };
+
   render(
     node,
     `<div class="dashboard-shell">
       ${pageHeader({
         title: titles[section] ?? 'تنظیمات',
-        subtitle: 'تغییرات بلافاصله ذخیره و اعمال می‌شوند',
+        subtitle: 'تغییرات بلافاصله ذخیره و در سطح سیستم اعمال می‌شوند',
         icon: 'gear',
-        badges: [statusBadge('آخرین ذخیره: همین حالا', 'success')],
-        actions: '<a class="btn btn-light" href="settings/appearance.html"><i class="bi bi-palette2"></i> ظاهر</a><a class="btn btn-light" href="settings/api.html"><i class="bi bi-plug"></i> API</a>',
+        badges: [statusBadge('وضعیت: برخط', 'success')],
       })}
+      ${navHtml}
+
       <div class="grid grid--sidebar">
-        <section class="card">
-          <header class="card__head">
+        <section class="card" style="border-radius:18px;">
+          <header class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
             <div>
-              <h2 class="card__title">${escapeHtml(titles[section] ?? 'تنظیمات')}</h2>
-              <p class="card__subtitle">${escapeHtml(settingsIntro[section] ?? 'سازگار با RTL، تقویم شمسی و ارقام فارسی')}</p>
+              <h2 class="card__title" style="margin:0; font-size:14px; font-weight:800;">${escapeHtml(titles[section] ?? 'تنظیمات')}</h2>
+              <p class="card__subtitle" style="margin:2px 0 0; font-size:11px;">${escapeHtml(settingsIntro[section] ?? 'سازگار با RTL، تقویم شمسی و ارقام فارسی')}</p>
             </div>
-            <div class="card__actions">${statusBadge(`بخش ${escapeHtml(section)}`, 'neutral')}</div>
           </header>
-          <div class="card__body">
+          <div class="card__body" style="padding:20px;">
             <form data-settings-form="${escapeHtml(section)}" novalidate>
               ${formMarkup(settingsFields(section, values), values ?? {}, { wide: true })}
-              <div class="form-actions form-actions--end">
+              <div class="form-actions form-actions--end mt-4">
                 <button class="btn btn-light" type="reset"><i class="bi bi-arrow-counterclockwise"></i> بازنشانی</button>
                 <button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> ذخیره تنظیمات</button>
               </div>
@@ -1026,30 +1519,8 @@ export async function initSettings() {
 
         <div class="dashboard-shell">
           ${card({
-            title: 'مقدارهای فعلی',
-            subtitle: 'خروجی سرویس تنظیمات، همان چیزی که صفحه می‌خواند',
-            body: `<div class="info-rows">${Object.entries(values ?? {})
-              .slice(0, 8)
-              .map(([key, value]) => infoRows([[key, `<span class="numeric">${escapeHtml(typeof value === 'boolean' ? (value ? 'فعال' : 'غیرفعال') : String(value ?? '—'))}</span>`]]))
-              .join('')}</div>`,
-          })}
-          ${card({
-            title: 'نکته‌های این بخش',
+            title: 'نکته‌های کاربردی این بخش',
             body: `<ul class="checklist">${(settingsTips[section] ?? settingsTips.general).map((tip) => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`,
-          })}
-          ${card({
-            title: 'تنظیمات مرتبط',
-            body: `<div class="demo-token-list">${[
-              ['general', 'عمومی', 'gear'],
-              ['appearance', 'ظاهر و تم', 'palette2'],
-              ['localization', 'بومی‌سازی', 'translate'],
-              ['notifications', 'اعلان‌ها', 'bell'],
-              ['security', 'امنیت', 'shield-check'],
-              ['api', 'API', 'plug'],
-            ]
-              .filter(([id]) => id !== section)
-              .map(([id, label, icon]) => `<a class="demo-token" href="settings/${id}.html"><span class="tile tile--soft tile--icon"><i class="bi bi-${icon}"></i></span><span>${label}</span><i class="bi bi-chevron-left ms-auto"></i></a>`)
-              .join('')}</div>`,
           })}
         </div>
       </div>
@@ -1057,17 +1528,19 @@ export async function initSettings() {
   );
 
   const form = $('[data-settings-form]', node);
-  on(form, 'submit', async (event) => {
-    event.preventDefault();
-    const button = form.querySelector('[type="submit"]');
-    button?.classList.add('is-loading');
-    const next = collectValues(form);
-    await services.settingsService.update(section, next).catch(() => null);
-    button?.classList.remove('is-loading');
-    toast.success('تنظیمات ذخیره شد', 'تغییرات این بخش اعمال و در حساب شما نگه داشته شد.');
-    bus.emit(EVENTS.dataChanged, { resource: 'settings', action: 'update', id: section });
-  });
-  on(form, 'reset', () => toast.info('بازنشانی شد', 'مقدارها به آخرین وضعیت ذخیره‌شده بازگشتند.'));
+  if (form) {
+    on(form, 'submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('[type="submit"]');
+      button?.classList.add('is-loading');
+      const next = collectValues(form);
+      await services.settingsService.update(section, next).catch(() => null);
+      button?.classList.remove('is-loading');
+      toast.success('تنظیمات ذخیره شد', 'تغییرات این بخش اعمال و در حساب شما نگه داشته شد.');
+      bus.emit(EVENTS.dataChanged, { resource: 'settings', action: 'update', id: section });
+    });
+    on(form, 'reset', () => toast.info('بازنشانی شد', 'مقدارها به آخرین وضعیت ذخیره‌شده بازگشتند.'));
+  }
 }
 
 /** Short description shown above each settings form. */
@@ -1179,29 +1652,166 @@ function settingsFields(section, values) {
 
 export async function initProfile() {
   const node = host();
-  const user = (await services.userService.list({ perPage: 1 })).items[0];
-  const section = kit.pageId().split('/').pop().replace('.html', '');
+  const user = (await services.userService.list({ perPage: 1 })).items[0] || {
+    name: 'سارا محمدی',
+    email: 'sara.mohammadi@novaadmin.dev',
+    phone: '+98 912 345 6789',
+    roleLabel: 'مدیر ارشد محصول',
+    team: 'تیم پلتفرم',
+    avatar: 'assets/img/avatars/avatar-01.svg',
+  };
+  let section = kit.pageId().split('/').pop().replace('.html', '');
+  if (section === 'api-keys') section = 'keys';
+
+  const overviewHtml = `
+    <div class="grid grid--3 mb-4" style="gap:16px;">
+      ${statCard({ label: 'پروژه‌های هدایت‌شده', value: '۱۲ پروژه', hint: '۹ پروژه با موفقیت تحویل شد', tone: 'primary', icon: 'kanban' })}
+      ${statCard({ label: 'تسک‌های انجام‌شده', value: '۴۵۲ تسک', hint: 'نرخ تکمیل ۹۶٪ در موعد', tone: 'success', icon: 'check2-all' })}
+      ${statCard({ label: 'امتیاز امنیت حساب', value: '۹۶٪', hint: 'ورود دو مرحله‌ای فعال است', tone: 'info', icon: 'shield-check' })}
+    </div>
+    <div class="card" style="border-radius:18px;">
+      <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center;">
+        <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">اطلاعات شناسنامه‌ای و حساب کاربری</h3>
+        <span class="badge badge--soft-success">حساب تأییدشده</span>
+      </div>
+      <div class="card__body" style="padding:20px;">
+        <form class="form-stack">
+          <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div class="form-field"><label class="form-label">نام و نام خانوادگی *</label><input class="form-control" value="${escapeHtml(user.name)}" required></div>
+            <div class="form-field"><label class="form-label">آدرس ایمیل کاری</label><input class="form-control" value="${escapeHtml(user.email)}" dir="ltr" readonly></div>
+            <div class="form-field"><label class="form-label">شماره همراه</label><input class="form-control" value="${escapeHtml(user.phone || '+۹۸ ۹۱۲ ۳۴۵ ۶۷۸۹')}" dir="ltr"></div>
+            <div class="form-field"><label class="form-label">سمت سازمانی</label><input class="form-control" value="${escapeHtml(user.roleLabel || 'مدیر ارشد محصول')}" readonly></div>
+            <div class="form-field"><label class="form-label">تیم اختصاص‌یافته</label><input class="form-control" value="${escapeHtml(user.team || 'تیم پلتفرم')}" readonly></div>
+            <div class="form-field"><label class="form-label">منطقه زمانی</label><select class="form-select"><option selected>تهران (GMT+3:30)</option><option>دبی (GMT+4:00)</option><option>استانبول (GMT+3:00)</option></select></div>
+          </div>
+          <div class="form-field mt-3"><label class="form-label">درباره من و بیوگرافی</label><textarea class="form-control" rows="3">مدیر محصول با بیش از ۸ سال تجربه در طراحی و توسعه سیستم‌های نرم‌افزاری مقیاس‌پذیر، سیستم‌های طراحی Enterprise و رابط‌های کاربری راست‌به‌چپ (RTL).</textarea></div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+            <button class="btn btn-light" type="reset">بازنشانی</button>
+            <button class="btn btn-primary" type="button" data-save-profile><i class="bi bi-check2"></i> ذخیره تغییرات</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const activityHtml = `
+    <div class="card" style="border-radius:18px;">
+      <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--nv-border);">
+        <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">تاریخچه فعالیت‌های اخیر شما</h3>
+        <span class="badge badge--soft-primary">۳۰ روز گذشته</span>
+      </div>
+      <div class="card__body" style="padding:20px;">
+        ${timeline([
+          { title: 'ورود موفق به پنل مدیریت', text: 'از مرورگر Chrome 128 روی سیستم‌عامل macOS • نشانی IP: 5.160.82.11 (تهران)', time: '۱۰ دقیقه پیش', tone: 'success', icon: 'box-arrow-in-right' },
+          { title: 'ایجاد کلید جدید API', text: 'کلید Production-Mobile با دسترسی خواندن/نوشتن صادر شد.', time: '۲ ساعت پیش', tone: 'primary', icon: 'key' },
+          { title: 'تغییر تنظیمات اعلان‌ها', text: 'اعلان‌های ایمیلی برای رویدادهای امنیتی فعال شد.', time: 'دیروز', tone: 'info', icon: 'bell' },
+          { title: 'صدور پیش‌فاکتور فروش', text: 'فاکتور شماره INV-۲۳۸۱ برای مشتری ویرا ابری ایجاد شد.', time: '۲ روز پیش', tone: 'success', icon: 'receipt' },
+          { title: 'تغییر رمز عبور حساب', text: 'گذرواژه با احراز هویت دوعاملی پیامکی به‌روزرسانی شد.', time: '۵ روز پیش', tone: 'warning', icon: 'shield-lock' },
+        ])}
+      </div>
+    </div>
+  `;
+
+  const securityHtml = `
+    <div class="grid grid--2" style="gap:20px;">
+      <div class="card" style="border-radius:18px;">
+        <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+          <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">تغییر گذرواژه حساب</h3>
+          <p class="card__subtitle" style="margin:0; font-size:11px;">گذرواژه باید حداقل ۸ کاراکتر شامل حروف و اعداد باشد.</p>
+        </div>
+        <div class="card__body" style="padding:20px;">
+          <form class="form-stack">
+            <div class="form-field"><label class="form-label">گذرواژه فعلی</label><input class="form-control" type="password" placeholder="••••••••"></div>
+            <div class="form-field"><label class="form-label">گذرواژه جدید</label><input class="form-control" type="password" placeholder="حداقل ۸ کاراکتر"></div>
+            <div class="form-field"><label class="form-label">تکرار گذرواژه جدید</label><input class="form-control" type="password" placeholder="تکرار رمز عبور"></div>
+            <div class="progress progress--sm mt-2" style="height:6px;"><div class="progress-bar bg-success" style="width:85%"></div></div>
+            <span style="font-size:11px; color:var(--nv-success); font-weight:700;">قدرت گذرواژه: عالی</span>
+            <div class="mt-4"><button class="btn btn-primary" type="button" data-change-password><i class="bi bi-shield-check"></i> به‌روزرسانی گذرواژه</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">ورود دو مرحله‌ای (2FA)</h3>
+              <p class="card__subtitle" style="margin:0; font-size:11px;">امنیت حساب خود را با نرم‌افزارهای احراز هویت بالا ببرید.</p>
+            </div>
+            <span class="badge badge--soft-success">فعال</span>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <p style="font-size:12px; color:var(--nv-text-muted); line-height:1.7;">ورود دو مرحله‌ای با Google Authenticator یا SMS فعال است. در هر بار ورود کد یک‌بارمصرف درخواست می‌شود.</p>
+            <div class="d-flex gap-2">
+              <button class="btn btn-light btn-sm" type="button" data-setup-2fa><i class="bi bi-qr-code"></i> پیکربندی مجدد</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-disable-2fa>غیرفعال‌سازی</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">هشدارهای امنیتی ورود</h3>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="alert-new-device" checked>
+              <label class="form-check-label" for="alert-new-device" style="font-size:12px;">اطلاع‌رسانی ایمیلی هنگام ورود از دستگاه جدید</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="alert-ip-change" checked>
+              <label class="form-check-label" for="alert-ip-change" style="font-size:12px;">هشدار پیامکی در صورت تغییر مشکوک IP</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
   render(
     node,
     `<div class="dashboard-shell">
-      ${card({
-        body: `<div class="profile-head">
-          <img class="profile-head__avatar" src="${escapeHtml(user.avatar)}" alt="">
-          <div class="profile-head__meta"><h1 class="profile-head__name">${escapeHtml(user.name)}</h1><p class="profile-head__role">${escapeHtml(user.roleLabel ?? 'مدیر ارشد')} • ${escapeHtml(user.team ?? '')}</p>
-            <div class="badge-dot-list">${statusBadge('فعال', 'success')}${statusBadge(user.email, 'info')}</div></div>
-          <div class="ms-auto d-flex gap-2"><button class="btn btn-light" type="button" data-change-avatar><i class="bi bi-camera"></i> تغییر تصویر</button><button class="btn btn-primary" type="button" data-save-profile><i class="bi bi-check2"></i> ذخیره</button></div>
-        </div>`,
-      })}
+      <div class="card mb-4" style="border-radius:24px; overflow:hidden; border:1px solid var(--nv-border); box-shadow:var(--nv-shadow-sm);">
+        <div style="height:140px; background:linear-gradient(135deg, var(--nv-primary) 0%, #8b5cf6 50%, #06b6d4 100%); position:relative;">
+          <div style="position:absolute; inset:0; background:radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 60%); pointer-events:none;"></div>
+        </div>
+        <div class="card__body" style="padding:0 28px 24px; margin-top:-52px; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; position:relative;">
+          <div style="display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap;">
+            <div style="position:relative; width:96px; height:96px; border-radius:26px; padding:3px; background:linear-gradient(135deg, var(--nv-primary) 0%, #a855f7 50%, #06b6d4 100%); box-shadow:0 12px 28px -6px rgba(99,102,241,0.4); flex-shrink:0;">
+              <img class="profile-head__avatar" src="${url(user.avatar || 'assets/img/avatars/avatar-01.svg')}" style="width:100%; height:100%; border-radius:23px; object-fit:cover; background:var(--nv-surface); display:block; border:3px solid var(--nv-surface);" alt="${escapeHtml(user.name)}">
+              <span style="position:absolute; bottom:-2px; left:-2px; width:18px; height:18px; border-radius:50%; background:#10b981; border:3px solid var(--nv-surface); box-shadow:0 0 0 2px rgba(16,185,129,0.3);" title="آنلاین و فعال"></span>
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <h1 style="margin:0; font-size:20px; font-weight:900; color:var(--nv-heading); letter-spacing:-0.02em;">${escapeHtml(user.name)}</h1>
+                <span class="badge badge--soft-primary" style="font-size:11px; padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:4px;">
+                  <i class="bi bi-patch-check-fill text-primary" style="font-size:12px;"></i> تاییدشده
+                </span>
+              </div>
+              <p style="margin:6px 0 0; font-size:12px; color:var(--nv-text-muted); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span><i class="bi bi-shield-check text-primary"></i> ${escapeHtml(user.roleLabel ?? 'مدیر ارشد پلتفرم')}</span>
+                <span>•</span>
+                <span><i class="bi bi-building"></i> ${escapeHtml(user.team ?? 'تیم هسته محصول')}</span>
+                <span>•</span>
+                <span><i class="bi bi-geo-alt"></i> تهران، ایران</span>
+              </p>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-light btn-sm" type="button" data-change-avatar style="border-radius:10px; font-weight:700;"><i class="bi bi-camera"></i> ویرایش تصویر</button>
+            <a class="btn btn-primary btn-sm" href="profile/security.html" style="border-radius:10px; font-weight:700;"><i class="bi bi-shield-lock"></i> امنیت حساب</a>
+          </div>
+        </div>
+      </div>
+
       ${tabs([
-        { id: 'overview', label: 'نمای کلی', icon: 'person', body: profileOverview(user) },
-        { id: 'activity', label: 'فعالیت‌ها', icon: 'activity', body: card({ title: 'آخرین فعالیت‌ها', body: profileActivity() }) },
-        { id: 'security', label: 'امنیت', icon: 'shield-lock', body: profileSecurity() },
-        { id: 'sessions', label: 'نشست‌ها', icon: 'laptop', body: card({ title: 'دستگاه‌های فعال', flush: true, body: '<div data-session-list>' + kit.skeleton(3) + '</div>' }) },
-        { id: 'notifications', label: 'اعلان‌ها', icon: 'bell', body: card({ title: 'اولویت‌های اعلان', body: '<div data-pref-list>' + kit.skeleton(3) + '</div>' }) },
-        { id: 'documents', label: 'اسناد', icon: 'folder2', body: card({ title: 'اسناد شخصی', flush: true, body: '<ul class="list-group"><li class="list-item"><i class="bi bi-file-earmark-text"></i><span class="list-item__title">قرارداد همکاری.pdf<span class="list-item__sub">۲۴۰ کیلوبایت</span></span></li><li class="list-item"><i class="bi bi-file-earmark-text"></i><span class="list-item__title">فیش حقوقی-مهر.pdf<span class="list-item__sub">۱۸۰ کیلوبایت</span></span></li></ul>' }) },
-        { id: 'projects', label: 'پروژه‌ها', icon: 'kanban', body: '<div data-profile-projects>' + kit.skeleton(2) + '</div>' },
-        { id: 'invoices', label: 'فاکتورها', icon: 'receipt', body: '<div data-profile-invoices>' + kit.skeleton(2) + '</div>' },
-        { id: 'keys', label: 'کلیدهای API', icon: 'key', body: '<div data-profile-keys>' + kit.skeleton(2) + '</div>' },
+        { id: 'overview', label: 'نمای کلی', icon: 'person', body: overviewHtml, active: section === 'overview' },
+        { id: 'activity', label: 'فعالیت‌ها', icon: 'activity', body: activityHtml, active: section === 'activity' },
+        { id: 'security', label: 'امنیت', icon: 'shield-lock', body: securityHtml, active: section === 'security' },
+        { id: 'sessions', label: 'نشست‌ها', icon: 'laptop', body: card({ title: 'دستگاه‌های فعال متصل به حساب', flush: true, body: '<div data-session-list>' + kit.skeleton(3) + '</div>' }), active: section === 'sessions' },
+        { id: 'notifications', label: 'اعلان‌ها', icon: 'bell', body: card({ title: 'تنظیمات ارسال پیام و ایمیل', body: '<div data-pref-list>' + kit.skeleton(3) + '</div>' }), active: section === 'notifications' },
+        { id: 'keys', label: 'کلیدهای API', icon: 'key', body: '<div data-profile-keys>' + kit.skeleton(2) + '</div>', active: section === 'keys' },
+        { id: 'invoices', label: 'فاکتورها', icon: 'receipt', body: '<div data-profile-invoices>' + kit.skeleton(2) + '</div>', active: section === 'invoices' },
       ])}
     </div>`,
   );
@@ -1210,7 +1820,22 @@ export async function initProfile() {
   const sessionHost = $('[data-session-list]', node);
   if (sessionHost) {
     const sessions = await services.sessionService.list();
-    render(sessionHost, `<ul class="list-group">${(sessions.items ?? sessions).map((session) => `<li class="list-item"><span class="tile tile--soft tile--icon"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')} • ${escapeHtml(session.ip ?? '')}</span></span><span class="list-item__meta">${relativeTime(session.lastSeen)}<button class="btn btn-ghost btn-sm" type="button" data-revoke-session="${escapeHtml(session.id)}">پایان</button></span></li>`).join('')}</ul>`);
+    render(sessionHost, `<ul class="list-group list-group--flush">${(sessions.items ?? sessions).map((s, i) => `
+      <li class="list-group__item" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span class="tile tile--soft tile--icon tile--soft-${i===0?'primary':'secondary'}" style="width:40px;height:40px;border-radius:10px;display:grid;place-items:center;">
+            <i class="bi bi-${s.device.includes('iPhone')||s.device.includes('Xiaomi') ? 'phone' : 'laptop'}"></i>
+          </span>
+          <div>
+            <div style="font-weight:700; font-size:13px; color:var(--nv-heading);">${escapeHtml(s.device)} ${i===0?'<span class="badge badge--soft-primary" style="font-size:10px;">نشست فعلی</span>':''}</div>
+            <div style="font-size:11px; color:var(--nv-text-muted);">${escapeHtml(s.browser)} • IP: <span style="direction:ltr; display:inline-block; font-family:var(--nv-font-mono);">${escapeHtml(s.ip)}</span> (${escapeHtml(s.location)})</div>
+          </div>
+        </div>
+        <div>
+          ${i !== 0 ? `<button class="btn btn-sm btn-outline-danger" type="button" data-revoke-session="${escapeHtml(s.id)}" style="font-size:11px; padding:3px 8px;">خاتمه</button>` : '<span class="badge badge--soft-success" style="font-size:10px;">آنلاین</span>'}
+        </div>
+      </li>
+    `).join('')}</ul>`);
     on(sessionHost, 'click', async (event) => {
       const button = event.target.closest('[data-revoke-session]');
       if (!button) return;
@@ -1219,48 +1844,77 @@ export async function initProfile() {
       toast.success('نشست پایان یافت', 'دسترسی این دستگاه بسته شد.');
     });
   }
+
   const prefHost = $('[data-pref-list]', node);
   if (prefHost) {
     render(prefHost, formMarkup([
-      { name: 'email', label: 'اعلان ایمیلی', type: 'switch', value: true },
-      { name: 'push', label: 'اعلان مرورگر', type: 'switch', value: true },
-      { name: 'sms', label: 'پیامک رویدادهای امنیتی', type: 'switch', value: false },
-      { name: 'weekly', label: 'خلاصه هفتگی', type: 'switch', value: true },
+      { name: 'email', label: 'ارسال ایمیل رویدادهای مالی و فاکتور', type: 'switch', value: true },
+      { name: 'push', label: 'اعلان بلادرنگ مرورگر (Push Notification)', type: 'switch', value: true },
+      { name: 'sms', label: 'ارسال پیامک برای هشدارهای امنیتی بحرانی', type: 'switch', value: true },
+      { name: 'weekly', label: 'خلاصه ایمیلی عملکرد هفتگی تیم', type: 'switch', value: false },
     ]));
   }
-  on(node, 'click', async (event) => {
-    if (event.target.closest('[data-change-avatar]')) {
-      modal.open({
-        title: 'تغییر تصویر پروفایل',
-        content: `<div class="avatar-upload"><img class="avatar-upload__preview" src="${escapeHtml(user.avatar)}" alt=""><div class="avatar-upload__actions"><label class="btn btn-light"><i class="bi bi-upload"></i> انتخاب فایل<input type="file" hidden accept="image/*"></label><button class="btn btn-soft-danger" type="button" data-remove-avatar><i class="bi bi-trash3"></i> حذف</button></div></div>`,
-        footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-save-avatar>ذخیره تصویر</button>',
-        onMount: (panel) => on($('[data-save-avatar]', panel), 'click', () => {
-          toast.success('تصویر ذخیره شد', 'تصویر پروفایل به‌روزرسانی شد.');
-          modal.closeTop();
-        }),
-      });
-      return;
-    }
-    if (event.target.closest('[data-save-profile]')) {
-      toast.success('پروفایل ذخیره شد', `بخش «${section}» به‌روزرسانی شد.`);
-    }
-  });
 
-  const projectsHost = $('[data-profile-projects]', node);
-  if (projectsHost) {
-    const projects = await services.projectService.list({ perPage: 4 });
-    render(projectsHost, card({ title: 'پروژه‌های من', flush: true, body: `<ul class="list-group">${(projects.items ?? projects).map((project) => `<li class="list-item"><span class="list-item__title">${escapeHtml(project.name)}<span class="list-item__sub">${escapeHtml(project.client ?? '')}</span></span><span class="list-item__meta"><div class="progress progress--sm" style="min-width:7rem"><div class="progress-bar" style="width:${project.progress ?? 0}%"></div></div>${toDigits(project.progress ?? 0)}٪</span></li>`).join('')}</ul>` }));
-  }
-  const invoiceHost = $('[data-profile-invoices]', node);
-  if (invoiceHost) {
-    const invoices = await services.invoiceService.list({ perPage: 4 });
-    render(invoiceHost, card({ title: 'فاکتورهای اخیر', flush: true, body: `<ul class="list-group">${(invoices.items ?? invoices).map((invoice) => `<li class="list-item"><span class="list-item__title">${escapeHtml(invoice.number)}<span class="list-item__sub">${formatDate(invoice.issuedAt, { format: 'medium' })}</span></span><span class="list-item__meta">${formatCurrency(invoice.total, 'IRR', { compact: true })}${statusBadge(invoice.statusLabel ?? invoice.status, invoice.status === 'paid' ? 'success' : 'warning')}</span></li>`).join('')}</ul>` }));
-  }
   const keysHost = $('[data-profile-keys]', node);
   if (keysHost) {
     const keys = await services.apiKeys.list();
-    render(keysHost, card({ title: 'کلیدهای API من', flush: true, body: `<ul class="list-group">${(keys.items ?? keys).map((key) => `<li class="list-item"><i class="bi bi-key"></i><span class="list-item__title">${escapeHtml(key.name)}<span class="list-item__sub">${escapeHtml(key.masked ?? '')}</span></span><span class="list-item__meta">${key.lastUsed ? relativeTime(key.lastUsed) : 'استفاده نشده'}</span></li>`).join('')}</ul>` }));
+    render(keysHost, card({
+      title: 'کلیدهای اختصاصی API شما',
+      actions: '<button class="btn btn-primary btn-sm" type="button" data-create-api-key><i class="bi bi-plus-lg"></i> تولید کلید جدید</button>',
+      flush: true,
+      body: `
+        <div class="table-responsive">
+          <table class="table table--hover">
+            <thead><tr><th>نام توکن</th><th>کلید (Secret)</th><th>دسترسی</th><th>تاریخ ساخت</th><th>آخرین استفاده</th><th class="text-end">عملیات</th></tr></thead>
+            <tbody>
+              ${(keys.items ?? keys).map(k => `
+                <tr>
+                  <td style="font-weight:700;"><i class="bi bi-key-fill text-warning me-1"></i> ${escapeHtml(k.name)}</td>
+                  <td><code style="direction:ltr; font-size:12px;">${escapeHtml(k.token || 'nv_live_8f2c91ad4b7e')}</code></td>
+                  <td><span class="badge badge--soft-primary">${escapeHtml((k.scopes || ['read','write']).join(' / '))}</span></td>
+                  <td style="font-size:12px; color:var(--nv-text-muted);">${k.createdAt ? formatDate(k.createdAt, { format: 'medium' }) : '۱۴۰۳/۰۶/۱۵'}</td>
+                  <td style="font-size:12px; color:var(--nv-text-muted);">${k.lastUsed ? relativeTime(k.lastUsed) : 'اخیراً'}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-light" type="button" data-copy-key="${escapeHtml(k.token || 'nv_live_8f2c91ad4b7e')}" title="کپی کلید"><i class="bi bi-copy"></i></button>
+                    <button class="btn btn-sm btn-ghost text-danger" type="button" data-del-key="${escapeHtml(k.id)}" title="ابطال کلید"><i class="bi bi-trash3"></i></button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `
+    }));
   }
+
+  const invoiceHost = $('[data-profile-invoices]', node);
+  if (invoiceHost) {
+    const invoices = await services.invoiceService.list({ perPage: 4 });
+    render(invoiceHost, card({ title: 'فاکتورهای پرداخت‌شده من', flush: true, body: `<ul class="list-group">${(invoices.items ?? invoices).map((invoice) => `<li class="list-item"><span class="list-item__title">${escapeHtml(invoice.number)}<span class="list-item__sub">${formatDate(invoice.issuedAt, { format: 'medium' })}</span></span><span class="list-item__meta">${formatCurrency(invoice.total, 'IRR', { compact: true })}${statusBadge(invoice.statusLabel ?? invoice.status, invoice.status === 'paid' ? 'success' : 'warning')}</span></li>`).join('')}</ul>` }));
+  }
+
+  on(node, 'click', async (event) => {
+    if (event.target.closest('[data-change-avatar]')) {
+      toast.info('انتخاب تصویر', 'پنجره بارگذاری آواتار باز شد.');
+    }
+    if (event.target.closest('[data-save-profile]')) {
+      toast.success('تغییرات پروفایل با موفقیت ذخیره شد');
+    }
+    if (event.target.closest('[data-change-password]')) {
+      toast.success('گذرواژه با موفقیت تغییر کرد');
+    }
+    if (event.target.closest('[data-setup-2fa]')) {
+      toast.info('پیکربندی ۲FA', 'کد QR احراز هویت دوعاملی آماده اسکن است.');
+    }
+    if (event.target.closest('[data-create-api-key]')) {
+      toast.success('کلید جدید API تولید شد');
+    }
+    const copyKey = event.target.closest('[data-copy-key]');
+    if (copyKey) {
+      await navigator.clipboard?.writeText(copyKey.dataset.copyKey).catch(()=>null);
+      toast.success('کلید API کپی شد');
+    }
+  });
 }
 
 const profileOverview = (user) =>
@@ -1478,15 +2132,16 @@ function authWhyList() {
 
 
 export async function initAuth() {
-  const node = $('[data-auth]') ?? document.querySelector('.auth-page');
-  if (!node) return;
   const page = document.querySelector('[data-resource^="auth-"]')?.dataset.resource ?? kit.pageId();
   
-  // Login page keeps its own premium implementation (don't touch)
-  if (page === 'auth-login') {
+  // Any login page uses dedicated initLoginPro
+  if (page.includes('login') || page === 'auth-login') {
     const { initLoginPro } = await import('./login.js');
     if (initLoginPro()) return;
   }
+
+  const node = $('[data-auth]') ?? document.querySelector('.auth-page') ?? document.querySelector('.lx-page') ?? document.getElementById('main-content');
+  if (!node) return;
   
   if (page === 'auth-logout' || page === 'auth-lock') {
     try {
@@ -1636,6 +2291,46 @@ export async function initAuth() {
   let showSocial = false;
 
   switch (normalized) {
+    case 'auth-login':
+    case 'auth-login-split':
+    case 'auth-login-minimal':
+      headTitle = 'خوش برگشتید 👋';
+      headSub = 'برای ورود به پنل مدیریت، اطلاعات حساب خود را وارد کنید.';
+      showSocial = true;
+      formHtml = `
+        <button class="lx-demo" type="button" data-lx-demo>
+          <span class="lx-demo__icon"><i class="bi bi-lightning-charge-fill"></i></span>
+          <span class="lx-demo__text"><strong>ورود سریع با حساب دمو</strong><small dir="ltr">demo@novaadmin.dev</small></span>
+          <i class="bi bi-arrow-left lx-demo__arrow"></i>
+        </button>
+        <div class="lx-divider"><span>یا ورود با ایمیل</span></div>
+        <form class="lx-form" data-lx-form novalidate>
+          <div class="lx-field" data-field="email">
+            <i class="bi bi-envelope lx-field__icon"></i>
+            <input id="lx-email" class="lx-field__input" type="email" name="email" placeholder=" " autocomplete="email" dir="ltr" required>
+            <label for="lx-email" class="lx-field__label">آدرس ایمیل</label>
+          </div>
+          <p class="lx-error" data-error="email" hidden></p>
+          <div class="lx-field" data-field="password">
+            <i class="bi bi-shield-lock lx-field__icon"></i>
+            <input id="lx-password" class="lx-field__input" type="password" name="password" placeholder=" " autocomplete="current-password" dir="ltr" required minlength="6">
+            <label for="lx-password" class="lx-field__label">رمز عبور</label>
+            <button class="lx-eye" type="button" data-lx-eye><i class="bi bi-eye"></i></button>
+          </div>
+          <p class="lx-error" data-error="password" hidden></p>
+          <div class="lx-row">
+            <label class="lx-switch"><input type="checkbox" name="remember" checked><span class="lx-switch__track"><span></span></span> مرا به خاطر بسپار</label>
+            <a class="lx-link" href="${url('auth/forgot-password.html')}">فراموشی رمز؟</a>
+          </div>
+          <button class="lx-submit" type="submit" data-lx-submit>
+            <span class="lx-submit__label">ورود به پنل</span>
+            <i class="bi bi-arrow-left lx-submit__icon"></i>
+            <span class="lx-submit__spinner"></span>
+          </button>
+        </form>`;
+      footLink = `<p class="lx-foot">حساب کاربری ندارید؟ <a href="${url('auth/register.html')}">ایجاد حساب رایگان</a></p>`;
+      break;
+
     case 'auth-register':
       headTitle = 'ساخت حساب جدید ✨';
       headSub = 'در چند ثانیه حساب خود را بسازید و به پنل دسترسی پیدا کنید.';
@@ -1892,9 +2587,21 @@ export async function initAuth() {
   }
 
   on(rootEl, 'click', (e) => {
+    const demoBtn = e.target.closest('[data-lx-demo]');
+    if (demoBtn) {
+      e.preventDefault();
+      if (email) email.value = DEMO.email;
+      if (password) password.value = DEMO.password;
+      if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+      return;
+    }
     const social = e.target.closest('[data-lx-social]');
     if (social) {
-      toast.info('ورود اجتماعی', `سرویس ${social.dataset.lxSocial} در نسخه نمایشی غیرفعال است.`);
+      e.preventDefault();
+      if (email) email.value = DEMO.email;
+      if (password) password.value = DEMO.password;
+      if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+      return;
     }
     const resend = e.target.closest('[data-resend]');
     if (resend) {
@@ -2245,35 +2952,124 @@ export async function initSystemPages() {
       hints: ['اتصال Wi‑Fi یا داده موبایل را بررسی کنید', 'فیلترشکن یا پروکسی سازمانی می‌تواند مانع اتصال باشد'],
     },
     'coming-soon': {
-      title: 'به‌زودی',
-      text: 'این بخش در نسخه‌های بعدی منتشر می‌شود. برای اطلاع از زمان انتشار، خبرنامه محصول را دنبال کنید.',
-      icon: 'rocket-takeoff',
+      title: 'به‌زودی رونمایی می‌شود',
+      text: 'این بخش هیجان‌انگیز در حال توسعه و بهینه‌سازی نهایی است و به‌زودی در دسترس شما قرار می‌گیرد.',
+      icon: 'rocket-takeoff-fill',
       tone: 'primary',
-      action: '<a class="btn btn-light" href="index.html">بازگشت</a>',
-      hints: ['تغییرات نسخه‌ها در صفحه «تغییرات نسخه» ثبت می‌شود'],
+      code: 'SOON',
+      action: '<a class="btn btn-primary" href="index.html"><i class="bi bi-house"></i> بازگشت به داشبورد</a>',
+      hints: ['اطلاعیه انتشار در وبلاگ رسمی', 'می‌توانید برای دریافت ایمیل رونمایی ثبت‌نام کنید', 'پشتیبانی ۲۴ ساعته پاسخگوی سوالات شماست'],
     },
   };
-  const state = states[name] ?? states[404];
+  const state = states[name] ?? { ...states[404], code: name.match(/\d+/) ? name : '404' };
+
+  if (name === 'coming-soon') {
+    render(
+      node,
+      `<div class="dashboard-shell" style="max-width:800px; margin:40px auto; text-align:center;">
+        <div class="card" style="border-radius:24px; padding:40px 24px; border:1px solid var(--nv-border); box-shadow:var(--nv-shadow-lg);">
+          <div style="width:72px; height:72px; border-radius:20px; background:linear-gradient(135deg, var(--nv-primary), #8b5cf6); color:#fff; display:grid; place-items:center; margin:0 auto 20px; font-size:32px; box-shadow:0 10px 25px rgba(99,102,241,0.3);">
+            <i class="bi bi-rocket-takeoff"></i>
+          </div>
+          <h1 style="font-size:28px; font-weight:900; color:var(--nv-heading); margin-bottom:10px;">به‌زودی رونمایی می‌شود</h1>
+          <p style="color:var(--nv-text-muted); font-size:14px; max-width:500px; margin:0 auto 30px; line-height:1.8;">ما در حال آماده‌سازی قابلیت‌های پیشرفته و شگفت‌انگیز جدیدی در این ماژول هستیم. زمان‌سنج زیر تا رونمایی رسمی معکوس می‌شمارد.</p>
+
+          <div style="display:flex; justify-content:center; gap:16px; margin-bottom:36px; flex-wrap:wrap;">
+            <div style="background:var(--nv-surface-2); border:1px solid var(--nv-border); border-radius:16px; padding:16px 20px; min-width:85px;">
+              <div style="font-size:28px; font-weight:900; color:var(--nv-primary);" class="numeric">۱۴</div>
+              <div style="font-size:11px; color:var(--nv-text-muted); font-weight:700;">روز</div>
+            </div>
+            <div style="background:var(--nv-surface-2); border:1px solid var(--nv-border); border-radius:16px; padding:16px 20px; min-width:85px;">
+              <div style="font-size:28px; font-weight:900; color:var(--nv-primary);" class="numeric">۰۸</div>
+              <div style="font-size:11px; color:var(--nv-text-muted); font-weight:700;">ساعت</div>
+            </div>
+            <div style="background:var(--nv-surface-2); border:1px solid var(--nv-border); border-radius:16px; padding:16px 20px; min-width:85px;">
+              <div style="font-size:28px; font-weight:900; color:var(--nv-primary);" class="numeric">۴۵</div>
+              <div style="font-size:11px; color:var(--nv-text-muted); font-weight:700;">دقیقه</div>
+            </div>
+            <div style="background:var(--nv-surface-2); border:1px solid var(--nv-border); border-radius:16px; padding:16px 20px; min-width:85px;">
+              <div style="font-size:28px; font-weight:900; color:var(--nv-primary);" class="numeric">۲۳</div>
+              <div style="font-size:11px; color:var(--nv-text-muted); font-weight:700;">ثانیه</div>
+            </div>
+          </div>
+
+          <form class="input-group" style="max-width:440px; margin:0 auto 24px;" data-coming-soon-form>
+            <input class="form-control" type="email" placeholder="ایمیل خود را وارد کنید..." required>
+            <button class="btn btn-primary" type="submit">خبرم کن</button>
+          </form>
+
+          <div><a class="btn btn-light btn-sm" href="index.html"><i class="bi bi-arrow-right"></i> بازگشت به صفحه اصلی</a></div>
+        </div>
+      </div>`,
+    );
+    on($('[data-coming-soon-form]', node), 'submit', (e) => {
+      e.preventDefault();
+      toast.success('ایمیل شما ثبت شد', 'به محض رونمایی اطلاع‌رسانی خواهیم کرد.');
+    });
+    return;
+  }
+
+  if (name === 'maintenance') {
+    render(
+      node,
+      `<div class="dashboard-shell" style="max-width:760px; margin:40px auto; text-align:center;">
+        <div class="card" style="border-radius:24px; padding:40px 24px; border:1px solid var(--nv-border);">
+          <div style="width:72px; height:72px; border-radius:20px; background:rgba(245, 158, 11, 0.15); color:var(--nv-warning); display:grid; place-items:center; margin:0 auto 20px; font-size:32px;">
+            <i class="bi bi-tools"></i>
+          </div>
+          <h1 style="font-size:26px; font-weight:900; color:var(--nv-heading); margin-bottom:10px;">در حال ارتقا و نگهداری سیستم</h1>
+          <p style="color:var(--nv-text-muted); font-size:14px; max-width:480px; margin:0 auto 24px; line-height:1.8;">پایگاه داده و سرورهای پردازشی پلتفرم در حال به‌روزرسانی امنیتی هستند. داده‌های شما امن است و تا دقایقی دیگر سیستم به حالت عادی بازمی‌گردد.</p>
+
+          <div style="max-width:420px; margin:0 auto 30px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:8px;">
+              <span>پیشرفت عملیات</span>
+              <span class="text-warning numeric">۷۸٪</span>
+            </div>
+            <div class="progress" style="height:8px; border-radius:999px;">
+              <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width:78%;"></div>
+            </div>
+            <small style="color:var(--nv-text-muted); font-size:11px; display:block; margin-top:6px;">زمان تقریبی باقیمانده: ۳۰ دقیقه</small>
+          </div>
+
+          <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-primary btn-sm" type="button" data-retry-page><i class="bi bi-arrow-clockwise"></i> بررسی وضعیت</button>
+            <a class="btn btn-light btn-sm" href="system/status.html">پایش سرورها</a>
+          </div>
+        </div>
+      </div>`,
+    );
+    on($('[data-retry-page]', node), 'click', () => {
+      toast.info('بررسی برقراری سرور...');
+      setTimeout(() => window.location.reload(), 600);
+    });
+    return;
+  }
+
+  // General 404, 500, 403 error pages
   render(
     node,
-    `<div class="dashboard-shell">
-      <div class="status-hero status-hero--${state.tone}" style="flex-direction:column;text-align:center;padding-block:3.5rem">
-        <span class="status-hero__icon"><i class="bi bi-${state.icon}"></i></span>
-        <h1 class="status-hero__title">${escapeHtml(state.title)}</h1>
-        <p class="status-hero__text">${escapeHtml(state.text)}</p>
-        <form class="input-group" data-error-search style="max-width:26rem;width:100%">
-          <input class="form-control" type="search" placeholder="جستجو در صفحات…" aria-label="جستجو">
-          <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
+    `<div class="dashboard-shell" style="max-width:840px; margin:30px auto; text-align:center;">
+      <div class="card mb-4" style="border-radius:24px; padding:44px 24px; border:1px solid var(--nv-border); position:relative; overflow:hidden;">
+        <div style="font-size:84px; font-weight:900; line-height:1; letter-spacing:-2px; background:linear-gradient(135deg, var(--nv-${state.tone}), #8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:12px;" class="numeric">
+          ${escapeHtml(state.code || name)}
+        </div>
+        <h1 style="font-size:24px; font-weight:900; color:var(--nv-heading); margin-bottom:10px;">${escapeHtml(state.title)}</h1>
+        <p style="color:var(--nv-text-muted); font-size:14px; max-width:520px; margin:0 auto 28px; line-height:1.8;">${escapeHtml(state.text)}</p>
+
+        <form class="input-group" data-error-search style="max-width:380px; margin:0 auto 28px;">
+          <input class="form-control" type="search" placeholder="جستجوی سریع بین صفحات پلتفرم..." aria-label="جستجو">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
         </form>
-        <div class="d-flex gap-2 justify-content-center flex-wrap">${state.action}<a class="btn btn-light" href="system/help-center.html">مرکز راهنما</a></div>
+
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+          ${state.action}
+          <a class="btn btn-light" href="system/help-center.html"><i class="bi bi-life-preserver"></i> مرکز راهنما</a>
+          <a class="btn btn-light" href="system/contact.html"><i class="bi bi-envelope"></i> تماس با پشتیبانی</a>
+        </div>
       </div>
+
       <div class="grid grid--3">
         ${(state.hints ?? []).map((hint, index) => statCard({ label: `راهکار ${toDigits(index + 1)}`, value: `<span class="fs-body">${escapeHtml(hint)}</span>`, icon: ['check2-circle', 'search', 'headset'][index % 3], tone: ['success', 'info', 'primary'][index % 3] })).join('')}
-      </div>
-      <div class="grid grid--3">
-        <a class="demo-link" href="index.html"><i class="bi bi-house-door"></i> داشبورد</a>
-        <a class="demo-link" href="system/help-center.html"><i class="bi bi-life-preserver"></i> مرکز راهنما</a>
-        <a class="demo-link" href="system/contact.html"><i class="bi bi-envelope"></i> تماس با پشتیبانی</a>
       </div>
     </div>`,
   );
@@ -2403,11 +3199,58 @@ export async function initWidgetsPage() {
         </section>
 
         <section class="card" data-widget="quick-actions" data-widget-title="دسترسی سریع">
-          <header class="card__head"><div><h2 class="card__title">دسترسی سریع</h2><p class="card__subtitle">میان‌برهای پرکاربرد تیم</p></div></header>
+          <header class="card__head"><div><h2 class="card__title">دسترسی سریع</h2><p class="card__subtitle">عملیات و میان‌برهای پرکاربرد روزانه</p></div></header>
           <div class="card__body">
-            <div class="grid grid--2">${[['افزودن محصول', 'ecommerce/product-create.html', 'box-seam'], ['فاکتور جدید', 'finance/invoice-create.html', 'receipt'], ['کاربر جدید', 'users/create.html', 'person-plus'], ['گفتگوی هوشمند', 'ai/chat.html', 'chat-square-dots']]
-              .map(([label, url, icon]) => `<a class="tile tile--soft tile--icon" href="${url}"><i class="bi bi-${icon}"></i><span>${label}</span></a>`)
-              .join('')}</div>
+            <div class="nv-quick-grid">
+              <a class="nv-quick-card" href="ecommerce/product-create.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--primary"><i class="bi bi-box-seam"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">افزودن محصول</span>
+                  <span class="nv-quick-card__desc">ثبت کالا و انبارداری</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+              <a class="nv-quick-card" href="finance/invoices.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--success"><i class="bi bi-receipt"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">فاکتور جدید</span>
+                  <span class="nv-quick-card__desc">صدور آنی صورت‌حساب</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+              <a class="nv-quick-card" href="users/create.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--info"><i class="bi bi-person-plus"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">کاربر جدید</span>
+                  <span class="nv-quick-card__desc">تعریف نقش و سطح دسترسی</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+              <a class="nv-quick-card" href="ai/chat.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--warning"><i class="bi bi-stars"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">دستیار هوش مصنوعی</span>
+                  <span class="nv-quick-card__desc">گفتگوی تحلیلی و پرامپت‌ها</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+              <a class="nv-quick-card" href="cms/post-create.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--violet"><i class="bi bi-pencil-square"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">نوشته جدید</span>
+                  <span class="nv-quick-card__desc">انتشار مقاله و بهینه‌سازی سئو</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+              <a class="nv-quick-card" href="support/tickets.html">
+                <span class="nv-quick-card__icon nv-quick-card__icon--danger"><i class="bi bi-headset"></i></span>
+                <div class="nv-quick-card__content">
+                  <span class="nv-quick-card__title">تیکت‌های مشتریان</span>
+                  <span class="nv-quick-card__desc">پاسخ‌گویی به درخواست‌های جاری</span>
+                </div>
+                <i class="bi bi-arrow-left nv-quick-card__arrow"></i>
+              </a>
+            </div>
           </div>
         </section>
       </div>

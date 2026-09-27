@@ -95,16 +95,30 @@ textarea.form-control {
 
 .form-select {
   appearance: none;
-  padding-inline-end: var(--nv-space-8);
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: calc(100% - 1.15rem) 55%, calc(100% - 0.8rem) 55%;
-  background-size: 5px 5px, 5px 5px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-block: 0.5rem;
+  padding-inline-start: var(--nv-control-pad-x);
+  padding-inline-end: 2.25rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-position: right 0.85rem center;
+  background-size: 14px 10px;
   background-repeat: no-repeat;
-  color: var(--nv-text-2);
+  color: var(--nv-text);
+  cursor: pointer;
 }
-[dir='rtl'] .form-select {
-  background-position: 1.15rem 55%, 0.8rem 55%;
+
+[dir='rtl'] .form-select,
+html[dir='rtl'] .form-select,
+body[data-direction='rtl'] .form-select {
+  background-position: left 0.85rem center;
+  padding-inline-start: var(--nv-control-pad-x);
+  padding-inline-end: 2.25rem;
+}
+
+[data-theme='dark'] .form-select,
+[data-theme-mode='dark'] .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
 }
 
 /* ---------------------------------------------------------------- states */
