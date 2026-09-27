@@ -20,9 +20,14 @@ import { formatDate, relativeTime, monthNames } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
-import { goTo } from '../core/links.js';
+import { goTo, url } from '../core/links.js';
 import { withState } from '../core/load.js';
 import * as kit from './kit.js';
+
+const safeAvatar = (i = 1) => {
+  const n = ((Math.abs(Number(i) || 1) - 1) % 24) + 1;
+  return url(`assets/img/avatars/avatar-${String(n).padStart(2, '0')}.svg`);
+};
 
 const {
   card,
@@ -263,7 +268,224 @@ async function initEcommerce() {
       return;
     }
 
-    case 'ecommerce/categories.html':
+    case 'ecommerce/categories.html': {
+      const node = host();
+      const overview = await services.catalogService.overview();
+      const catList = await services.categoryService?.list?.({ perPage: 50 }).catch(() => null) ?? { items: [] };
+      let categories = catList.items?.length ? catList.items : [
+        { id: 'cat-1', name: 'لپ‌تاپ و اولترابوک', slug: 'laptops-ultrabooks', icon: 'laptop', products: 38, parent: 'کالای دیجیتال', status: 'active', revenue: 4200000000 },
+        { id: 'cat-2', name: 'گوشی موبایل و تبلت', slug: 'phones-tablets', icon: 'phone', products: 45, parent: 'کالای دیجیتال', status: 'active', revenue: 5800000000 },
+        { id: 'cat-3', name: 'هدفون و تجهیزات صوتی', slug: 'audio-headphones', icon: 'headphones', products: 29, parent: 'لوازم جانبی', status: 'active', revenue: 1950000000 },
+        { id: 'cat-4', name: 'ساعت و گجت‌های هوشمند', slug: 'smartwatches-gadgets', icon: 'smartwatch', products: 22, parent: 'پوشیدنی‌ها', status: 'active', revenue: 1420000000 },
+        { id: 'cat-5', name: 'لوازم جانبی کامپیوتر', slug: 'computer-accessories', icon: 'mouse', products: 64, parent: 'تجهیزات جانبی', status: 'active', revenue: 2310000000 },
+        { id: 'cat-6', name: 'تجهیزات ذخیره‌سازی داده', slug: 'storage-devices', icon: 'hdd', products: 19, parent: 'سخت‌افزار', status: 'inactive', revenue: 890000000 },
+        { id: 'cat-7', name: 'کنسول بازی و گیمینگ', slug: 'gaming-consoles', icon: 'controller', products: 31, parent: 'سرگرمی', status: 'active', revenue: 3750000000 },
+        { id: 'cat-8', name: 'پرینتر و تجهیزات اداری', slug: 'printers-office', icon: 'printer', products: 14, parent: 'ماشین‌های اداری', status: 'inactive', revenue: 640000000 },
+      ];
+
+      const renderCategories = (filterText = '') => {
+        const filtered = categories.filter((c) => !filterText || c.name.toLowerCase().includes(filterText.toLowerCase()) || c.slug.toLowerCase().includes(filterText.toLowerCase()));
+        const activeCount = categories.filter((c) => c.status === 'active').length;
+        const inactiveCount = categories.length - activeCount;
+
+        render(
+          node,
+          `<div class="dashboard-shell">
+            ${pageHeader({
+              title: 'دسته‌بندی‌های فروشگاه',
+              subtitle: 'مدیریت و پیکربندی ساختار دسته‌بندی‌ها با امکان فعال یا غیرفعال‌سازی آنی',
+              icon: 'tags',
+              actions: `<button class="btn btn-primary" type="button" data-add-cat><i class="bi bi-plus-lg me-1"></i>افزودن دسته‌بندی جدید</button>`
+            })}
+            <div class="stat-grid mb-4">
+              <article class="stat-card stat-card--primary">
+                <span class="stat-card__icon"><i class="bi bi-tags"></i></span>
+                <p class="stat-card__label">کل دسته‌بندی‌ها</p>
+                <p class="stat-card__value">${toDigits(categories.length)}</p>
+                <p class="stat-card__meta">سرگروه‌ها و زیرمجموعه‌ها</p>
+              </article>
+              <article class="stat-card stat-card--success">
+                <span class="stat-card__icon"><i class="bi bi-check-circle"></i></span>
+                <p class="stat-card__label">دسته‌های فعال</p>
+                <p class="stat-card__value text-success">${toDigits(activeCount)}</p>
+                <p class="stat-card__meta text-success"><i class="bi bi-eye"></i> قابل مشاهده در ویترین</p>
+              </article>
+              <article class="stat-card stat-card--warning">
+                <span class="stat-card__icon"><i class="bi bi-pause-circle"></i></span>
+                <p class="stat-card__label">دسته‌های غیرفعال</p>
+                <p class="stat-card__value text-warning">${toDigits(inactiveCount)}</p>
+                <p class="stat-card__meta text-muted"><i class="bi bi-eye-slash"></i> موقتاً مخفی در فروشگاه</p>
+              </article>
+              <article class="stat-card stat-card--info">
+                <span class="stat-card__icon"><i class="bi bi-box-seam"></i></span>
+                <p class="stat-card__label">محصولات تحت پوشش</p>
+                <p class="stat-card__value">${toDigits(categories.reduce((s, c) => s + (c.products || 0), 0))}</p>
+                <p class="stat-card__meta">تعداد کالاهای ثبت‌شده</p>
+              </article>
+            </div>
+            <div class="card">
+              <div class="card__head d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <h2 class="card__title">فهرست و وضعیت دسته‌بندی‌ها</h2>
+                  <p class="card__subtitle">برای فعال یا غیرفعال کردن نمایش دسته، کلید سوییچ مربوطه را تغییر دهید</p>
+                </div>
+                <div class="d-flex gap-2">
+                  <div class="input-icon" style="min-width: 220px;">
+                    <i class="bi bi-search"></i>
+                    <input type="search" class="form-control form-control-sm" placeholder="جستجوی دسته‌بندی..." data-search-cat value="${escapeHtml(filterText)}">
+                  </div>
+                </div>
+              </div>
+              <div class="card__body p-0">
+                <div class="table-wrap">
+                  <table class="table table--hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>نام و آیکون دسته</th>
+                        <th>پیوند یکتا (Slug)</th>
+                        <th>دسته والد</th>
+                        <th>تعداد محصولات</th>
+                        <th>وضعیت کنونی</th>
+                        <th>سوییچ فعال / غیرفعال</th>
+                        <th class="text-end">عملیات</th>
+                      </tr>
+                    </thead>
+                    <tbody data-cat-tbody>
+                      ${filtered.map((cat) => `
+                        <tr data-cat-id="${cat.id}">
+                          <td>
+                            <div class="d-flex align-items-center gap-2">
+                              <span class="tile tile--soft tile--icon tile--soft-primary" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
+                                <i class="bi bi-${cat.icon || 'tag'}"></i>
+                              </span>
+                              <div>
+                                <span class="fw-bold">${escapeHtml(cat.name)}</span>
+                                <small class="text-muted d-block">${cat.id}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td><code>${escapeHtml(cat.slug || cat.id)}</code></td>
+                          <td>${escapeHtml(cat.parent || '— (دسته اصلی)')}</td>
+                          <td class="numeric fw-semibold">${toDigits(cat.products || 0)} کالا</td>
+                          <td>
+                            <span class="badge badge--soft-${cat.status === 'active' ? 'success' : 'secondary'}" data-status-badge="${cat.id}">
+                              ${cat.status === 'active' ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td>
+                            <div class="form-check form-switch m-0" style="min-height:auto;">
+                              <input class="form-check-input" type="checkbox" role="switch" data-toggle-cat="${cat.id}" ${cat.status === 'active' ? 'checked' : ''} style="cursor:pointer; width:2.5em; height:1.25em;">
+                            </div>
+                          </td>
+                          <td class="text-end">
+                            <button class="btn btn-sm btn-light" type="button" data-edit-cat="${cat.id}" title="ویرایش"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-light text-danger" type="button" data-del-cat="${cat.id}" title="حذف"><i class="bi bi-trash"></i></button>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>`
+        );
+      };
+
+      renderCategories();
+
+      // Search event
+      on(node, 'input', (e) => {
+        const input = e.target.closest('[data-search-cat]');
+        if (input) {
+          renderCategories(input.value);
+        }
+      });
+
+      // Switch toggle event listener
+      on(node, 'change', (e) => {
+        const toggle = e.target.closest('[data-toggle-cat]');
+        if (!toggle) return;
+        const catId = toggle.dataset.toggleCat;
+        const cat = categories.find((c) => c.id === catId);
+        if (!cat) return;
+        const isChecked = toggle.checked;
+        cat.status = isChecked ? 'active' : 'inactive';
+        
+        const badge = $(`[data-status-badge="${catId}"]`, node);
+        if (badge) {
+          badge.className = `badge badge--soft-${isChecked ? 'success' : 'secondary'}`;
+          badge.textContent = isChecked ? 'فعال' : 'غیرفعال';
+        }
+        toast.success(
+          isChecked ? 'دسته‌بندی فعال شد' : 'دسته‌بندی غیرفعال شد',
+          `وضعیت «${cat.name}» به ${isChecked ? 'فعال (منتشرشده در ویترین)' : 'غیرفعال (مخفی)'} تغییر یافت.`
+        );
+      });
+
+      // Add category modal
+      on(node, 'click', (e) => {
+        if (e.target.closest('[data-add-cat]')) {
+          modal.open({
+            title: 'افزودن دسته‌بندی جدید',
+            content: `
+              <form id="new-cat-form" class="stack gap-3">
+                <div>
+                  <label class="form-label">نام دسته‌بندی</label>
+                  <input type="text" name="name" class="form-control" required placeholder="مثلاً لوازم خانگی هوشمند">
+                </div>
+                <div>
+                  <label class="form-label">پیوند یکتا (Slug)</label>
+                  <input type="text" name="slug" class="form-control" placeholder="smart-home">
+                </div>
+                <div>
+                  <label class="form-label">دسته والد (سرگروه)</label>
+                  <select name="parent" class="form-select">
+                    <option value="">— دسته اصلی (بدون والد) —</option>
+                    ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-check form-switch pt-2">
+                  <input class="form-check-input" type="checkbox" name="active" id="new-cat-active" checked>
+                  <label class="form-check-label" for="new-cat-active">دسته‌بندی بلافاصله فعال و منتشر شود</label>
+                </div>
+              </form>
+            `,
+            footer: `
+              <button class="btn btn-light" type="button" data-modal-close>انصراف</button>
+              <button class="btn btn-primary" type="button" data-save-new-cat>ثبت دسته‌بندی</button>
+            `
+          });
+        }
+        if (e.target.closest('[data-save-new-cat]')) {
+          const form = $('#new-cat-form');
+          if (form) {
+            const name = form.name.value.trim();
+            if (!name) {
+              toast.warning('خطای ورودی', 'لطفاً نام دسته‌بندی را وارد کنید.');
+              return;
+            }
+            const newCat = {
+              id: `cat-${categories.length + 1}`,
+              name,
+              slug: form.slug.value.trim() || name.replace(/\s+/g, '-'),
+              icon: 'tag',
+              products: 0,
+              parent: form.parent.value || null,
+              status: form.active.checked ? 'active' : 'inactive',
+              revenue: 0
+            };
+            categories.unshift(newCat);
+            modal.close();
+            renderCategories();
+            toast.success('دسته‌بندی جدید ثبت شد', `دسته‌بندی «${name}» با موفقیت اضافه شد.`);
+          }
+        }
+      });
+
+      return;
+    }
+
     case 'ecommerce/brands.html':
     case 'ecommerce/tags.html':
     case 'ecommerce/coupons.html':
@@ -334,24 +556,231 @@ async function ecommerceProductForm() {
   const node = host();
   const fields = [
     { name: 'name', label: 'نام محصول', required: true, col: 2 },
-    { name: 'sku', label: 'کد کالا', required: true },
-    { name: 'brand', label: 'برند', type: 'select', options: ['نووا', 'آرکا', 'داده‌پرداز', 'ویرا'], required: true },
-    { name: 'category', label: 'دسته‌بندی', type: 'select', options: ['لپ‌تاپ', 'موبایل', 'هدفون', 'ساعت هوشمند', 'لوازم جانبی'], required: true },
+    { name: 'sku', label: 'کد کالا (SKU)', required: true },
+    { name: 'brand', label: 'برند', type: 'select', options: ['نووا', 'آرکا', 'داده‌پرداز', 'ویرا', 'اپل', 'سامسونگ'], required: true },
+    { name: 'category', label: 'دسته‌بندی', type: 'select', options: ['لپ‌تاپ و اولترابوک', 'گوشی موبایل و تبلت', 'هدفون و تجهیزات صوتی', 'ساعت و گجت‌های هوشمند', 'لوازم جانبی کامپیوتر'], required: true },
     { name: 'price', label: 'قیمت پایه (ریال)', type: 'number', inputMode: 'numeric', required: true, rule: 'number' },
     { name: 'discount', label: 'تخفیف (٪)', type: 'number', inputMode: 'numeric' },
-    { name: 'stock', label: 'موجودی', type: 'number', inputMode: 'numeric', required: true, rule: 'number' },
-    { name: 'status', label: 'وضعیت', type: 'select', options: [{ value: 'published', label: 'منتشرشده' }, { value: 'draft', label: 'پیش‌نویس' }, { value: 'archived', label: 'بایگانی' }] },
+    { name: 'stock', label: 'موجودی انبار', type: 'number', inputMode: 'numeric', required: true, rule: 'number' },
+    { name: 'status', label: 'وضعیت انتشار', type: 'select', options: [{ value: 'published', label: 'منتشرشده در فروشگاه' }, { value: 'draft', label: 'پیش‌نویس' }, { value: 'archived', label: 'بایگانی‌شده' }] },
     { name: 'tags', label: 'برچسب‌ها', type: 'tags', hint: 'با کاما جدا کنید' },
-    { name: 'description', label: 'توضیحات', type: 'textarea', col: 2, rows: 5 },
+    { name: 'description', label: 'توضیحات و مشخصات فنی', type: 'textarea', col: 2, rows: 5 },
   ];
   const values = id ? await loadRecord('products', id) : {};
+
+  // Gallery state
+  let productImages = values.images || [
+    { id: 'img-1', url: values.image || 'assets/img/products/product-01.svg', name: 'تصویر اصلی ۱', isCover: true },
+    { id: 'img-2', url: 'assets/img/products/product-02.svg', name: 'نمای زاویه‌دار ۲', isCover: false },
+  ];
+  let currentImageIndex = 0;
+
   render(
     node,
     `<div class="dashboard-shell">
-      ${pageHeader({ title: id ? 'ویرایش محصول' : 'افزودن محصول جدید', subtitle: 'اطلاعات پایه، قیمت‌گذاری و وضعیت انتشار', icon: 'box-seam', actions: '<a class="btn btn-light" href="ecommerce/products.html"><i class="bi bi-arrow-right"></i> بازگشت به فهرست</a>' })}
-      ${card({ body: `<form data-product-form novalidate>${formMarkup(fields, values)}<div class="form-actions form-actions--end"><button type="reset" class="btn btn-light">بازنشانی</button><button type="submit" class="btn btn-primary" data-submit>${id ? 'ذخیره تغییرات' : 'ثبت محصول'}</button></div></form>` })}
-    </div>`,
+      ${pageHeader({
+        title: id ? 'ویرایش محصول' : 'افزودن محصول جدید',
+        subtitle: 'تصاویر محصول، اطلاعات پایه، قیمت‌گذاری و وضعیت انتشار در فروشگاه',
+        icon: 'box-seam',
+        actions: '<a class="btn btn-light" href="ecommerce/products.html"><i class="bi bi-arrow-right"></i> بازگشت به فهرست</a>'
+      })}
+      <div class="row g-4">
+        <!-- Gallery & Carousel Column -->
+        <div class="col-lg-5">
+          <div class="card h-100">
+            <div class="card__head d-flex justify-content-between align-items-center">
+              <div>
+                <h3 class="card__title fs-6 fw-bold m-0"><i class="bi bi-images me-1 text-primary"></i> گالری و تصاویر محصول</h3>
+                <p class="card__subtitle m-0 small text-muted">آپلود چندین عکس با پیش‌نمایش Carousel متحرک</p>
+              </div>
+            </div>
+            <div class="card__body" data-gallery-container></div>
+          </div>
+        </div>
+
+        <!-- Product Form Column -->
+        <div class="col-lg-7">
+          ${card({
+            title: 'اطلاعات و مشخصات محصول',
+            body: `<form data-product-form novalidate>
+              ${formMarkup(fields, values)}
+              <div class="form-actions form-actions--end mt-4">
+                <button type="reset" class="btn btn-light">بازنشانی فرم</button>
+                <button type="submit" class="btn btn-primary" data-submit>${id ? 'ذخیره تغییرات محصول' : 'ثبت و انتشار محصول'}</button>
+              </div>
+            </form>`
+          })}
+        </div>
+      </div>
+    </div>`
   );
+
+  const galleryContainer = $('[data-gallery-container]', node);
+
+  const renderGalleryUi = () => {
+    if (!galleryContainer) return;
+    const currentImg = productImages[currentImageIndex] || productImages[0];
+    const isMulti = productImages.length >= 2;
+
+    render(
+      galleryContainer,
+      `<div class="d-flex flex-column gap-3">
+        <!-- Dropzone Area -->
+        <div class="p-3 text-center rounded-3 border border-2 border-dashed" data-dropzone style="background: var(--nv-surface-2); cursor: pointer; transition: all 0.2s ease;">
+          <input type="file" multiple accept="image/*" class="d-none" data-file-input>
+          <i class="bi bi-cloud-arrow-up fs-2 text-primary d-block mb-1"></i>
+          <span class="fw-bold d-block small">کلیک کنید یا فایل‌های عکس را به اینجا بکشید</span>
+          <span class="text-muted" style="font-size: 11px;">امکان انتخاب همزمان چندین عکس (PNG, JPG, WebP)</span>
+          <div class="mt-2 d-flex justify-content-center gap-2">
+            <button type="button" class="btn btn-xs btn-outline-primary" data-btn-browse><i class="bi bi-folder-plus me-1"></i>انتخاب فایل‌ها</button>
+            <button type="button" class="btn btn-xs btn-light" data-add-sample-photos><i class="bi bi-magic me-1"></i>افزودن تصاویر نمونه</button>
+          </div>
+        </div>
+
+        ${productImages.length > 0 ? `
+          <!-- Main Carousel Display -->
+          <div class="position-relative rounded-3 border overflow-hidden d-flex align-items-center justify-content-center" style="background: var(--nv-surface); min-height: 270px; height: 270px;">
+            <img src="${escapeHtml(currentImg.url)}" alt="${escapeHtml(currentImg.name)}" style="max-height: 240px; max-width: 90%; object-fit: contain; transition: transform 0.3s ease;">
+            
+            ${isMulti ? `
+              <button type="button" class="btn btn-sm btn-dark rounded-circle position-absolute start-0 top-50 translate-middle-y ms-2 shadow-sm" data-carousel-prev title="تصویر قبلی" style="width:34px; height:34px; display:grid; place-items:center; z-index:2;">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-dark rounded-circle position-absolute end-0 top-50 translate-middle-y me-2 shadow-sm" data-carousel-next title="تصویر بعدی" style="width:34px; height:34px; display:grid; place-items:center; z-index:2;">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 badge bg-dark bg-opacity-75 rounded-pill px-3 py-1" style="font-size:11px; z-index:2;">
+                تصویر ${toDigits(currentImageIndex + 1)} از ${toDigits(productImages.length)}
+              </div>
+            ` : ''}
+
+            <!-- Image Actions Overlay -->
+            <div class="position-absolute top-0 end-0 m-2 d-flex gap-1" style="z-index:2;">
+              ${currentImg.isCover ? `
+                <span class="badge bg-primary shadow-sm"><i class="bi bi-star-fill me-1"></i>کاور اصلی</span>
+              ` : `
+                <button type="button" class="btn btn-xs btn-light shadow-sm" data-set-cover="${currentImg.id}" title="انتخاب به عنوان کاور">
+                  <i class="bi bi-star me-1"></i>کاور اصلی شود
+                </button>
+              `}
+              <button type="button" class="btn btn-xs btn-danger shadow-sm" data-delete-img="${currentImg.id}" title="حذف این تصویر">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Thumbnails Row -->
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="small fw-bold">تصاویر آپلودشده (${toDigits(productImages.length)} عکس):</span>
+              <span class="text-muted" style="font-size: 11px;">برای مشاهده در اسلایدر کلیک کنید</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 overflow-auto py-1">
+              ${productImages.map((img, idx) => `
+                <div class="position-relative rounded-2 border ${idx === currentImageIndex ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'}" data-thumb-idx="${idx}" style="width: 58px; height: 58px; flex-shrink: 0; cursor: pointer; padding: 2px; background: var(--nv-surface); transition: all 0.2s ease;">
+                  <img src="${escapeHtml(img.url)}" alt="" style="width: 100%; height: 100%; object-fit: contain;">
+                  ${img.isCover ? '<span class="position-absolute top-0 start-0 badge bg-primary p-0 d-flex align-items-center justify-content-center" style="width:16px; height:16px; font-size: 9px; border-radius: 4px;"><i class="bi bi-check"></i></span>' : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>`
+    );
+  };
+
+  renderGalleryUi();
+
+  // Gallery Events
+  on(galleryContainer, 'click', (e) => {
+    // Browse trigger
+    if (e.target.closest('[data-btn-browse]') || e.target.closest('[data-dropzone]')) {
+      const fileInput = $('[data-file-input]', galleryContainer);
+      if (fileInput && !e.target.closest('button')) fileInput.click();
+      else if (e.target.closest('[data-btn-browse]')) fileInput?.click();
+    }
+
+    // Add sample photos
+    if (e.target.closest('[data-add-sample-photos]')) {
+      const samples = [
+        { id: `img-${Date.now()}-1`, url: 'assets/img/products/product-01.svg', name: 'تصویر نمونه ۱ (کاور)', isCover: productImages.length === 0 },
+        { id: `img-${Date.now()}-2`, url: 'assets/img/products/product-02.svg', name: 'تصویر نمونه ۲', isCover: false },
+        { id: `img-${Date.now()}-3`, url: 'assets/img/products/product-03.svg', name: 'تصویر نمونه ۳', isCover: false },
+        { id: `img-${Date.now()}-4`, url: 'assets/img/products/product-04.svg', name: 'تصویر نمونه ۴', isCover: false },
+      ];
+      productImages = [...productImages, ...samples];
+      toast.success('تصاویر نمونه افزوده شد', `${samples.length} تصویر با موفقیت به اسلایدر اضافه گردید.`);
+      renderGalleryUi();
+      return;
+    }
+
+    // Prev / Next carousel
+    if (e.target.closest('[data-carousel-prev]')) {
+      currentImageIndex = (currentImageIndex - 1 + productImages.length) % productImages.length;
+      renderGalleryUi();
+      return;
+    }
+    if (e.target.closest('[data-carousel-next]')) {
+      currentImageIndex = (currentImageIndex + 1) % productImages.length;
+      renderGalleryUi();
+      return;
+    }
+
+    // Select thumbnail
+    const thumbEl = e.target.closest('[data-thumb-idx]');
+    if (thumbEl) {
+      currentImageIndex = Number(thumbEl.dataset.thumbIdx);
+      renderGalleryUi();
+      return;
+    }
+
+    // Set cover
+    const setCoverBtn = e.target.closest('[data-set-cover]');
+    if (setCoverBtn) {
+      const imgId = setCoverBtn.dataset.setCover;
+      productImages.forEach((img) => {
+        img.isCover = img.id === imgId;
+      });
+      toast.success('کاور اصلی انتخاب شد', 'این تصویر به عنوان کاور پیش‌فرض محصول تنظیم شد.');
+      renderGalleryUi();
+      return;
+    }
+
+    // Delete image
+    const delBtn = e.target.closest('[data-delete-img]');
+    if (delBtn) {
+      const imgId = delBtn.dataset.deleteImg;
+      productImages = productImages.filter((img) => img.id !== imgId);
+      if (productImages.length > 0 && !productImages.some((i) => i.isCover)) {
+        productImages[0].isCover = true;
+      }
+      currentImageIndex = Math.max(0, Math.min(currentImageIndex, productImages.length - 1));
+      toast.info('تصویر حذف شد', 'تصویر از گالری محصول برداشته شد.');
+      renderGalleryUi();
+      return;
+    }
+  });
+
+  // File upload change handler
+  on(galleryContainer, 'change', (e) => {
+    const fileInput = e.target.closest('[data-file-input]');
+    if (!fileInput || !fileInput.files.length) return;
+    const files = Array.from(fileInput.files);
+    files.forEach((file, index) => {
+      const url = URL.createObjectURL(file);
+      productImages.push({
+        id: `img-${Date.now()}-${index}`,
+        url,
+        name: file.name,
+        isCover: productImages.length === 0 && index === 0,
+      });
+    });
+    toast.success('آپلود موفق', `${files.length} تصویر جدید بارگذاری شد.`);
+    currentImageIndex = productImages.length - 1;
+    renderGalleryUi();
+  });
+
+  // Form Submission
   const form = $('[data-product-form]', node);
   on(form, 'submit', async (event) => {
     event.preventDefault();
@@ -363,9 +792,11 @@ async function ecommerceProductForm() {
     button.classList.add('is-loading');
     try {
       const payload = collectValues(form);
+      payload.images = productImages;
+      payload.image = (productImages.find((i) => i.isCover) || productImages[0])?.url || 'assets/img/products/product-01.svg';
       if (id) await services.productService.update(id, payload);
       else await services.productService.create(payload);
-      toast.success('ذخیره شد', 'فهرست محصولات به‌روزرسانی شد.');
+      toast.success('ذخیره شد', 'محصول و گالری تصاویر با موفقیت در سیستم ثبت گردید.');
       setTimeout(() => goTo('ecommerce/products.html'), 900);
     } finally {
       button.classList.remove('is-loading');
@@ -666,6 +1097,162 @@ async function initFinance() {
           initCharts(target);
           exportable(target, 'transactions');
         },
+      });
+      return;
+    }
+
+    case 'finance/invoices.html': {
+      const node = host();
+      const { items } = await services.invoiceService.list({ perPage: 100 });
+      const totalAmount = items.reduce((sum, inv) => sum + (inv.total ?? 0), 0);
+      const paidAmount = items.filter((inv) => inv.status === 'paid').reduce((sum, inv) => sum + (inv.paid ?? inv.total ?? 0), 0);
+      const overdueAmount = items.filter((inv) => inv.status === 'overdue').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
+      const pendingAmount = items.filter((inv) => inv.status === 'pending').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
+
+      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+      const invoicedSeries = [1850, 2120, 2480, 2310, 2890, 3240, 3050, 3620, 3940, 3780, 4320, 4850];
+      const collectedSeries = [1680, 1940, 2290, 2180, 2690, 3080, 2920, 3450, 3760, 3610, 4150, 4690];
+      const chartTrendSeries = JSON.stringify([
+        { name: 'مبالغ صادرشده (میلیون تومان)', data: invoicedSeries },
+        { name: 'مبالغ وصول‌شده نقدی (میلیون تومان)', data: collectedSeries },
+      ]);
+
+      const paidCount = items.filter((inv) => inv.status === 'paid').length || 18;
+      const pendingCount = items.filter((inv) => inv.status === 'pending').length || 8;
+      const overdueCount = items.filter((inv) => inv.status === 'overdue').length || 5;
+      const draftCount = items.filter((inv) => inv.status === 'draft' || inv.status === 'cancelled').length || 3;
+      const statusDonutSeries = JSON.stringify([paidCount, pendingCount, overdueCount, draftCount]);
+      const statusDonutLabels = JSON.stringify(['تسویه‌شده (پرداخت)', 'در انتظار پرداخت', 'سررسید گذشته (معوق)', 'پیش‌نویس و لغوشده']);
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'مدیریت و صدور فاکتورها',
+            subtitle: 'سامانه یکپارچه حسابداری اسناد، پایش جریان وصول مطالبات و گزارش تحلیلی سررسیدها',
+            icon: 'file-earmark-spreadsheet',
+            actions: `<a class="btn btn-primary" href="finance/invoice-create.html"><i class="bi bi-plus-lg me-1"></i>صدور فاکتور جدید</a>
+              <button class="btn btn-light" type="button" data-export-invoices><i class="bi bi-file-earmark-excel me-1"></i>خروجی اکسل</button>`,
+          })}
+          <div class="stat-grid mb-4">
+            <article class="stat-card stat-card--primary">
+              <span class="stat-card__icon"><i class="bi bi-receipt"></i></span>
+              <p class="stat-card__label">کل صورتحساب‌ها</p>
+              <p class="stat-card__value">${formatCurrency(totalAmount, 'IRR')}</p>
+              <p class="stat-card__meta text-success"><i class="bi bi-arrow-up-right"></i> +۱۴٫۵٪ نسبت به دوره قبل</p>
+            </article>
+            <article class="stat-card stat-card--success">
+              <span class="stat-card__icon"><i class="bi bi-check-circle"></i></span>
+              <p class="stat-card__label">وصول‌شده (تسویه کامل)</p>
+              <p class="stat-card__value">${formatCurrency(paidAmount, 'IRR')}</p>
+              <p class="stat-card__meta text-success"><i class="bi bi-shield-check"></i> نرخ وصول ۹۲٫۴٪</p>
+            </article>
+            <article class="stat-card stat-card--danger">
+              <span class="stat-card__icon"><i class="bi bi-exclamation-octagon"></i></span>
+              <p class="stat-card__label">معوق و سررسید گذشته</p>
+              <p class="stat-card__value">${formatCurrency(overdueAmount, 'IRR')}</p>
+              <p class="stat-card__meta text-danger"><i class="bi bi-clock-history"></i> ${toDigits(overdueCount)} فاکتور نیازمند پیگیری</p>
+            </article>
+            <article class="stat-card stat-card--warning">
+              <span class="stat-card__icon"><i class="bi bi-hourglass-split"></i></span>
+              <p class="stat-card__label">در انتظار پرداخت</p>
+              <p class="stat-card__value">${formatCurrency(pendingAmount, 'IRR')}</p>
+              <p class="stat-card__meta text-muted">مهلت تسویه تا انتهای ماه جاری</p>
+            </article>
+          </div>
+          <div class="widget-grid mb-4">
+            <section class="card" data-span="8">
+              <header class="card__head">
+                <div>
+                  <h2 class="card__title">روند ماهانه صدور و وصول فاکتورها (۱۲ ماهه)</h2>
+                  <p class="card__subtitle">مقایسه مبالغ اسناد مالی صادره در برابر دریافتی‌های نقدی محقق‌شده به تفکیک ماه</p>
+                </div>
+                <div class="card__actions">
+                  <span class="badge badge--soft-primary">سال مالی جاری</span>
+                </div>
+              </header>
+              <div class="card__body">
+                <div class="chart" data-chart="area" data-chart-height="310" data-chart-series='${chartTrendSeries}' data-chart-labels='${JSON.stringify(months)}'></div>
+              </div>
+            </section>
+            <section class="card" data-span="4">
+              <header class="card__head">
+                <div>
+                  <h2 class="card__title">توزیع وضعیت پرداخت فاکتورها</h2>
+                  <p class="card__subtitle">سهم ریالی و تعداد اسناد مالی بر اساس شرایط تسویه</p>
+                </div>
+              </header>
+              <div class="card__body">
+                <div class="chart" data-chart="donut" data-chart-height="310" data-chart-series='${statusDonutSeries}' data-chart-labels='${statusDonutLabels}'></div>
+              </div>
+            </section>
+          </div>
+          <div class="card">
+            <div class="card__head d-flex justify-content-between align-items-center">
+              <div>
+                <h2 class="card__title">فهرست آخرین فاکتورهای صادره</h2>
+                <p class="card__subtitle">فهرست بلادرنگ اسناد با امکان مشاهده، چاپ و تغییر وضعیت تسویه</p>
+              </div>
+            </div>
+            <div class="card__body p-0">
+              <div class="table-wrap">
+                <table class="table table--hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>شماره فاکتور</th>
+                      <th>مشتری / طرف‌حساب</th>
+                      <th>تاریخ صدور</th>
+                      <th>سررسید</th>
+                      <th>مبلغ فاکتور</th>
+                      <th>وضعیت</th>
+                      <th class="text-end">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${items.slice(0, 10).map((inv) => `
+                      <tr>
+                        <td>
+                          <a href="finance/invoice-details.html?id=${encodeURIComponent(inv.id)}" class="fw-semibold text-primary text-decoration-none">
+                            <i class="bi bi-file-earmark-text me-1"></i>${escapeHtml(inv.number)}
+                          </a>
+                        </td>
+                        <td>
+                          <div class="d-flex align-items-center gap-2">
+                            <img src="${escapeHtml(inv.avatar || 'assets/img/avatars/avatar-01.svg')}" class="rounded-circle" width="30" height="30" alt="">
+                            <div>
+                              <div class="fw-semibold">${escapeHtml(inv.customer)}</div>
+                              <small class="text-muted">${escapeHtml(inv.email || '')}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>${formatDate(inv.issuedAt, { format: 'medium' })}</td>
+                        <td>${formatDate(inv.dueAt, { format: 'medium' })}</td>
+                        <td class="fw-bold numeric">${formatCurrency(inv.total, 'IRR')}</td>
+                        <td>
+                          <span class="badge badge--soft-${inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : inv.status === 'pending' ? 'warning' : 'secondary'}">
+                            ${escapeHtml(inv.statusLabel ?? (inv.status === 'paid' ? 'پرداخت‌شده' : inv.status === 'overdue' ? 'سررسید گذشته' : 'در انتظار پرداخت'))}
+                          </span>
+                        </td>
+                        <td class="text-end">
+                          <a class="btn btn-sm btn-light" href="finance/invoice-details.html?id=${encodeURIComponent(inv.id)}" title="مشاهده جزئیات">
+                            <i class="bi bi-eye"></i>
+                          </a>
+                          <button class="btn btn-sm btn-light" type="button" onclick="window.print()" title="چاپ">
+                            <i class="bi bi-printer"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>`,
+      );
+      initCharts(node);
+      on($('[data-export-invoices]', node), 'click', () => {
+        toast.success('دریافت گزارش', 'فایل اکسل فاکتورهای مالی در حال بارگیری است.');
       });
       return;
     }
@@ -1512,44 +2099,336 @@ async function initHr() {
       const id = queryParam('id');
       const node = host();
       const employee = (await loadRecord('employees', id)) ?? (await services.employeeService.list({ perPage: 1 })).items[0];
+      const skills = employee.skills?.length ? employee.skills : ['React', 'Node.js', 'Docker', 'TypeScript', 'مدیریت پروژه'];
+      const perfScore = Number(employee.performance || 4.7).toFixed(1);
+      const leaveDays = employee.leaveBalance ?? 16;
+      const attRate = employee.attendanceRate ?? 97.2;
+
       render(
         node,
         `<div class="dashboard-shell">
-          ${pageHeader({ title: employee.name, subtitle: `${employee.position ?? ''} • ${employee.department ?? ''}`, icon: 'person-vcard' })}
-          <div class="grid grid--sidebar">
-            ${card({
-              body: `<div class="profile-head"><img class="profile-head__avatar" src="${escapeHtml(employee.avatar)}" alt="">
-                <div class="profile-head__meta"><h2 class="profile-head__name">${escapeHtml(employee.name)}</h2><p class="profile-head__role">${escapeHtml(employee.position ?? '')}</p>
-                <div class="badge-dot-list">${statusBadge(employee.statusLabel ?? employee.status ?? 'فعال', 'success')}${statusBadge(employee.type ?? 'تمام‌وقت', 'info')}</div></div>
-                <div class="ms-auto d-flex gap-2"><button class="btn btn-light" type="button" data-message><i class="bi bi-envelope"></i> پیام</button><a class="btn btn-primary" href="hr/employees.html">فهرست کارکنان</a></div></div>
-              ${infoRows([
-                ['کد پرسنلی', employee.code ?? employee.id],
-                ['دپارتمان', employee.department ?? '—'],
-                ['مدیر مستقیم', employee.manager ?? '—'],
-                ['ایمیل', employee.email ?? '—'],
-                ['تلفن', employee.phone ?? '—'],
-                ['تاریخ استخدام', formatDate(employee.hiredAt, { format: 'long' })],
-                ['محل کار', employee.location ?? 'تهران'],
-                ['عملکرد', `${toDigits(employee.performance ?? 0)} از ۵`],
-              ])}`,
-            })}
-            <div class="stack">
-              ${card({ title: 'خلاصه عملکرد', body: `<div class="chart" data-chart="radialBar" data-chart-height="240" data-chart-series='${JSON.stringify([Math.round(((employee.performance ?? 4) / 5) * 100)])}' data-chart-labels='["امتیاز عملکرد"]'></div>` })}
-              ${card({ title: 'سابقه فعالیت', body: timeline([
-                { title: 'ارتقای شغلی', text: 'از کارشناس به کارشناس ارشد', time: '۴ ماه پیش', tone: 'success', icon: 'arrow-up-circle' },
-                { title: 'دوره آموزشی', text: 'مدیریت پروژه چابک', time: '۶ ماه پیش', tone: 'info', icon: 'mortarboard' },
-                { title: 'پیوستن به تیم', text: employee.department ?? '', time: formatDate(employee.hiredAt, { format: 'medium' }), tone: 'primary', icon: 'person-plus' },
-              ], { compact: true }) })}
+          ${pageHeader({
+            title: `پروفایل پرسنلی: ${escapeHtml(employee.name)}`,
+            subtitle: `${escapeHtml(employee.position ?? 'کارشناس ارشد')} • دپارتمان ${escapeHtml(employee.department ?? 'فناوری اطلاعات')}`,
+            icon: 'person-vcard',
+            actions: `<div class="d-flex gap-2">
+              <a class="btn btn-light" href="hr/employees.html"><i class="bi bi-arrow-right me-1"></i>فهرست کارکنان</a>
+              <button class="btn btn-primary" type="button" data-message><i class="bi bi-chat-dots me-1"></i>ارسال پیام مستقیم</button>
+            </div>`
+          })}
+
+          <!-- Executive Employee Hero Card -->
+          <div class="card mb-4 overflow-hidden border-0 shadow-sm" style="background: linear-gradient(135deg, var(--nv-surface) 0%, var(--nv-surface-2) 100%);">
+            <div style="height: 90px; background: linear-gradient(90deg, rgba(var(--nv-primary-rgb), 0.75), #06b6d4, #6366f1); position: relative;">
+              <span class="badge bg-dark bg-opacity-50 text-white position-absolute top-0 end-0 m-3 px-3 py-1 rounded-pill" style="font-size:11px;">
+                <i class="bi bi-building me-1"></i>دفتر مرکزی نووا
+              </span>
+            </div>
+            <div class="card__body p-4 pt-0">
+              <div class="d-flex flex-wrap align-items-end justify-content-between gap-3" style="margin-top: -45px;">
+                <div class="d-flex align-items-end gap-3 flex-wrap">
+                  <div class="position-relative">
+                    <img src="${escapeHtml(employee.avatar)}" alt="${escapeHtml(employee.name)}" class="rounded-circle border border-4 border-white shadow" style="width: 90px; height: 90px; object-fit: cover; background: var(--nv-surface);">
+                    <span class="position-absolute bottom-0 end-0 p-2 bg-success border border-2 border-white rounded-circle" title="حاضر در محل کار"></span>
+                  </div>
+                  <div class="pb-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <h2 class="h4 fw-bold m-0 text-heading">${escapeHtml(employee.name)}</h2>
+                      <span class="badge badge--soft-primary font-monospace">${escapeHtml(employee.code || 'EMP-1024')}</span>
+                      <span class="badge badge--soft-${employee.status === 'active' ? 'success' : 'warning'}">${employee.status === 'active' ? 'مشغول به کار' : 'در مرخصی'}</span>
+                    </div>
+                    <p class="text-muted m-0 mt-1 small">
+                      <i class="bi bi-briefcase me-1"></i>${escapeHtml(employee.position ?? 'متخصص توسعه نرم‌افزار')} • 
+                      <i class="bi bi-diagram-3 me-1"></i>${escapeHtml(employee.department ?? 'فناوری اطلاعات')} • 
+                      <i class="bi bi-geo-alt me-1"></i>${escapeHtml(employee.city ?? 'تهران')}
+                    </p>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 pb-1">
+                  <button class="btn btn-sm btn-outline-primary" type="button" data-award-btn><i class="bi bi-award me-1"></i>ثبت تشویقی / ارتقا</button>
+                  <button class="btn btn-sm btn-light" type="button" data-export-profile><i class="bi bi-printer me-1"></i>حکم کارگزینی</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI Metric Strip -->
+          <div class="stat-grid mb-4">
+            <article class="stat-card stat-card--primary">
+              <span class="stat-card__icon"><i class="bi bi-star-fill text-warning"></i></span>
+              <p class="stat-card__label">امتیاز عملکرد ۳۶۰ درجه</p>
+              <p class="stat-card__value numeric">${toDigits(perfScore)} <small class="fs-6 text-muted">از ۵٫۰</small></p>
+              <p class="stat-card__meta text-success"><i class="bi bi-patch-check-fill me-1"></i>سطح عملکرد: عالی و فراتر از انتظار</p>
+            </article>
+
+            <article class="stat-card stat-card--success">
+              <span class="stat-card__icon"><i class="bi bi-calendar2-check"></i></span>
+              <p class="stat-card__label">مرخصی استحقاقی باقی‌مانده</p>
+              <p class="stat-card__value numeric">${toDigits(leaveDays)} <small class="fs-6 text-muted">روز کاری</small></p>
+              <p class="stat-card__meta text-muted">از مجموع ۲۶ روز سهمیه سالانه</p>
+            </article>
+
+            <article class="stat-card stat-card--info">
+              <span class="stat-card__icon"><i class="bi bi-clock-history"></i></span>
+              <p class="stat-card__label">نرخ انضباط و حضور کاری</p>
+              <p class="stat-card__value numeric">${toDigits(attRate)}٪</p>
+              <p class="stat-card__meta text-info"><i class="bi bi-shield-check me-1"></i>ثبت دقیق با تردد بیومتریک</p>
+            </article>
+
+            <article class="stat-card stat-card--warning">
+              <span class="stat-card__icon"><i class="bi bi-cash-stack"></i></span>
+              <p class="stat-card__label">حقوق و مزایای ناخالص</p>
+              <p class="stat-card__value numeric">${formatCurrency(employee.salary || 345000000, 'IRR')}</p>
+              <p class="stat-card__meta text-success"><i class="bi bi-plus-circle me-1"></i>پاداش عملکرد: ${formatCurrency(employee.bonus || 12000000, 'IRR')}</p>
+            </article>
+          </div>
+
+          <!-- Tabbed Profile Navigation -->
+          <div class="card">
+            <div class="card__head p-2 px-3 border-bottom">
+              <ul class="nav nav-pills gap-1" data-profile-tabs role="tablist">
+                <li class="nav-item">
+                  <button class="nav-link active btn-sm" type="button" data-tab-target="overview"><i class="bi bi-person-lines-fill me-1"></i>اطلاعات فردی و قرارداد</button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link btn-sm" type="button" data-tab-target="timeline"><i class="bi bi-bezier2 me-1"></i>مسیر شغلی و سوابق ارتقا</button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link btn-sm" type="button" data-tab-target="payroll"><i class="bi bi-receipt me-1"></i>فیش حقوق و مزایا</button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link btn-sm" type="button" data-tab-target="attendance"><i class="bi bi-calendar3 me-1"></i>تردد و مرخصی‌ها</button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card__body p-4">
+              <!-- Tab 1: Overview & Contract -->
+              <div data-tab-panel="overview">
+                <div class="row g-4">
+                  <div class="col-lg-7">
+                    <h5 class="fw-bold fs-6 mb-3"><i class="bi bi-info-circle text-primary me-1"></i> مشخصات سازمانی و اطلاعات تماس</h5>
+                    <div class="table-wrap">
+                      <table class="table table-borderless table-sm mb-0">
+                        <tbody>
+                          <tr><th style="width: 35%; color: var(--nv-text-muted);">کد پرسنلی:</th><td class="fw-bold font-monospace">${escapeHtml(employee.code || 'EMP-1024')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">دپارتمان سازمانی:</th><td class="fw-semibold">${escapeHtml(employee.department ?? 'فناوری اطلاعات')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">تیم تخصصی:</th><td>${escapeHtml(employee.team ?? 'تیم توسعه محصول اصلی')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">مدیر مستقیم (سرپرست):</th><td class="fw-semibold">${escapeHtml(employee.manager ?? 'مهندس حسینی')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">تاریخ استخدام رسمی:</th><td class="numeric">${formatDate(employee.hiredAt, { format: 'long' })}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">نوع همکاری:</th><td><span class="badge badge--soft-primary">${escapeHtml(employee.type ?? 'تمام‌وقت')}</span> ${employee.remote ? '<span class="badge badge--soft-info ms-1">دورکاری</span>' : ''}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">پست الکترونیکی سازمانی:</th><td><a href="mailto:${escapeHtml(employee.email)}" class="text-primary">${escapeHtml(employee.email)}</a></td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">شماره تماس همراه:</th><td class="numeric">${escapeHtml(employee.phone ?? '۰۹۱۲۳۴۵۶۷۸۹')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">محل خدمت و سکونت:</th><td>${escapeHtml(employee.city ?? 'تهران')}، دفتر مرکزی</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top">
+                      <h6 class="fw-bold small mb-2"><i class="bi bi-tools text-primary me-1"></i> مهارت‌های تخصصی و فنی:</h6>
+                      <div class="d-flex flex-wrap gap-2">
+                        ${skills.map((s) => `<span class="badge bg-surface-2 text-heading border px-3 py-2 rounded-pill"><i class="bi bi-check2 text-success me-1"></i>${escapeHtml(s)}</span>`).join('')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-lg-5">
+                    <div class="p-3 rounded-3 border" style="background: var(--nv-surface-2);">
+                      <h6 class="fw-bold small mb-3"><i class="bi bi-shield-check text-primary me-1"></i> جزئیات بیمه و قرارداد کار</h6>
+                      <div class="stack gap-2 small">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">شماره بیمه تأمین اجتماعی:</span>
+                          <span class="fw-bold numeric">۴۲۸۹۱۷۶۰</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">نوع قرارداد:</span>
+                          <span class="fw-semibold">یک‌ساله معتبر</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">شماره حساب شبا:</span>
+                          <span class="font-monospace" style="font-size:11px;">IR12-0170-0000-0012-3456-7890</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-muted">پایان اعتبار قرارداد:</span>
+                          <span class="fw-semibold text-success">۲۹ اسفند ۱۴۰۵</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-3">
+                      <h6 class="fw-bold small mb-2"><i class="bi bi-graph-up-arrow text-primary me-1"></i> نمودار ارزیابی شایستگی</h6>
+                      <div class="chart" data-chart="radialBar" data-chart-height="220" data-chart-series='[${Math.round((perfScore / 5) * 100)}]' data-chart-labels='["امتیاز شایستگی"]'></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: Career Timeline -->
+              <div data-tab-panel="timeline" hidden>
+                <div class="timeline p-2">
+                  <div class="timeline__item">
+                    <span class="timeline__marker timeline__marker--success"><i class="bi bi-arrow-up-circle"></i></span>
+                    <div class="timeline__content">
+                      <h6 class="timeline__title fw-bold">ارتقای رتبه شغلی به ${escapeHtml(employee.position ?? 'کارشناس ارشد')}</h6>
+                      <p class="timeline__text text-muted">به دلیل عملکرد درخشان در تحویل به‌موقع پروژه‌های فصلی و رهبری موفق تیم فنی.</p>
+                      <span class="timeline__time text-primary fw-semibold">۳ ماه پیش</span>
+                    </div>
+                  </div>
+                  <div class="timeline__item">
+                    <span class="timeline__marker timeline__marker--info"><i class="bi bi-mortarboard"></i></span>
+                    <div class="timeline__content">
+                      <h6 class="timeline__title fw-bold">گذراندن دوره تخصصی معماری ابری و میکروسرویس</h6>
+                      <p class="timeline__text text-muted">اخذ مدرک رسمی بین‌المللی با نمره عالی ۹۸ از ۱۰۰.</p>
+                      <span class="timeline__time text-muted">۷ ماه پیش</span>
+                    </div>
+                  </div>
+                  <div class="timeline__item">
+                    <span class="timeline__marker timeline__marker--warning"><i class="bi bi-star"></i></span>
+                    <div class="timeline__content">
+                      <h6 class="timeline__title fw-bold">انتخاب به عنوان کارمند نمونه فصل پاییز</h6>
+                      <p class="timeline__text text-muted">اهدای پاداش نقدی و تقدیرنامه رسمی از سوی مدیرعامل مجموعه.</p>
+                      <span class="timeline__time text-muted">۱۰ ماه پیش</span>
+                    </div>
+                  </div>
+                  <div class="timeline__item">
+                    <span class="timeline__marker timeline__marker--primary"><i class="bi bi-person-check"></i></span>
+                    <div class="timeline__content">
+                      <h6 class="timeline__title fw-bold">آغاز رسمی همکاری در سازمان نووا</h6>
+                      <p class="timeline__text text-muted">پیوستن به دپارتمان ${escapeHtml(employee.department ?? 'فناوری اطلاعات')} پس از گذراندن موفق دوره آزمایشی ۳ ماهه.</p>
+                      <span class="timeline__time text-muted">${formatDate(employee.hiredAt, { format: 'medium' })}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 3: Payroll Summary -->
+              <div data-tab-panel="payroll" hidden>
+                <div class="table-wrap">
+                  <table class="table table--hover">
+                    <thead>
+                      <tr>
+                        <th>شرح ردیف حقوقی</th>
+                        <th>مبلغ استحقاقی</th>
+                        <th>کسورات قانونی</th>
+                        <th>خالص پرداختی</th>
+                        <th>وضعیت تسویه</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>حقوق پایه ماه جاری</strong></td>
+                        <td class="numeric">${formatCurrency(employee.salary || 320000000, 'IRR')}</td>
+                        <td class="numeric text-danger">—</td>
+                        <td class="numeric fw-bold text-success">${formatCurrency(employee.salary || 320000000, 'IRR')}</td>
+                        <td><span class="badge badge--soft-success">تسویه شده</span></td>
+                      </tr>
+                      <tr>
+                        <td>حق مسکن و خواربار</td>
+                        <td class="numeric">${formatCurrency(24000000, 'IRR')}</td>
+                        <td class="numeric text-danger">—</td>
+                        <td class="numeric">${formatCurrency(24000000, 'IRR')}</td>
+                        <td><span class="badge badge--soft-success">تسویه شده</span></td>
+                      </tr>
+                      <tr>
+                        <td>پاداش ارزیابی عملکرد و نوآوری</td>
+                        <td class="numeric">${formatCurrency(employee.bonus || 12000000, 'IRR')}</td>
+                        <td class="numeric text-danger">—</td>
+                        <td class="numeric">${formatCurrency(employee.bonus || 12000000, 'IRR')}</td>
+                        <td><span class="badge badge--soft-success">تسویه شده</span></td>
+                      </tr>
+                      <tr>
+                        <td>کسورات بیمه سهم کارمند (۷٪)</td>
+                        <td class="numeric text-muted">—</td>
+                        <td class="numeric text-danger">${formatCurrency(22400000, 'IRR')}</td>
+                        <td class="numeric text-danger">-${formatCurrency(22400000, 'IRR')}</td>
+                        <td><span class="badge badge--soft-info">واریز به تأمین اجتماعی</span></td>
+                      </tr>
+                      <tr>
+                        <td>کسورات مالیات بر حقوق</td>
+                        <td class="numeric text-muted">—</td>
+                        <td class="numeric text-danger">${formatCurrency(18500000, 'IRR')}</td>
+                        <td class="numeric text-danger">-${formatCurrency(18500000, 'IRR')}</td>
+                        <td><span class="badge badge--soft-info">واریز به دارایی</span></td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="border-top-2">
+                      <tr class="fw-bold">
+                        <td>جمع نهایی واریزی به حساب:</td>
+                        <td colspan="2"></td>
+                        <td class="numeric fs-6 text-primary">${formatCurrency((employee.salary || 320000000) + 24000000 + (employee.bonus || 12000000) - 22400000 - 18500000, 'IRR')}</td>
+                        <td><span class="badge bg-success">واریز موفق به بانک</span></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Tab 4: Attendance & Leaves -->
+              <div data-tab-panel="attendance" hidden>
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <div class="card p-3 bg-surface-2 border">
+                      <h6 class="fw-bold mb-3"><i class="bi bi-clock-history text-primary me-1"></i> خلاصه کارکرد ماه جاری</h6>
+                      <div class="stack gap-2 small">
+                        <div class="d-flex justify-content-between"><span>ساعات کار موظف:</span><strong class="numeric">۱۷۶ ساعت</strong></div>
+                        <div class="d-flex justify-content-between"><span>ساعات کارکرد واقعی:</span><strong class="numeric text-success">۱۸۴ ساعت</strong></div>
+                        <div class="d-flex justify-content-between"><span>اضافه‌کاری تأییدشده:</span><strong class="numeric text-primary">+۸ ساعت</strong></div>
+                        <div class="d-flex justify-content-between"><span>روزهای دورکاری:</span><strong class="numeric">۶ روز</strong></div>
+                        <div class="d-flex justify-content-between"><span>تأخیر در ورود:</span><strong class="numeric text-success">۰ دقیقه (منضبط)</strong></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="card p-3 bg-surface-2 border">
+                      <h6 class="fw-bold mb-3"><i class="bi bi-calendar2-x text-primary me-1"></i> وضعیت مرخصی‌های سال جاری</h6>
+                      <div class="stack gap-2 small">
+                        <div class="d-flex justify-content-between"><span>کل سهمیه استحقاقی سال:</span><strong class="numeric">۲۶ روز</strong></div>
+                        <div class="d-flex justify-content-between"><span>مرخصی استفاده‌شده:</span><strong class="numeric">۱۰ روز</strong></div>
+                        <div class="d-flex justify-content-between"><span>مرخصی باقی‌مانده:</span><strong class="numeric text-success">${toDigits(leaveDays)} روز</strong></div>
+                        <div class="d-flex justify-content-between"><span>مرخصی استعلاجی:</span><strong class="numeric">۰ روز</strong></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>`,
       );
+
       initCharts(node);
+
+      // Interactive Tab Switching
+      on(node, 'click', (e) => {
+        const tabBtn = e.target.closest('[data-tab-target]');
+        if (!tabBtn) return;
+        const target = tabBtn.dataset.tabTarget;
+        $$('[data-tab-target]', node).forEach((btn) => btn.classList.toggle('active', btn === tabBtn));
+        $$('[data-tab-panel]', node).forEach((panel) => {
+          panel.hidden = panel.dataset.tabPanel !== target;
+        });
+      });
+
       on($('[data-message]', node), 'click', () =>
-        modal.prompt({ title: 'ارسال پیام', label: 'متن پیام', placeholder: 'پیام شما…' }).then((value) => {
-          if (value) toast.success('پیام ارسال شد', 'پیام در صندوق ارسالی ثبت شد.');
+        modal.prompt({ title: `ارسال پیام مستقیم به ${employee.name}`, label: 'متن پیام یا یادداشت اداری', placeholder: 'پیام خود را بنویسید…' }).then((value) => {
+          if (value) toast.success('پیام ارسال شد', `پیام شما با موفقیت برای ${employee.name} ارسال شد.`);
         }),
       );
+
+      on($('[data-award-btn]', node), 'click', () => {
+        modal.confirm({
+          title: 'ثبت تشویقی پرسنلی',
+          text: `آیا مایل به ثبت ارتقا و تقدیرنامه رسمی برای ${employee.name} در پرونده پرسنلی هستید؟`,
+          confirmText: 'ثبت تشویقی'
+        }).then((ok) => {
+          if (ok) toast.success('ارتقا ثبت شد', 'حکم تشویقی در سوابق کارمند ذخیره گردید.');
+        });
+      });
+
+      on($('[data-export-profile]', node), 'click', () => {
+        window.print();
+      });
+
       return;
     }
 
@@ -1626,215 +2505,671 @@ async function initLogistics() {
       const node = host();
       const [mapData, performance, shipments, routesData, driversData] = await Promise.all([
         services.trackingService.map().catch(() => ({ markers: [] })),
-        services.trackingService.performance().catch(() => ({ onTime: 94.6, delayed: 3, inTransit: 18, delivered: 86 })),
-        services.shipmentService.list({ perPage: 10 }).catch(() => ({ items: [] })),
+        services.trackingService.performance().catch(() => ({ onTime: 95.8, delayed: 2, inTransit: 24, delivered: 112 })),
+        services.shipmentService.list({ perPage: 12 }).catch(() => ({ items: [] })),
         (services.logisticsService?.routes?.() ?? kit.services?.routeService?.list?.({ perPage: 20 }) ?? Promise.resolve({ items: [] })).catch(() => ({ items: [] })),
         (services.logisticsService?.drivers?.() ?? kit.services?.driverService?.list?.({ perPage: 10 }) ?? Promise.resolve({ items: [] })).catch(() => ({ items: [] })),
       ]);
-      const markers = mapData.markers ?? mapData ?? [];
-      const shipItems = shipments.items ?? shipments ?? [];
-      const routes = routesData.items ?? routesData ?? [];
-      const drivers = driversData.items ?? driversData ?? [];
 
-      // Iran map city positions (percentage based for responsive)
-      const cityPos = {
-        'تهران': { x: 44, y: 28, tone: 'primary' },
-        'اصفهان': { x: 47, y: 48, tone: 'info' },
-        'مشهد': { x: 78, y: 30, tone: 'success' },
-        'شیراز': { x: 52, y: 70, tone: 'warning' },
-        'تبریز': { x: 22, y: 18, tone: 'primary' },
-        'بندرعباس': { x: 62, y: 88, tone: 'danger' },
-        'کرج': { x: 42, y: 26, tone: 'primary' },
-        'اهواز': { x: 28, y: 62, tone: 'info' },
+      const IRAN_HUBS = {
+        'تهران': { lat: 35.6892, lng: 51.3890, hub: 'هاب پردازش مرکزی کلان‌پایتخت', color: 'var(--nv-primary)', count: 48 },
+        'اصفهان': { lat: 32.6546, lng: 51.6680, hub: 'هاب توزیع مرکز کشور و صنایع فولاد', color: '#06b6d4', count: 32 },
+        'مشهد': { lat: 36.2972, lng: 59.6067, hub: 'هاب شمال‌شرق، ترانزیت آسیای میانه', color: '#10b981', count: 41 },
+        'شیراز': { lat: 29.5918, lng: 52.5837, hub: 'هاب ترانزیت و لجستیک جنوب کشور', color: '#f59e0b', count: 28 },
+        'تبریز': { lat: 38.0800, lng: 46.2919, hub: 'پایانه ترانزیت غرب کشور و بازرگان', color: 'var(--nv-primary)', count: 36 },
+        'بندرعباس': { lat: 27.1832, lng: 56.2666, hub: 'مجتمع عظیم بندری شهید رجایی', color: '#ef4444', count: 52 },
+        'اهواز': { lat: 31.3183, lng: 48.6706, hub: 'پایانه صادراتی جنوب‌غرب و پتروشیمی', color: '#06b6d4', count: 24 },
+        'رشت': { lat: 37.2809, lng: 49.5924, hub: 'پایانه صادراتی خزر و بندر انزلی', color: '#10b981', count: 22 },
+        'کرج': { lat: 35.8327, lng: 50.9915, hub: 'پایانه ترانزیت البرز و شهرک‌های صنعتی', color: 'var(--nv-primary)', count: 30 },
+        'یزد': { lat: 31.8974, lng: 54.3569, hub: 'هاب انبارداری کویر و مرکز ترانزیت', color: '#06b6d4', count: 18 },
+        'کرمان': { lat: 30.2839, lng: 57.0788, hub: 'پایانه باربری و توزیع جنوب‌شرق', color: '#f59e0b', count: 21 },
+        'زاهدان': { lat: 29.4963, lng: 60.8629, hub: 'هاب ترانزیت کریدور شرق و پاکستان', color: '#f59e0b', count: 15 },
+        'چابهار': { lat: 25.2919, lng: 60.6430, hub: 'بندر استراتژیک اقیانوسی چابهار', color: 'var(--nv-primary)', count: 27 },
       };
 
-      const getPos = (label) => {
-        if (cityPos[label]) return cityPos[label];
-        // fallback from markers if lat/lng available
-        const m = markers.find(mm => (mm.label||'').includes(label));
-        if (m && m.lat && m.lng) {
-          // rough Iran lat 25-40, lng 44-62 => map to 0-100
-          const y = ((40 - m.lat) / 15) * 80 + 10;
-          const x = ((m.lng - 44) / 18) * 80 + 10;
-          return { x, y, tone: m.tone || 'primary' };
-        }
-        return { x: 50, y: 50, tone: 'primary' };
-      };
-
-      const routeDefs = [
-        { id: 'r1', from: 'تهران', to: 'اصفهان', status: 'active', trucks: 2 },
-        { id: 'r2', from: 'تهران', to: 'مشهد', status: 'active', trucks: 1 },
-        { id: 'r3', from: 'تهران', to: 'تبریز', status: 'active', trucks: 1 },
-        { id: 'r4', from: 'اصفهان', to: 'شیراز', status: 'active', trucks: 2 },
-        { id: 'r5', from: 'مشهد', to: 'بندرعباس', status: 'delayed', trucks: 1 },
-        { id: 'r6', from: 'تهران', to: 'اهواز', status: 'active', trucks: 1 },
+      const vehicles = [
+        { id: 'NVX-101', code: 'TRK-9821', driver: 'حسین رضایی', phone: '۰۹۱۲۳۴۵۶۷۸۹', avatar: safeAvatar(1), model: 'ولوو FH500 مدل ۲۰۲۳', plate: '۶۸ ع ۹۲۴ - ایران ۱۱', from: 'تهران', to: 'اصفهان', speed: 88, maxSpeed: 110, temp: '+۴°C', fuel: 84, cargo: 'تجهیزات الکترونیک و سرور', weight: '۱۸٫۲ تن', progress: 45, status: 'active', eta: '۲ ساعت و ۱۵ دقیقه' },
+        { id: 'NVX-102', code: 'TRK-4819', driver: 'سعید کرمی', phone: '۰۹۱۸۴۴۵۵۶۶۷', avatar: safeAvatar(2), model: 'اسکانیا R450 مدل ۲۰۲۴', plate: '۲۲ ج ۳۱۵ - ایران ۳۳', from: 'تهران', to: 'مشهد', speed: 94, maxSpeed: 110, temp: '-۱۸°C', fuel: 68, cargo: 'محصولات منجمد دارویی', weight: '۱۴٫۵ تن', progress: 68, status: 'active', eta: '۳ ساعت و ۴۰ دقیقه' },
+        { id: 'NVX-103', code: 'TRK-7720', driver: 'علیرضا داوودی', phone: '۰۹۳۵۱۲۳۴۵۶۷', avatar: safeAvatar(3), model: 'مرسدس آکتروس ۱۸۴۴', plate: '۵۵ ب ۷۱۲ - ایران ۲۱', from: 'تبریز', to: 'تهران', speed: 82, maxSpeed: 100, temp: '+۱۸°C', fuel: 79, cargo: 'قطعات خودرو و صنعتی', weight: '۲۲٫۱ تن', progress: 54, status: 'active', eta: '۱ ساعت و ۵۰ دقیقه' },
+        { id: 'NVX-104', code: 'TRK-3104', driver: 'مجید صادقی', phone: '۰۹۱۲۹۸۷۶۵۴۳', avatar: safeAvatar(4), model: 'رنو تی ۴۸۰ اوپتیکروز', plate: '۱۴ د ۸۶۳ - ایران ۴۴', from: 'اصفهان', to: 'شیراز', speed: 91, maxSpeed: 110, temp: '+۲°C', fuel: 55, cargo: 'مواد اولیه غذایی', weight: '۱۹٫۰ تن', progress: 82, status: 'active', eta: '۴۵ دقیقه' },
+        { id: 'NVX-105', code: 'TRK-6612', driver: 'کامران مرادی', phone: '۰۹۱۹۳۳۴۴۵۵۶', avatar: safeAvatar(5), model: 'مان TGX 18.480', plate: '۳۱ ص ۴۵۱ - ایران ۶۸', from: 'مشهد', to: 'بندرعباس', speed: 45, maxSpeed: 100, temp: '+۲۴°C', fuel: 38, cargo: 'صادرات فرش و خشکبار', weight: '۱۶٫۸ تن', progress: 35, status: 'delayed', eta: '۶ ساعت و ۱۵ دقیقه (تأخیر جاده‌ای)' },
+        { id: 'NVX-106', code: 'TRK-2291', driver: 'بهزاد حسینی', phone: '۰۹۳۶۷۷۸۸۹۹۰', avatar: safeAvatar(6), model: 'داف XF 480 سوپر اسپیس', plate: '۷۷ ط ۵۲۹ - ایران ۲۲', from: 'تهران', to: 'اهواز', speed: 86, maxSpeed: 105, temp: '+۵°C', fuel: 72, cargo: 'لوازم خانگی هوشمند', weight: '۱۳٫۴ تن', progress: 28, status: 'active', eta: '۵ ساعت و ۲۰ دقیقه' },
+        { id: 'NVX-107', code: 'TRK-8815', driver: 'فرهاد طاهری', phone: '۰۹۱۵۴۴۳۳۲۲۱', avatar: safeAvatar(7), model: 'ایسوزو ۶ تن توربو دیزل', plate: '۸۹ ق ۶۱۴ - ایران ۱۲', from: 'تهران', to: 'رشت', speed: 78, maxSpeed: 95, temp: '+۱۵°C', fuel: 88, cargo: 'بسته‌های پستی پیشتاز', weight: '۴٫۸ تن', progress: 75, status: 'active', eta: '۵۵ دقیقه' },
+        { id: 'NVX-108', code: 'TRK-5540', driver: 'پیمان انصاری', phone: '۰۹۱۷۱۱۱۲۲۳۳', avatar: safeAvatar(8), model: 'ولوو FM 460', plate: '۴۲ ی ۹۸۱ - ایران ۶۳', from: 'یزد', to: 'کرمان', speed: 90, maxSpeed: 110, temp: '+۲۲°C', fuel: 64, cargo: 'کاشی و سرامیک صنعتی', weight: '۲۳٫۵ تن', progress: 61, status: 'active', eta: '۱ ساعت و ۳۰ دقیقه' },
       ];
 
-      const routeSvg = routeDefs.map(r => {
-        const a = getPos(r.from);
-        const b = getPos(r.to);
-        const mx = (a.x + b.x)/2;
-        const my = (a.y + b.y)/2 - 6;
-        return `<path class="logi-map__route ${r.status==='delayed'?'logi-map__route--delayed': r.status==='active'?'logi-map__route--active':''}" d="M ${a.x*10} ${a.y*5.2} Q ${mx*10} ${my*5.2} ${b.x*10} ${b.y*5.2}" />`;
-      }).join('');
-
-      const markersHtml = Object.entries(cityPos).slice(0,6).map(([name, p]) => {
-        return `<div class="logi-marker" style="left:${p.x}%; top:${p.y}%;" data-city="${escapeHtml(name)}">
-          <div class="logi-marker__pin logi-marker__pin--${p.tone}"><i class="bi bi-geo-alt-fill"></i></div>
-          <div class="logi-marker__label">${escapeHtml(name)} <small>${markers.find(mm=>mm.label===name)?.value ?? (Math.floor(Math.random()*60+20))}</small></div>
-        </div>`;
-      }).join('');
-
-      const trucksHtml = routeDefs.flatMap((r, ri) => {
-        const a = getPos(r.from);
-        const b = getPos(r.to);
-        return Array.from({length: r.trucks}).map((_, ti) => {
-          const offset = (ti*18 + 12 + ri*7) % 78 + 10;
-          const x = a.x + (b.x - a.x) * (offset/100);
-          const y = a.y + (b.y - a.y) * (offset/100);
-          const tone = r.status==='delayed' ? 'delayed' : (offset>85 ? 'delivered' : '');
-          return `<div class="logi-map__truck ${tone ? 'logi-map__truck--'+tone : ''}" data-route="${r.id}" data-progress="${offset}" style="left:${x}%; top:${y}%;"><i class="bi bi-truck"></i></div>`;
-        });
-      }).join('');
-
-      const perf = performance || { onTime: 94.6, delayed: 3, inTransit: 18, delivered: 86 };
+      const tickerItems = [
+        `کامیون NVX-101 با سرعت ${toDigits(88)} کیلومتر بر ساعت به محدوده مورچه‌خورت اصفهان نزدیک شد.`,
+        `محموله یخچالی NVX-102: دمای کانتینر در شرایط استاندارد (-۱۸°C) تثبیت شد.`,
+        `تحویل موفق محموله NVX-104 در انبار مرکزی شیراز به سیستم لجستیک ثبت گردید.`,
+        `هشدار آب‌وهوا: گرد و غبار در محور طبس به مشهد، سامانه ناوبری به راننده NVX-105 اعلام کرد.`,
+        `ناوگان ترانزیتی NVX-103 از عوارضی قزوین-کرج با موفقیت عبور کرد.`,
+        `پایش مصرف سوخت: میانگین مصرف کل ناوگان در ۲۴ ساعت گذشته ۲۸٫۴ لیتر در ۱۰۰ کیلومتر ثبت شد.`,
+      ];
 
       render(
         node,
         `<div class="logi-pro">
-          ${pageHeader({ title: 'ردیابی زنده محموله‌ها', subtitle: 'نقشه تعاملی ایران • موقعیت لحظه‌ای ناوگان و عملکرد تحویل', icon: 'geo-alt', actions: toolButtons({ exportResource: 'shipments' }) })}
-          <div class="kpi-row grid grid--4">
-            ${statCard({ label: 'تحویل به‌موقع', value: formatPercent(perf.onTime ?? 94.6, {decimals:1}), hint: 'نسبت به دیروز ۲.۴٪ رشد', tone: 'success', icon: 'clock-history', trend: '+2.4%' })}
-            ${statCard({ label: 'تأخیری', value: toDigits(perf.delayed ?? 3), hint: 'نیاز به پیگیری', tone: 'warning', icon: 'alarm', trend: '-1' })}
-            ${statCard({ label: 'در مسیر', value: toDigits(perf.inTransit ?? 18), hint: 'فعال در جاده', tone: 'info', icon: 'truck', trend: '+3' })}
-            ${statCard({ label: 'تحویل امروز', value: toDigits(perf.delivered ?? 86), hint: 'از ۱۲۴ مرسوله', tone: 'primary', icon: 'box-seam', trend: '+12%' })}
+          ${pageHeader({
+            title: 'مرکز ردیابی زنده و دیسپچ ناوگان',
+            subtitle: 'سامانه نظارت ماهواره‌ای بلادرنگ GPS بر بستر نقشه جغرافیایی • پایش تله‌متری، کریدورهای حمل و نقل و محموله‌ها',
+            icon: 'geo-alt-fill',
+            actions: `<div class="d-flex gap-2"><button class="btn btn-light" type="button" data-refresh-fleet><i class="bi bi-arrow-repeat me-1"></i>به‌روزرسانی داده‌ها</button><button class="btn btn-primary" type="button" data-dispatch-new><i class="bi bi-plus-lg me-1"></i>اعزام ناوگان جدید</button></div>`,
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'تحویل به‌موقع (SLA)', value: '۹۵٫۸٪', hint: '۲٫۴٪ بالاتر از شاخص استاندارد', tone: 'success', icon: 'shield-check', trend: '+۲٫۴٪' })}
+            ${statCard({ label: 'ناوگان فعال در مسیر', value: toDigits(vehicles.length), hint: '۸ کامیون ترانزیت سنگین', tone: 'primary', icon: 'truck', trend: '+۳' })}
+            ${statCard({ label: 'هشدار و تأخیر جاده‌ای', value: toDigits(vehicles.filter((v) => v.status === 'delayed').length), hint: '۱ خودرو نیازمند بررسی مسیر', tone: 'warning', icon: 'exclamation-triangle', trend: '-۱' })}
+            ${statCard({ label: 'کل مرسوله‌های امروز', value: '۱,۴۲۰', hint: 'از سراسر ۱۳ هاب استانی کشور', tone: 'info', icon: 'box-seam', trend: '+۱۸٪' })}
           </div>
 
-          <div class="grid" style="grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr); gap: 24px; align-items: start;">
-            <div class="card logi-map-card">
-              <div class="card__head" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+          <div class="grid" style="grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 24px; align-items: start;">
+            <div class="card logi-map-card overflow-hidden">
+              <div class="card__head" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                  <span class="tile tile--soft tile--icon tile--soft-primary"><i class="bi bi-map"></i></span>
-                  <div><h3 class="card__title" style="margin:0; font-size:14px;">نقشه زنده ناوگان — ایران</h3><p style="margin:0; font-size:11px; color:var(--nv-text-muted);">به‌روزرسانی هر ۱۵ ثانیه • ${toDigits(markers.length || 6)} نقطه فعال</p></div>
+                  <span class="tile tile--soft tile--icon tile--soft-primary" style="width:40px;height:40px;"><i class="bi bi-broadcast-pin" style="color:var(--nv-primary);font-size:1.25rem;"></i></span>
+                  <div>
+                    <h3 class="card__title" style="margin:0; font-size:15px; font-weight:800;">نقشه ماهواره‌ای و زنده ناوبری ایران</h3>
+                    <p style="margin:0; font-size:11px; color:var(--nv-text-muted);">پایش بلادرنگ هاب‌های ترانزیتی و خودروها • نقشه تعاملی با کنترل کامل</p>
+                  </div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                  <button class="btn btn-light btn-sm" data-map-filter="all">همه</button>
-                  <button class="btn btn-soft-primary btn-sm" data-map-filter="active">فعال</button>
-                  <button class="btn btn-soft-warning btn-sm" data-map-filter="delayed">تأخیری</button>
+                  <button class="btn btn-primary btn-sm" data-filter="all">همه (${toDigits(vehicles.length)})</button>
+                  <button class="btn btn-light btn-sm" data-filter="active">در حرکت (${toDigits(vehicles.filter((v) => v.status === 'active').length)})</button>
+                  <button class="btn btn-light btn-sm" data-filter="delayed">دارای هشدار (${toDigits(vehicles.filter((v) => v.status === 'delayed').length)})</button>
+                  <button class="btn btn-outline-secondary btn-sm" data-fit-iran title="دید کامل نقشه ایران"><i class="bi bi-aspect-ratio me-1"></i>کل کشور</button>
                 </div>
               </div>
-              <div class="card__body" style="padding:0;">
-                <div class="logi-map" data-logi-map>
-                  <div class="logi-map__grid"></div>
-                  <svg class="logi-map__routes" viewBox="0 0 1000 520" preserveAspectRatio="none">${routeSvg}</svg>
-                  ${markersHtml}
-                  ${trucksHtml}
-                  <div class="logi-map__controls">
-                    <button class="logi-map__ctrl" data-map-zoom="in"><i class="bi bi-zoom-in"></i></button>
-                    <button class="logi-map__ctrl" data-map-zoom="out"><i class="bi bi-zoom-out"></i></button>
-                    <button class="logi-map__ctrl" data-map-layers><i class="bi bi-layers"></i></button>
-                    <button class="logi-map__ctrl" data-map-locate style="background:var(--nv-primary); color:#fff; border-color:var(--nv-primary);"><i class="bi bi-crosshair"></i></button>
-                  </div>
-                  <div class="logi-map__legend">
-                    <span><i style="background:var(--nv-primary)"></i> در مسیر</span>
-                    <span><i style="background:var(--nv-success)"></i> تحویل شده</span>
-                    <span><i style="background:var(--nv-warning)"></i> تأخیری</span>
-                    <span><i style="background:var(--nv-info)"></i> انبار</span>
-                  </div>
+
+              <div class="card__body p-0 position-relative">
+                <div id="logistics-leaflet-map" style="height: 560px; width: 100%; position: relative; z-index: 1;"></div>
+                
+                <div class="logi-map__ticker" style="z-index: 1000;">
+                  <div class="logi-map__ticker-live"><i class="bi bi-record-circle text-danger"></i> رصد زنده:</div>
+                  <div class="logi-map__ticker-text" data-dispatch-ticker>${tickerItems[0]}</div>
+                  <span class="badge badge--soft-primary" style="font-size:10px;">GPS Active</span>
                 </div>
               </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:16px;">
-              ${card({ title: 'محموله‌های در حال حرکت', actions: `<span class="badge badge--soft-primary">${toDigits(shipItems.length)} فعال</span>`, flush: true, body: `<div style="max-height: 380px; overflow:auto; padding:8px; display:flex; flex-direction:column; gap:8px;">${shipItems.slice(0,6).map((shipment) => {
-                const tone = shipment.status === 'delayed' ? 'danger' : shipment.status === 'delivered' ? 'success' : shipment.status === 'in-transit' || shipment.status === 'out-for-delivery' ? 'primary' : 'info';
-                const progress = shipment.progress ?? Math.floor(Math.random()*60+20);
-                return `<div class="logi-shipment-card" data-shipment="${escapeHtml(shipment.id)}">
-                  <div class="logi-shipment-card__icon logi-shipment-card__icon--${tone}"><i class="bi bi-box-seam"></i></div>
-                  <div class="logi-shipment-card__body">
-                    <div class="logi-shipment-card__title">${escapeHtml(shipment.tracking)} • ${escapeHtml(shipment.destination ?? '')}</div>
-                    <div class="logi-shipment-card__sub"><span class="badge badge--soft-${tone}" style="font-size:10px;">${escapeHtml(shipment.statusLabel ?? shipment.status)}</span> ${escapeHtml(shipment.driver ?? '')} • ${relativeTime(shipment.eta ?? shipment.updatedAt)}</div>
-                    <div class="progress progress--sm" style="margin-top:8px; height:4px;"><div class="progress-bar" style="width:${progress}%"></div></div>
+              <div class="card" style="border-radius:18px;">
+                <div class="card__head" style="padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">ناوگان فعال در جاده</h3>
+                    <p class="card__subtitle" style="margin:0; font-size:11px;">برای فوکوس روی نقشه و تله‌متری کلیک کنید</p>
                   </div>
-                  <div class="logi-shipment-card__progress"><span class="numeric" style="font-size:11px; font-weight:800;">${toDigits(progress)}%</span></div>
-                </div>`;
-              }).join('')}${shipItems.length===0?`<div class="empty-state" style="padding:20px; text-align:center; color:var(--nv-text-muted);">محموله فعالی یافت نشد</div>`:''}</div>` })}
-
-              ${card({ title: 'عملکرد ناوگان', body: `
-                <div style="display:flex; flex-direction:column; gap:16px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px; font-weight:600;">رانندگان فعال</span><span class="badge badge--soft-success">${toDigits(drivers.length || 12)} نفر</span></div>
-                  <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;">
-                    ${(drivers.slice(0,5).length ? drivers.slice(0,5) : Array.from({length:5}).map((_,i)=>({name: 'راننده '+(i+1), avatar: 'assets/img/avatars/avatar-0'+(i+1)+'.svg', status: 'on-route'}))).map(d => `
-                      <div style="flex:0 0 auto; text-align:center;">
-                        <img src="${escapeHtml(d.avatar || 'assets/img/avatars/avatar-01.svg')}" style="width:44px; height:44px; border-radius:14px; border:2px solid var(--nv-border);">
-                        <div style="font-size:10px; font-weight:700; margin-top:4px; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(d.name||'راننده')}</div>
-                        <span class="status-dot status-dot--${d.status==='on-route'?'success':'warning'}" style="margin-top:2px;"></span>
-                      </div>
-                    `).join('')}
-                  </div>
-                  <div class="progress-group" style="display:flex; flex-direction:column; gap:10px;">
-                    <div><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;"><span>ظرفیت ناوگان</span><span class="numeric">78%</span></div><div class="progress progress--sm"><div class="progress-bar" style="width:78%"></div></div></div>
-                    <div><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;"><span>میانگین تحویل</span><span class="numeric">2.4 روز</span></div><div class="progress progress--sm"><div class="progress-bar" style="width:92%; background:var(--nv-success)"></div></div></div>
-                  </div>
+                  <span class="badge badge--soft-success rounded-pill">${toDigits(vehicles.length)} کامیون</span>
                 </div>
-              ` })}
+                <div class="card__body" style="padding:12px; max-height:480px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+                  ${vehicles.map((v) => `
+                    <div class="logi-shipment-card" data-truck-card="${v.id}" style="padding:12px; border-radius:14px; border:1px solid var(--nv-border); background:var(--nv-surface-2); cursor:pointer; transition: all 0.2s ease;">
+                      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-weight:800; font-size:13px; color:var(--nv-heading); display:flex; align-items:center; gap:6px;">
+                          <i class="bi bi-truck" style="color:${v.status === 'delayed' ? 'var(--nv-warning)' : 'var(--nv-primary)'};"></i> ${v.id}
+                        </span>
+                        <span class="badge badge--soft-${v.status === 'delayed' ? 'warning' : 'success'}" style="font-size:10px;">${v.status === 'delayed' ? 'تأخیر' : 'عادی'}</span>
+                      </div>
+                      <div style="font-size:11px; color:var(--nv-text-muted); display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span>${v.from} ← ${v.to}</span>
+                        <span class="numeric" style="font-weight:700; color:var(--nv-primary);">${toDigits(v.speed)} km/h</span>
+                      </div>
+                      <div class="progress progress--sm" style="height:6px; border-radius:999px;">
+                        <div class="progress-bar ${v.status === 'delayed' ? 'bg-warning' : ''}" style="width:${v.progress}%"></div>
+                      </div>
+                      <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--nv-text-muted); margin-top:6px;">
+                        <span>راننده: ${v.driver}</span>
+                        <span>ETA: ${v.eta}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="grid grid--3">
-            ${card({ title: 'مسیرهای پرتردد', flush: true, body: `<table class="table table--hover"><thead><tr><th>مسیر</th><th>مرسوله</th><th>وضعیت</th><th>هزینه</th></tr></thead><tbody>${(routes.length ? routes : [{name:'تهران → اصفهان', shipments:12, status:'active', cost:18400000},{name:'تهران → مشهد', shipments:8, status:'active', cost:32600000},{name:'اصفهان → شیراز', shipments:9, status:'active', cost:19800000}]).slice(0,4).map(r=>`<tr><td style="font-weight:600; font-size:12px;">${escapeHtml(r.name||r.id)}</td><td class="numeric">${toDigits(r.shipments||0)}</td><td>${statusBadge(r.status==='active'?'فعال': r.status==='delayed'?'تأخیری':'برنامه‌ریزی', r.status==='active'?'success': r.status==='delayed'?'warning':'info')}</td><td class="numeric" style="font-size:11px;">${formatCurrency(r.cost||0,'IRR',{compact:true})}</td></tr>`).join('')}</tbody></table>` })}
-            ${card({ title: 'هشدارهای زنده', flush: true, body: `<ul class="list-group">${[
-              {icon:'alarm', tone:'warning', text:'تأخیر در مسیر مشهد → بندرعباس', time:'۲ دقیقه پیش'},
-              {icon:'fuel-pump', tone:'info', text:'نیاز به سوخت‌گیری ناوگان ۰۴', time:'۱۵ دقیقه پیش'},
-              {icon:'check-circle', tone:'success', text:'تحویل موفق NVX-482193 به شیراز', time:'۳۲ دقیقه پیش'},
-              {icon:'geo', tone:'danger', text:'خروج از مسیر مجاز - راننده ۱۲', time:'۱ ساعت پیش'},
-            ].map(a=>`<li class="list-item"><span class="tile tile--soft tile--icon tile--soft-${a.tone}"><i class="bi bi-${a.icon}"></i></span><span class="list-item__title" style="font-size:12px;">${a.text}<span class="list-item__sub">${a.time}</span></span></li>`).join('')}</ul>` })}
-            ${card({ title: 'آمار تحویل هفتگی', body: `<div style="height:160px;" data-chart="delivery-weekly">${chartBox({type:'line', height:160})}</div><div style="display:flex; gap:12px; margin-top:12px; font-size:11px; color:var(--nv-text-muted);"><span style="display:flex; align-items:center; gap:4px;"><i style="width:8px; height:8px; border-radius:50%; background:var(--nv-primary); display:inline-block;"></i> تحویل شده</span><span style="display:flex; align-items:center; gap:4px;"><i style="width:8px; height:8px; border-radius:50%; background:var(--nv-warning); display:inline-block;"></i> تأخیری</span></div>` })}
+          <div class="grid grid--3 mt-4">
+            ${card({
+              title: 'توزیع بار و کریدورهای ترانزیتی کلیدی',
+              flush: true,
+              body: `<div class="table-responsive"><table class="table table--hover">
+                <thead><tr><th>مسیر ترانزیتی</th><th>ناوگان</th><th>میانگین سرعت</th><th>وضعیت جاده</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:700;">تهران ↔ اصفهان (کریدور مرکزی)</td><td class="numeric">۸ دستگاه</td><td class="numeric">۹۲ km/h</td><td><span class="badge badge--soft-success">ترافیک روان</span></td></tr>
+                  <tr><td style="font-weight:700;">تهران ↔ مشهد (کریدور شرق)</td><td class="numeric">۶ دستگاه</td><td class="numeric">۸۶ km/h</td><td><span class="badge badge--soft-success">دید افقی خوب</span></td></tr>
+                  <tr><td style="font-weight:700;">تبریز ↔ تهران (کریدور غرب)</td><td class="numeric">۵ دستگاه</td><td class="numeric">۸۸ km/h</td><td><span class="badge badge--soft-success">آزادراه باز</span></td></tr>
+                  <tr><td style="font-weight:700;">مشهد ↔ بندرعباس (شمال-جنوب)</td><td class="numeric">۴ دستگاه</td><td class="numeric">۷۲ km/h</td><td><span class="badge badge--soft-warning">وزش باد و گردوغبار</span></td></tr>
+                </tbody>
+              </table></div>`,
+            })}
+
+            ${card({
+              title: 'رانندگان برگزیده ناوگان',
+              flush: true,
+              body: `<div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+                ${vehicles.slice(0, 4).map((v) => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--nv-surface-2);">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="${v.avatar}" style="width:36px; height:36px; border-radius:50%; border:2px solid var(--nv-border); object-fit:cover;">
+                      <div>
+                        <div style="font-weight:700; font-size:12px;">${v.driver}</div>
+                        <div style="font-size:10px; color:var(--nv-text-muted);">${v.model}</div>
+                      </div>
+                    </div>
+                    <div style="text-align:end;">
+                      <span class="badge badge--soft-primary" style="font-size:10px;">${v.id}</span>
+                      <div style="font-size:10px; color:var(--nv-success); font-weight:700; margin-top:2px;">امتیاز ۴٫۹/۵</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>`,
+            })}
+
+            ${card({
+              title: 'رویدادهای امنیتی و سنسورهای اینترنت اشیاء (IoT)',
+              flush: true,
+              body: `<ul class="list-group list-group--flush">${[
+                { icon: 'shield-check', tone: 'success', title: 'سنسور قفل بار کانتینر NVX-101', sub: 'بدون بازشدگی در طول مسیر • وضعیت امن', time: '۵ دقیقه پیش' },
+                { icon: 'thermometer-half', tone: 'info', title: 'دماسنج سردخانه NVX-102', sub: 'دما -۱۸٫۲ درجه سانتی‌گراد • مطلوب', time: '۱۲ دقیقه پیش' },
+                { icon: 'fuel-pump', tone: 'warning', title: 'سطح سوخت NVX-105 کمتر از ۴۰٪', sub: 'نزدیک‌ترین جایگاه در کیلومتر ۶۴', time: '۲۲ دقیقه پیش' },
+                { icon: 'speedometer2', tone: 'danger', title: 'هشدار سرعت لحظه‌ای NVX-106', sub: 'سرعت ۹۸ km/h در محدوده شیب‌دار جاده', time: '۴۰ دقیقه پیش' },
+              ].map((item) => `
+                <li class="list-group__item" style="padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                  <span class="tile tile--soft tile--icon tile--soft-${item.tone}" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
+                    <i class="bi bi-${item.icon}"></i>
+                  </span>
+                  <div style="flex:1;">
+                    <div style="font-weight:700; font-size:12px; color:var(--nv-heading);">${item.title}</div>
+                    <div style="font-size:10px; color:var(--nv-text-muted);">${item.sub}</div>
+                  </div>
+                  <small style="font-size:10px; color:var(--nv-text-muted);">${item.time}</small>
+                </li>
+              `).join('')}</ul>`,
+            })}
           </div>
         </div>`,
       );
 
-      // animate trucks
-      const mapEl = $('[data-logi-map]', node);
-      if (mapEl) {
-        let raf;
-        const animate = () => {
-          $$('.logi-map__truck', mapEl).forEach(truck => {
-            let prog = parseFloat(truck.dataset.progress || '0');
-            prog = (prog + 0.08) % 100;
-            truck.dataset.progress = prog;
-            const routeId = truck.dataset.route;
-            const rd = routeDefs.find(r=>r.id===routeId);
-            if (!rd) return;
-            const a = getPos(rd.from);
-            const b = getPos(rd.to);
-            const x = a.x + (b.x - a.x) * (prog/100);
-            const y = a.y + (b.y - a.y) * (prog/100);
-            truck.style.left = x+'%';
-            truck.style.top = y+'%';
+      // Initialize Leaflet Map
+      let map = null;
+      const truckMarkersMap = new Map();
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      try {
+        const L = (await import('leaflet')).default;
+        await import('leaflet/dist/leaflet.css');
+
+        const mapContainer = $('#logistics-leaflet-map', node);
+        if (mapContainer) {
+          map = L.map(mapContainer, {
+            center: [32.4279, 53.6880],
+            zoom: 6,
+            minZoom: 5,
+            maxZoom: 14,
+            zoomControl: false,
+            attributionControl: false,
           });
-          raf = requestAnimationFrame(animate);
-        };
-        animate();
-        on(mapEl, 'mouseenter', () => cancelAnimationFrame(raf));
-        on(mapEl, 'mouseleave', () => animate());
+
+          // Add modern Map Tiles
+          const tileUrl = isDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+          L.tileLayer(tileUrl, { maxZoom: 18, subdomains: 'abcd' }).addTo(map);
+
+          // Add City Hub Markers
+          Object.entries(IRAN_HUBS).forEach(([cityName, data]) => {
+            const cityIcon = L.divIcon({
+              className: 'leaf-city-node',
+              html: `<div class="leaf-city-pin">
+                <div class="leaf-pulse" style="--pulse-color: ${data.color};"></div>
+                <div class="leaf-city-label">${cityName} (${toDigits(data.count)})</div>
+              </div>`,
+              iconSize: [120, 24],
+              iconAnchor: [8, 12],
+            });
+
+            const cityMarker = L.marker([data.lat, data.lng], { icon: cityIcon }).addTo(map);
+            cityMarker.bindPopup(`
+              <div style="text-align: right; direction: rtl; min-width: 180px;">
+                <h6 style="margin: 0 0 4px; font-weight: 800; font-size: 13px; color: var(--nv-heading);"><i class="bi bi-geo-alt-fill text-primary me-1"></i> ${cityName}</h6>
+                <p style="margin: 0 0 6px; font-size: 11px; color: var(--nv-text-muted);">${data.hub}</p>
+                <span class="badge badge--soft-primary" style="font-size: 10px;">${toDigits(data.count)} مرسوله در انبار توزیع</span>
+              </div>
+            `);
+          });
+
+          // Add Route Polylines and Truck Markers
+          vehicles.forEach((v) => {
+            const fromHub = IRAN_HUBS[v.from] || IRAN_HUBS['تهران'];
+            const toHub = IRAN_HUBS[v.to] || IRAN_HUBS['اصفهان'];
+
+            // Polyline
+            L.polyline([[fromHub.lat, fromHub.lng], [toHub.lat, toHub.lng]], {
+              color: v.status === 'delayed' ? '#f59e0b' : 'var(--nv-primary)',
+              weight: 3.5,
+              opacity: 0.65,
+              dashArray: v.status === 'delayed' ? '6, 8' : '4, 6',
+            }).addTo(map);
+
+            // Compute current interpolated vehicle position
+            const curLat = fromHub.lat + (toHub.lat - fromHub.lat) * (v.progress / 100);
+            const curLng = fromHub.lng + (toHub.lng - fromHub.lng) * (v.progress / 100);
+
+            const truckIcon = L.divIcon({
+              className: 'leaf-truck-marker',
+              html: `<div class="leaf-truck-pin ${v.status}" data-truck="${v.id}">
+                <i class="bi bi-truck"></i>
+                <span class="leaf-truck-badge">${v.id}</span>
+              </div>`,
+              iconSize: [38, 38],
+              iconAnchor: [19, 19],
+            });
+
+            const truckMarker = L.marker([curLat, curLng], { icon: truckIcon }).addTo(map);
+            truckMarker.bindPopup(`
+              <div style="text-align: right; direction: rtl; min-width: 210px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                  <strong style="font-size:13px; color:var(--nv-heading);"><i class="bi bi-truck me-1"></i> ${v.id} (${v.code})</strong>
+                  <span class="badge badge--soft-${v.status === 'delayed' ? 'warning' : 'success'}" style="font-size:10px;">${v.status === 'delayed' ? 'تأخیر' : 'در حرکت'}</span>
+                </div>
+                <div style="font-size:11px; margin-bottom: 4px;"><strong>راننده:</strong> ${v.driver}</div>
+                <div style="font-size:11px; margin-bottom: 4px;"><strong>مسیر:</strong> ${v.from} به ${v.to}</div>
+                <div style="font-size:11px; margin-bottom: 4px;"><strong>سرعت لحظه‌ای:</strong> <span class="numeric fw-bold text-primary">${toDigits(v.speed)} km/h</span></div>
+                <div style="font-size:11px; margin-bottom: 8px;"><strong>دمای بار:</strong> ${v.temp} • سوخت: ${toDigits(v.fuel)}٪</div>
+                <button type="button" class="btn btn-sm btn-primary w-100" data-open-modal="${v.id}" style="font-size:11px; padding:3px 8px;">
+                  <i class="bi bi-speedometer2 me-1"></i>مشاهده تله‌متری کامل
+                </button>
+              </div>
+            `);
+            truckMarkersMap.set(v.id, { marker: truckMarker, vehicle: v, curLat, curLng });
+          });
+
+          // Fit bounds on Iran
+          map.fitBounds([[25.0, 44.5], [39.5, 63.0]]);
+        }
+      } catch (err) {
+        console.warn('[nova:logistics] Leaflet initialization error', err);
       }
 
-      // shipment click -> toast
+      // Interactive telemetry modal for trucks
+      const openTelemetry = (vehicleId) => {
+        const v = vehicles.find((item) => item.id === vehicleId);
+        if (!v) return;
+        modal.open({
+          title: `تله‌متری زنده ناوگان — ${v.id} (${v.code})`,
+          size: 'lg',
+          content: `
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:var(--nv-surface-2); border-radius:14px; border:1px solid var(--nv-border);">
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <img src="${v.avatar}" style="width:52px; height:52px; border-radius:50%; border:3px solid var(--nv-primary); object-fit:cover;">
+                  <div>
+                    <h4 style="margin:0; font-size:15px; font-weight:800;">${v.driver}</h4>
+                    <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">${v.phone} • گواهینامه پایه یک ترانزیت بین‌المللی</p>
+                  </div>
+                </div>
+                <div style="text-align:end;">
+                  <div style="font-size:11px; color:var(--nv-text-muted);">پلاک انتظامی:</div>
+                  <span class="badge" style="font-size:13px; font-weight:800; background:var(--nv-surface); color:var(--nv-heading); border:1px solid var(--nv-border); padding:4px 10px; border-radius:6px; direction:ltr;">${v.plate}</span>
+                </div>
+              </div>
+
+              <div class="grid grid--4" style="gap:12px;">
+                <div style="padding:14px; background:var(--nv-surface-2); border-radius:12px; text-align:center; border:1px solid var(--nv-border);">
+                  <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;"><i class="bi bi-speedometer2"></i> سرعت لحظه‌ای</div>
+                  <strong class="numeric" style="font-size:20px; font-weight:900; color:var(--nv-primary);">${toDigits(v.speed)} <span style="font-size:11px;">km/h</span></strong>
+                  <div class="progress progress--sm mt-2"><div class="progress-bar" style="width:${(v.speed / v.maxSpeed) * 100}%"></div></div>
+                </div>
+                <div style="padding:14px; background:var(--nv-surface-2); border-radius:12px; text-align:center; border:1px solid var(--nv-border);">
+                  <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;"><i class="bi bi-fuel-pump"></i> سطح سوخت</div>
+                  <strong class="numeric" style="font-size:20px; font-weight:900; color:${v.fuel < 40 ? 'var(--nv-warning)' : 'var(--nv-success)'};">${toDigits(v.fuel)}٪</strong>
+                  <div class="progress progress--sm mt-2"><div class="progress-bar ${v.fuel < 40 ? 'bg-warning' : 'bg-success'}" style="width:${v.fuel}%"></div></div>
+                </div>
+                <div style="padding:14px; background:var(--nv-surface-2); border-radius:12px; text-align:center; border:1px solid var(--nv-border);">
+                  <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;"><i class="bi bi-thermometer-half"></i> دمای محفظه بار</div>
+                  <strong class="numeric" style="font-size:20px; font-weight:900; color:var(--nv-info);">${v.temp}</strong>
+                  <div style="font-size:10px; color:var(--nv-text-muted); margin-top:6px;">سنسور IoT فعال</div>
+                </div>
+                <div style="padding:14px; background:var(--nv-surface-2); border-radius:12px; text-align:center; border:1px solid var(--nv-border);">
+                  <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;"><i class="bi bi-box-seam"></i> وزن خالص بار</div>
+                  <strong class="numeric" style="font-size:20px; font-weight:900; color:var(--nv-heading);">${v.weight}</strong>
+                  <div style="font-size:10px; color:var(--nv-success); margin-top:6px;">مجاز و متوازن</div>
+                </div>
+              </div>
+
+              <div style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:14px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px;">
+                  <span><strong>مبدأ:</strong> ${v.from}</span>
+                  <span><strong>پیشرفت کل مسیر:</strong> <strong class="numeric text-primary">${toDigits(v.progress)}٪</strong></span>
+                  <span><strong>مقصد:</strong> ${v.to}</span>
+                </div>
+                <div class="progress progress--sm" style="height:8px;"><div class="progress-bar" style="width:${v.progress}%"></div></div>
+                <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--nv-text-muted);">
+                  <span>نوع محموله: <strong>${v.cargo}</strong></span>
+                  <span>زمان تخمینی تحویل (ETA): <strong style="color:var(--nv-primary);">${v.eta}</strong></span>
+                </div>
+              </div>
+            </div>
+          `,
+          footer: `
+            <div class="d-flex justify-content-between w-100">
+              <a class="btn btn-outline-primary btn-sm" href="tel:${v.phone}"><i class="bi bi-telephone me-1"></i> تماس با راننده</a>
+              <button class="btn btn-primary btn-sm" type="button" data-modal-close>تأیید و بستن</button>
+            </div>
+          `,
+        });
+      };
+
+      // Event handlers on tracking page
       on(node, 'click', (e) => {
-        const cardEl = e.target.closest('[data-shipment]');
-        if (cardEl) {
-          const id = cardEl.dataset.shipment;
-          const sh = shipItems.find(s=>s.id===id);
-          if (sh) modal.alert({ title: sh.tracking + ' — ' + (sh.destination||''), text: 'وضعیت: '+(sh.statusLabel||sh.status)+'\nراننده: '+(sh.driver||'')+'\nپیشرفت: '+(sh.progress||0)+'%', tone: 'primary' });
+        // Filter buttons
+        const filterBtn = e.target.closest('[data-filter]');
+        if (filterBtn) {
+          const filter = filterBtn.dataset.filter;
+          $$('[data-filter]', node).forEach((b) => (b.className = b === filterBtn ? 'btn btn-primary btn-sm' : 'btn btn-light btn-sm'));
+          $$('[data-truck-card]', node).forEach((card) => {
+            const v = vehicles.find((item) => item.id === card.dataset.truckCard);
+            if (!v) return;
+            card.style.display = filter === 'all' || v.status === filter ? 'block' : 'none';
+          });
+          truckMarkersMap.forEach(({ marker, vehicle }) => {
+            if (filter === 'all' || vehicle.status === filter) {
+              if (map && !map.hasLayer(marker)) marker.addTo(map);
+            } else {
+              if (map && map.hasLayer(marker)) map.removeLayer(marker);
+            }
+          });
+          return;
         }
-        const city = e.target.closest('[data-city]');
-        if (city) {
-          toast.info(city.dataset.city, 'مرسوله‌های این شهر: '+(markers.find(m=>m.label===city.dataset.city)?.value || Math.floor(Math.random()*50+10))+' مورد');
+
+        // Fit Iran Bounds
+        if (e.target.closest('[data-fit-iran]')) {
+          if (map) map.fitBounds([[25.0, 44.5], [39.5, 63.0]]);
+          return;
+        }
+
+        // Open modal from popup button
+        const openModalBtn = e.target.closest('[data-open-modal]');
+        if (openModalBtn) {
+          openTelemetry(openModalBtn.dataset.openModal);
+          return;
+        }
+
+        // Click truck card on right sidebar
+        const truckCard = e.target.closest('[data-truck-card]');
+        if (truckCard) {
+          const vId = truckCard.dataset.truckCard;
+          const entry = truckMarkersMap.get(vId);
+          if (entry && map) {
+            map.flyTo([entry.curLat, entry.curLng], 9, { duration: 1.2 });
+            entry.marker.openPopup();
+          }
+          openTelemetry(vId);
+          return;
+        }
+
+        if (e.target.closest('[data-refresh-fleet]')) {
+          toast.success('ناوگان همگام شد', 'آخرین موقعیت‌های جغرافیایی ماهواره‌ای دریافت گردید.');
+          return;
+        }
+
+        if (e.target.closest('[data-dispatch-new]')) {
+          modal.prompt({ title: 'اعزام ناوگان جدید', label: 'کد بارنامه یا شناسه کامیون', placeholder: 'مثلاً NVX-109' }).then((val) => {
+            if (val) toast.success('ناوگان اعزام شد', `کامیون با بارنامه ${val} در سامانه ردیابی فعال شد.`);
+          });
+          return;
         }
       });
 
+      // Live dispatch ticker rotation
+      let tickerIndex = 0;
+      const tickerEl = $('[data-dispatch-ticker]', node);
+      if (tickerEl) {
+        setInterval(() => {
+          tickerIndex = (tickerIndex + 1) % tickerItems.length;
+          tickerEl.style.opacity = '0';
+          setTimeout(() => {
+            tickerEl.textContent = tickerItems[tickerIndex];
+            tickerEl.style.opacity = '1';
+          }, 300);
+        }, 5000);
+      }
+
       exportable(node, 'shipments');
+      return;
+    }
+
+    case 'logistics/warehouses.html': {
+      const node = host();
+      const warehouses = [
+        { id: 'wh-1', name: 'هاب انبارداری مرکزی پایتخت', city: 'تهران - شورآباد', type: 'general', capacity: 65000, used: 57200, area: '۳۵,۰۰۰ m²', temp: '+۲۰°C', docks: 24, activeDocks: 19, manager: 'مهندس محمدرضا کریمی', phone: '۰۲۱-۵۵۲۲۱۱۰۰', avatar: safeAvatar(1), status: 'optimal', features: ['نظارت تصویری CCTV', 'بارکدینگ RFID', 'تخلیه مکانیزه', 'بیمه البرز'] },
+        { id: 'wh-2', name: 'مجتمع سردخانه‌ای فوق‌پیشرفته خاوران', city: 'تبریز - خاوران', type: 'cold', capacity: 28000, used: 20720, area: '۱۶,۰۰۰ m²', temp: '-۲۲°C', docks: 12, activeDocks: 10, manager: 'دکتر علیرضا صادقی', phone: '۰۴۱-۳۳۴۴۵۵۶۶', avatar: safeAvatar(2), status: 'optimal', features: ['کنترل برودت هوشمند', 'استاندارد GMP دارویی', 'سیستم CO2 مرکزی', 'داک ایزوله'] },
+        { id: 'wh-3', name: 'هاب مکانیزه توزیع مورچه‌خورت', city: 'اصفهان - مورچه‌خورت', type: 'general', capacity: 42000, used: 26040, area: '۲۴,۰۰۰ m²', temp: '+۲۲°C', docks: 16, activeDocks: 11, manager: 'مهندس حمیدرضا رضایی', phone: '۰۳۱-۴۵۶۶۷۷۸۸', avatar: safeAvatar(3), status: 'optimal', features: ['استاکر خودکار', 'سیستم مدیریت WMS', 'دسترسی ریلی', 'پایش ۲۴/۷'] },
+        { id: 'wh-4', name: 'پایانه بندری و انبار کانتینری شهید رجایی', city: 'بندرعباس - اسکله شهید رجایی', type: 'customs', capacity: 80000, used: 73600, area: '۴۸,۰۰۰ m²', temp: '+۲۸°C', docks: 32, activeDocks: 30, manager: 'ناخدا مسعود احمدی', phone: '۰۷۶-۳۲۲۱۱۴۴۵', avatar: safeAvatar(4), status: 'warning', features: ['انبار گمرکی ترانزیت', 'جرثقیل دروازه‌ای', 'حفاظت مرزی', 'ترخیص شبانه‌روزی'] },
+        { id: 'wh-5', name: 'مرکز لجستیک و توزیع منطقه‌ای شرق', city: 'مشهد - جاده سنتو', type: 'general', capacity: 35000, used: 20300, area: '۲۰,۰۰۰ m²', temp: '+۱۹°C', docks: 14, activeDocks: 8, manager: 'مهندس بهرام نوری', phone: '۰۵۱-۳۶۶۵۵۴۴۳', avatar: safeAvatar(5), status: 'optimal', features: ['توزیع FMCG', 'بسته‌بندی اختصاصی', 'ناوگان شهری اختصاصی', 'هاب پستی'] },
+        { id: 'wh-6', name: 'هاب باربری تخصصی شهرک صنعتی ۲', city: 'اهواز - شهرک صنعتی شماره ۲', type: 'industrial', capacity: 30000, used: 13800, area: '۱۸,۰۰۰ m²', temp: '+۲۵°C', docks: 10, activeDocks: 6, manager: 'مهندس جلال طاهری', phone: '۰۶۱-۳۴۴۳۲۲۱۱', avatar: safeAvatar(6), status: 'optimal', features: ['قطعات نفت و گاز', 'نگهداری مواد شیمیایی استاندارد', 'انبار روباز و سوله', 'بارگیر هیدرولیک'] },
+      ];
+
+      const totalCap = warehouses.reduce((sum, w) => sum + w.capacity, 0);
+      const totalUsed = warehouses.reduce((sum, w) => sum + w.used, 0);
+      const overallPercent = Math.round((totalUsed / totalCap) * 100);
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'مدیریت جامع انبارها و مراکز لجستیک',
+            subtitle: 'پایش ظرفیت، موجودی پالت‌ها، سردخانه‌ها، داک‌های بارگیری و حواله‌های ورود و خروج',
+            icon: 'building-fill',
+            actions: `
+              <div class="d-flex gap-2">
+                <button class="btn btn-light" type="button" data-inbound-receipt><i class="bi bi-box-arrow-in-down"></i> ثبت ورود کالا</button>
+                <button class="btn btn-light" type="button" data-outbound-dispatch><i class="bi bi-box-arrow-up-right"></i> حواله خروج</button>
+                <button class="btn btn-primary" type="button" data-new-warehouse><i class="bi bi-plus-lg"></i> انبار جدید</button>
+              </div>
+            `,
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل ظرفیت انبارهای کشور', value: `${toDigits(280)},۰۰۰`, hint: 'پالت استاندارد یورو', tone: 'primary', icon: 'buildings', trend: '+۱۲٪' })}
+            ${statCard({ label: 'اشغال فعال انبارها', value: `${toDigits(overallPercent)}٪`, hint: `${toDigits(Math.round(totalUsed/1000))} هزار پالت اشغال‌شده`, tone: 'success', icon: 'pie-chart', trend: '+۴٪' })}
+            ${statCard({ label: 'گردش کالا در ۲۴ ساعت', value: `${toDigits(42)},۵۰۰`, hint: 'کارتن و بسته پردازش‌شده', tone: 'info', icon: 'arrow-repeat', trend: '+۱۵٪' })}
+            ${statCard({ label: 'انبارهای دارای کنترل دما', value: '۴ انبار', hint: 'سردخانه‌های ترانزیتی فعال', tone: 'warning', icon: 'thermometer-snow', trend: 'پایدار' })}
+          </div>
+
+          <div class="card mb-4" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--nv-border);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="tile tile--soft tile--icon tile--soft-primary" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
+                  <i class="bi bi-building"></i>
+                </span>
+                <h3 class="card__title" style="margin:0; font-size:15px; font-weight:800;">شبکه هاب‌های انبارداری فعال کشور</h3>
+              </div>
+              <div class="segmented" data-wh-filter>
+                <button type="button" class="segmented__item is-active" data-wh-type="all">همه (${toDigits(warehouses.length)})</button>
+                <button type="button" class="segmented__item" data-wh-type="general">انبار استاندارد</button>
+                <button type="button" class="segmented__item" data-wh-type="cold">سردخانه‌ها</button>
+                <button type="button" class="segmented__item" data-wh-type="customs">گمرکی و بندری</button>
+              </div>
+            </div>
+
+            <div class="card__body" style="padding:20px;">
+              <div class="grid grid--3" style="gap:20px;" data-warehouses-grid>
+                ${warehouses.map(w => {
+                  const pct = Math.round((w.used / w.capacity) * 100);
+                  const isNearFull = pct >= 90;
+                  return `
+                    <div class="card" data-wh-item="${w.id}" data-type="${w.type}" style="border-radius:16px; border:1px solid ${isNearFull ? 'var(--nv-warning)' : 'var(--nv-border)'}; background:var(--nv-surface); box-shadow:var(--nv-shadow-xs);">
+                      <div class="card__head" style="padding:16px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                          <h4 style="margin:0 0 4px; font-size:14px; font-weight:800; color:var(--nv-heading);">${escapeHtml(w.name)}</h4>
+                          <span style="font-size:11px; color:var(--nv-text-muted);"><i class="bi bi-geo-alt"></i> ${escapeHtml(w.city)}</span>
+                        </div>
+                        <span class="badge badge--soft-${isNearFull ? 'warning' : 'success'}" style="font-size:10px;">${isNearFull ? 'ظرفیت رو به اتمام' : 'وضعیت بهینه'}</span>
+                      </div>
+
+                      <div class="card__body" style="padding:16px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
+                          <span style="color:var(--nv-text-muted);">میزان اشغال انبار</span>
+                          <strong class="numeric" style="font-weight:800; color:${isNearFull ? 'var(--nv-warning)' : 'var(--nv-primary)'};">${toDigits(pct)}٪</strong>
+                        </div>
+                        <div class="progress progress--sm mb-3" style="height:7px; border-radius:999px;">
+                          <div class="progress-bar ${isNearFull ? 'bg-warning' : 'bg-primary'}" style="width:${pct}%"></div>
+                        </div>
+
+                        <div class="grid grid--2 mb-3" style="gap:8px; font-size:11px;">
+                          <div style="padding:8px; background:var(--nv-surface-2); border-radius:8px;">
+                            <span style="color:var(--nv-text-muted);">ظرفیت پالت:</span>
+                            <div class="numeric" style="font-weight:700; margin-top:2px;">${toDigits(w.used)} / ${toDigits(w.capacity)}</div>
+                          </div>
+                          <div style="padding:8px; background:var(--nv-surface-2); border-radius:8px;">
+                            <span style="color:var(--nv-text-muted);">دمای انبار:</span>
+                            <div class="numeric" style="font-weight:700; margin-top:2px; color:var(--nv-info);"><i class="bi bi-thermometer-half"></i> ${w.temp}</div>
+                          </div>
+                          <div style="padding:8px; background:var(--nv-surface-2); border-radius:8px;">
+                            <span style="color:var(--nv-text-muted);">داک بارگیری:</span>
+                            <div class="numeric" style="font-weight:700; margin-top:2px;">${toDigits(w.activeDocks)} از ${toDigits(w.docks)} فعال</div>
+                          </div>
+                          <div style="padding:8px; background:var(--nv-surface-2); border-radius:8px;">
+                            <span style="color:var(--nv-text-muted);">مساحت کل:</span>
+                            <div style="font-weight:700; margin-top:2px;">${w.area}</div>
+                          </div>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:14px;">
+                          ${w.features.map(f => `<span class="badge badge--soft-primary" style="font-size:10px; font-weight:500;">${f}</span>`).join('')}
+                        </div>
+
+                        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid var(--nv-border);">
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            <img src="${w.avatar}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
+                            <span style="font-size:11px; font-weight:600; color:var(--nv-heading);">${w.manager}</span>
+                          </div>
+                          <button class="btn btn-sm btn-light" type="button" data-wh-details="${w.id}" style="font-size:11px; padding:3px 10px;">مدیریت</button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--nv-border);">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">آخرین تراکنش‌ها و حواله‌های انبارداری</h3>
+              <span class="badge badge--soft-primary rounded-pill">برخط IoT</span>
+            </div>
+            <div class="card__body" style="padding:0;">
+              <div class="table-responsive">
+                <table class="table table--hover">
+                  <thead>
+                    <tr>
+                      <th>شماره حواله / رسید</th>
+                      <th>نوع عملیات</th>
+                      <th>انبار مبدأ / مقصد</th>
+                      <th>شرح اقلام</th>
+                      <th class="text-center">تعداد پالت</th>
+                      <th>راننده و پلاک</th>
+                      <th>زمان ثبت</th>
+                      <th>وضعیت</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="numeric" style="font-weight:700;">RC-۱۰۸۴۲</td>
+                      <td><span class="badge badge--soft-success">ورود به انبار</span></td>
+                      <td>شورآباد تهران</td>
+                      <td>قطعات الکترونیکی سرور و کابل شبکه</td>
+                      <td class="text-center numeric">۴۲</td>
+                      <td>حسین رضایی (۶۸ ع ۹۲۴)</td>
+                      <td>۱۰ دقیقه پیش</td>
+                      <td><span class="badge badge--soft-success">تخلیه و بارکدگذاری شد</span></td>
+                    </tr>
+                    <tr>
+                      <td class="numeric" style="font-weight:700;">WH-۹۹۰۱۴</td>
+                      <td><span class="badge badge--soft-primary">حواله خروج</span></td>
+                      <td>سردخانه خاوران تبریز</td>
+                      <td>واکسن و سرم‌های دارویی منجمد</td>
+                      <td class="text-center numeric">۱۸</td>
+                      <td>سعید کرمی (۲۲ ج ۳۱۵)</td>
+                      <td>۳۵ دقیقه پیش</td>
+                      <td><span class="badge badge--soft-info">پلمپ و بارگیری شد</span></td>
+                    </tr>
+                    <tr>
+                      <td class="numeric" style="font-weight:700;">TR-۳۸۱۲۰</td>
+                      <td><span class="badge badge--soft-warning">انتقال بین‌انباری</span></td>
+                      <td>بندرعباس به اصفهان</td>
+                      <td>روغن موتور و تجهیزات صنعتی</td>
+                      <td class="text-center numeric">۶۰</td>
+                      <td>مجید صادقی (۱۴ د ۸۶۳)</td>
+                      <td>۱ ساعت پیش</td>
+                      <td><span class="badge badge--soft-warning">در حال بارگیری در داک ۸</span></td>
+                    </tr>
+                    <tr>
+                      <td class="numeric" style="font-weight:700;">RC-۱۰۸۳۹</td>
+                      <td><span class="badge badge--soft-success">ورود به انبار</span></td>
+                      <td>جاده سنتو مشهد</td>
+                      <td>بسته‌بندی مواد غذایی و خشکبار</td>
+                      <td class="text-center numeric">۳۴</td>
+                      <td>فرهاد طاهری (۸۹ ق ۶۱۴)</td>
+                      <td>۲ ساعت پیش</td>
+                      <td><span class="badge badge--soft-success">رسید انبار صادر شد</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>`,
+      );
+
+      // Warehouse filter interaction
+      on(node, 'click', (e) => {
+        const filterBtn = e.target.closest('[data-wh-type]');
+        if (filterBtn) {
+          const type = filterBtn.dataset.whType;
+          $$('[data-wh-type]', node).forEach(b => b.classList.toggle('is-active', b === filterBtn));
+          $$('[data-wh-item]', node).forEach(item => {
+            item.style.display = (type === 'all' || item.dataset.type === type) ? 'block' : 'none';
+          });
+        }
+        if (e.target.closest('[data-inbound-receipt]')) {
+          modal.open({
+            title: 'ثبت رسید ورود کالا به انبار (Inbound Receipt)',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">انبار مقصد</label><select class="form-select"><option>هاب انبارداری مرکزی پایتخت (شورآباد)</option><option>سردخانه خاوران تبریز</option><option>هاب مکانیزه مورچه‌خورت اصفهان</option><option>پایانه کانتینری شهید رجایی بندرعباس</option></select></div>
+                <div class="form-field"><label class="form-label">شرح محموله / کالا</label><input class="form-control" placeholder="مثال: قطعات الکترونیک سرور" required></div>
+                <div class="grid grid--2"><div class="form-field"><label class="form-label">تعداد پالت</label><input class="form-control" type="number" value="24"></div><div class="form-field"><label class="form-label">شماره بارنامه</label><input class="form-control" placeholder="BL-99201"></div></div>
+                <div class="form-field"><label class="form-label">راننده و خودرو</label><input class="form-control" placeholder="نام راننده و شماره پلاک"></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-confirm-rc>ثبت رسید انبار</button>',
+            onMount: (panel) => on($('[data-confirm-rc]', panel), 'click', () => { toast.success('رسید انبار ثبت شد', 'کد رسید RC-۱۰۸۴۳ صادر گردید.'); modal.closeTop(); }),
+          });
+        }
+        if (e.target.closest('[data-outbound-dispatch]')) {
+          modal.open({
+            title: 'صدور حواله خروج کالا (Outbound Dispatch)',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">انبار مبدأ</label><select class="form-select"><option>هاب انبارداری مرکزی پایتخت</option><option>سردخانه خاوران تبریز</option><option>هاب مکانیزه اصفهان</option></select></div>
+                <div class="form-field"><label class="form-label">مشتری / سفارش مقصد</label><input class="form-control" placeholder="نام مشتری یا شناسه سفارش ORD-..."></div>
+                <div class="grid grid--2"><div class="form-field"><label class="form-label">تعداد پالت خروجی</label><input class="form-control" type="number" value="12"></div><div class="form-field"><label class="form-label">داک بارگیری</label><select class="form-select"><option>داک شماره ۴</option><option>داک شماره ۸</option><option>داک شماره ۱۲</option></select></div></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-confirm-disp>تأیید و صدور حواله</button>',
+            onMount: (panel) => on($('[data-confirm-disp]', panel), 'click', () => { toast.success('حواله خروج صادر شد', 'مجوز خروج WH-۹۹۰۱۵ به داک بارگیری ارسال شد.'); modal.closeTop(); }),
+          });
+        }
+        if (e.target.closest('[data-new-warehouse]')) {
+          toast.info('تعریف انبار جدید', 'فرم تعریف هاب انبارداری باز شد.');
+        }
+      });
+      exportable(node, 'warehouses');
       return;
     }
 
@@ -2174,32 +3509,78 @@ async function initUsers() {
       render(
         node,
         `<div class="dashboard-shell">
-          ${pageHeader({
-            title: user.name,
-            subtitle: `${user.email} • ${user.team ?? ''}`,
-            icon: 'person-badge',
-            badges: [statusBadge(user.statusLabel ?? user.status, user.status === 'active' ? 'success' : 'warning')],
-            actions: `<button class="btn btn-light" type="button" data-reset-password><i class="bi bi-key"></i> بازنشانی گذرواژه</button>
-              <button class="btn btn-primary" type="button" data-edit-user><i class="bi bi-pencil"></i> ویرایش</button>`,
-          })}
+          <!-- User Profile Hero Header -->
+          <div class="card mb-4" style="border-radius:24px; overflow:hidden; border:1px solid var(--nv-border); box-shadow:var(--nv-shadow-sm);">
+            <div style="height:140px; background:linear-gradient(135deg, var(--nv-primary) 0%, #8b5cf6 50%, #06b6d4 100%); position:relative;">
+              <div style="position:absolute; inset:0; background:radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 60%); pointer-events:none;"></div>
+            </div>
+            <div class="card__body" style="padding:0 28px 24px; margin-top:-52px; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; position:relative;">
+              <div style="display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap;">
+                <div style="position:relative; width:96px; height:96px; border-radius:26px; padding:3px; background:linear-gradient(135deg, var(--nv-primary) 0%, #a855f7 50%, #06b6d4 100%); box-shadow:0 12px 28px -6px rgba(99,102,241,0.4); flex-shrink:0;">
+                  <img class="profile-head__avatar" src="${url(user.avatar || safeAvatar(1))}" style="width:100%; height:100%; border-radius:23px; object-fit:cover; background:var(--nv-surface); display:block; border:3px solid var(--nv-surface);" alt="${escapeHtml(user.name)}">
+                  <span style="position:absolute; bottom:-2px; left:-2px; width:18px; height:18px; border-radius:50%; background:#10b981; border:3px solid var(--nv-surface); box-shadow:0 0 0 2px rgba(16,185,129,0.3);" title="آنلاین و فعال"></span>
+                </div>
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <h1 style="margin:0; font-size:20px; font-weight:900; color:var(--nv-heading); letter-spacing:-0.02em;">${escapeHtml(user.name)}</h1>
+                    <span class="badge badge--soft-primary" style="font-size:11px; padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:4px;">
+                      <i class="bi bi-patch-check-fill text-primary" style="font-size:12px;"></i> تاییدشده
+                    </span>
+                    <span class="badge badge--soft-${user.status==='active'?'success':'warning'}" style="font-size:11px;">${statusBadge(user.statusLabel ?? user.status, user.status === 'active' ? 'success' : 'warning')}</span>
+                  </div>
+                  <p style="margin:6px 0 0; font-size:12px; color:var(--nv-text-muted); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span><i class="bi bi-shield-check text-primary"></i> ${escapeHtml(user.roleLabel ?? user.role ?? 'کاربر ارشد')}</span>
+                    <span>•</span>
+                    <span><i class="bi bi-envelope"></i> ${escapeHtml(user.email)}</span>
+                    <span>•</span>
+                    <span><i class="bi bi-people"></i> ${escapeHtml(user.team ?? 'تیم عملیات پلتفرم')}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-light btn-sm" type="button" data-reset-password style="border-radius:10px; font-weight:700;"><i class="bi bi-key"></i> بازنشانی گذرواژه</button>
+                <button class="btn btn-primary btn-sm" type="button" data-edit-user style="border-radius:10px; font-weight:700;"><i class="bi bi-pencil"></i> ویرایش پروفایل</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'پروژه‌های تحت نظارت', value: toDigits(6), hint: '۲ پروژه اسپرینت جاری', tone: 'primary', icon: 'kanban' })}
+            ${statCard({ label: 'وظایف تکمیل‌شده', value: toDigits(142), hint: '۹۸٫۶٪ نرخ موفقیت SLA', tone: 'success', icon: 'check2-all' })}
+            ${statCard({ label: 'مجوزهای دسترسی', value: toDigits(user.permissions ?? 18), hint: 'سطح دسترسی پیشرفته', tone: 'info', icon: 'shield-lock' })}
+            ${statCard({ label: 'مدت عضویت', value: '۲ سال', hint: formatDate(user.joinedAt ?? user.createdAt, { format: 'short' }), tone: 'warning', icon: 'calendar-check' })}
+          </div>
+
           <div class="grid grid--sidebar">
-            ${card({
-              body: `<div class="profile-head"><img class="profile-head__avatar" src="${escapeHtml(user.avatar)}" alt="">
-                <div class="profile-head__meta"><h2 class="profile-head__name">${escapeHtml(user.name)}</h2><p class="profile-head__role">${escapeHtml(user.roleLabel ?? user.role ?? '')}</p>
-                  <div class="badge-dot-list">${statusBadge(user.twoFactor ? 'ورود دو مرحله‌ای فعال' : 'ورود دو مرحله‌ای غیرفعال', user.twoFactor ? 'success' : 'warning')}</div></div></div>
-              ${infoRows([
-                ['شناسه کاربر', user.id],
-                ['ایمیل', user.email],
-                ['تلفن', user.phone ?? '—'],
-                ['تیم', user.team ?? '—'],
-                ['آخرین فعالیت', relativeTime(user.lastActive)],
-                ['تاریخ عضویت', formatDate(user.joinedAt ?? user.createdAt, { format: 'long' })],
-                ['دسترسی', escapeHtml(String(user.permissions ?? 12)) + ' مجوز'],
-              ])}`,
-            })}
+            <div class="card" style="border-radius:18px;">
+              <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
+                <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">اطلاعات تماس و سازمانی</h3>
+              </div>
+              <div class="card__body" style="padding:20px;">
+                ${infoRows([
+                  ['شناسه یکتای حساب', user.id],
+                  ['ایمیل سازمانی', user.email],
+                  ['شماره تماس همراه', user.phone ?? '۰۹۱۲۳۴۵۶۷۸۹'],
+                  ['تیم تخصصی', user.team ?? 'تیم هسته پلتفرم'],
+                  ['آخرین فعالیت برخط', relativeTime(user.lastActive)],
+                  ['تاریخ پیوستن به سامانه', formatDate(user.joinedAt ?? user.createdAt, { format: 'long' })],
+                  ['احراز هویت دو مرحله‌ای (2FA)', user.twoFactor ? 'فعال (پیامک و TOTP)' : 'غیرفعال'],
+                ])}
+              </div>
+            </div>
+
             <div class="stack">
-              ${card({ title: 'فعالیت‌های اخیر', body: timeline(activity.slice(0, 6).map((item) => ({ title: item.title, text: item.text, time: relativeTime(item.at), tone: item.tone ?? 'primary', icon: item.icon ?? 'activity' })), { compact: true }) })}
-              ${card({ title: 'نشست‌های فعال', flush: true, body: `<ul class="list-group" data-session-list>${kit.skeleton(2)}</ul>` })}
+              ${card({
+                title: 'تاریخچه فعالیت‌های اخیر کاربر',
+                icon: 'activity',
+                body: timeline(activity.slice(0, 6).map((item) => ({ title: item.title, text: item.text, time: relativeTime(item.at), tone: item.tone ?? 'primary', icon: item.icon ?? 'activity' })), { compact: true })
+              })}
+              ${card({
+                title: 'نشست‌های فعال و دستگاه‌های متصل',
+                icon: 'laptop',
+                flush: true,
+                body: `<ul class="list-group" data-session-list>${kit.skeleton(2)}</ul>`
+              })}
             </div>
           </div>
         </div>`,
@@ -2210,7 +3591,18 @@ async function initUsers() {
         (sessions.items ?? sessions)
           .slice(0, 4)
           .map(
-            (session) => `<li class="list-item" data-session="${escapeHtml(session.id)}"><span class="tile tile--soft tile--icon"><i class="bi bi-${session.device === 'موبایل' ? 'phone' : 'laptop'}"></i></span><span class="list-item__title">${escapeHtml(session.browser ?? '')}<span class="list-item__sub">${escapeHtml(session.location ?? '')}</span></span><span class="list-item__meta"><button class="btn btn-ghost btn-sm" type="button" data-revoke>پایان نشست</button></span></li>`,
+            (session, idx) => `<li class="list-item" data-session="${escapeHtml(session.id)}" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="tile tile--soft tile--icon tile--soft-${idx === 0 ? 'primary' : 'secondary'}" style="width:38px; height:38px; border-radius:10px; display:grid; place-items:center;">
+                  <i class="bi bi-${session.device === 'موبایل' || String(session.device).includes('iPhone') ? 'phone' : 'laptop'}"></i>
+                </span>
+                <div>
+                  <div style="font-weight:700; font-size:13px; color:var(--nv-heading);">${escapeHtml(session.browser ?? 'Google Chrome')} • ${escapeHtml(session.device ?? 'دسکتاپ')} ${idx === 0 ? '<span class="badge badge--soft-primary" style="font-size:10px; margin-inline-start:4px;">دستگاه فعلی</span>' : ''}</div>
+                  <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">نشانی IP: <span style="direction:ltr; display:inline-block; font-family:var(--nv-font-mono);">${escapeHtml(session.ip ?? '185.190.22.4')}</span> (${escapeHtml(session.location ?? 'تهران، ایران')})</div>
+                </div>
+              </div>
+              <span class="list-item__meta"><button class="btn btn-ghost btn-sm text-danger" type="button" data-revoke style="font-size:11px;">خروج دستگاه</button></span>
+            </li>`,
           )
           .join(''),
       );
@@ -2219,72 +3611,187 @@ async function initUsers() {
         if (!revoke) return;
         await services.sessionService.revoke(revoke.closest('[data-session]').dataset.session);
         revoke.closest('[data-session]').remove();
-        toast.success('نشست پایان یافت', 'دسترسی این دستگاه بسته شد.');
+        toast.success('نشست پایان یافت', 'دسترسی این دستگاه با موفقیت بسته شد.');
       });
       on($('[data-reset-password]', node), 'click', async () => {
-        const ok = await modal.confirm({ title: 'بازنشانی گذرواژه', text: 'پیوند بازنشانی برای کاربر ایمیل می‌شود.', tone: 'warning', confirmText: 'ارسال پیوند' });
-        if (ok) toast.success('پیوند ارسال شد', `ایمیل بازنشانی به ${user.email} رفت.`);
+        const ok = await modal.confirm({ title: 'بازنشانی گذرواژه کاربر', text: `یک پیوند امن ایجاد گذرواژه جدید برای «${user.email}» ارسال می‌شود.`, tone: 'warning', confirmText: 'ارسال ایمیل بازنشانی' });
+        if (ok) toast.success('پیوند ارسال شد', `ایمیل حاوی توکن بازنشانی به ${user.email} فرستاده شد.`);
       });
-      on($('[data-edit-user]', node), 'click', () => openRecordForm({ resource: 'users', id: user.id, title: 'ویرایش کاربر', fields: crudFields('users'), onSaved: () => window.location.reload() }));
+      on($('[data-edit-user]', node), 'click', () => openRecordForm({ resource: 'users', id: user.id, title: 'ویرایش مشخصات کاربر', fields: crudFields('users'), onSaved: () => window.location.reload() }));
       return;
     }
 
-    case 'users/roles.html':
+    case 'users/roles.html': {
+      const node = host();
+      const matrix = await services.roleService.matrix();
+      const rolesList = [
+        { id: 'super_admin', label: 'مدیر کل سامانه (Super Administrator)', users: 1, coverage: 100, tone: 'danger', icon: 'shield-fill-check', desc: 'دسترسی نامحدود و سطح روت به تمام ماژول‌ها، تنظیمات امنیتی، پرداخت‌ها و سرور', members: [1], capabilities: ['مدیریت دیتابیس و پشتیبان‌گیری', 'تعریف و لغو تمام نقش‌ها', 'تایید پرداخت‌ها و دسترسی به درگاه', 'مشاهده لاگ‌های جامع ممیزی'] },
+        { id: 'operations_lead', label: 'مدیر عملیات و لجستیک (Operations Lead)', users: 4, coverage: 85, tone: 'primary', icon: 'truck', desc: 'نظارت کامل بر ناوگان خودرویی، انبارها، اعزام رانندگان و رهگیری زنده محموله‌ها', members: [2, 3, 4, 5], capabilities: ['دیسپچ و اعزام رانندگان جدید', 'تخصیص ظرفیت انبارها و سردخانه‌ها', 'صدور بارنامه و حواله‌های خروج', 'مدیریت هشدارهای سنسورهای IoT'] },
+        { id: 'finance_manager', label: 'مدیر مالی و حسابداری (Finance Lead)', users: 3, coverage: 75, tone: 'success', icon: 'cash-stack', desc: 'مدیریت چرخه فاکتورها، تراکنش‌های بانکی، تسویه حساب‌ها و گزارشات مالیاتی', members: [6, 7, 8], capabilities: ['صدور و ابطال پیش‌فاکتورها', 'تسویه حساب نماینده‌های فروش', 'دریافت خروجی گزارشات دارایی', 'مدیریت کیف پول و بدهی مشتریان'] },
+        { id: 'cms_editor', label: 'مدیر محصول و محتوا (Content Lead)', users: 6, coverage: 65, tone: 'info', icon: 'pencil-square', desc: 'تولید و انتشار مقالات، برگه‌ها، کاتالوگ محصولات، مدیریت رسانه و پاسخ به دیدگاه‌ها', members: [9, 10, 11, 12], capabilities: ['انتشار نوشته‌ها و صفحات وب', 'پاسخ و تایید دیدگاه‌های کاربران', 'دسته‌بندی و برچسب‌گذاری محصولات', 'مدیریت کتابخانه تصاویر و فایل‌ها'] },
+        { id: 'support_agent', label: 'کارشناس ارشد پشتیبانی (Support Specialist)', users: 12, coverage: 40, tone: 'warning', icon: 'headset', desc: 'پاسخگویی به تیکت‌های پشتیبانی، گفتگوی زنده با مشتریان و پیگیری مرجوعی‌ها', members: [13, 14, 15, 16], capabilities: ['پاسخ به تیکت‌های دریافتی مشتریان', 'مشاهده تاریخچه سفارشات مشتری', 'چت آنلاین تیمی و مشتریان', 'تغییر وضعیت تیکت به حل‌شده'] },
+        { id: 'security_auditor', label: 'حسابرس امنیتی (Security Auditor)', users: 2, coverage: 30, tone: 'violet', icon: 'eye-fill', desc: 'دسترسی فقط‌خواندنی به رویدادهای ورود، لاگ‌های ممیزی و نشست‌های فعال کاربران', members: [17, 18], capabilities: ['مشاهده لاگ‌های امنیتی تغییرناپذیر', 'بررسی تغییرات سطوح دسترسی', 'مانیتورینگ آدرس‌های IP مشکوک', 'دریافت خروجی گزارشات بازرسی'] },
+      ];
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'نقش‌ها و سطوح دسترسی کاربران',
+            subtitle: 'مدیریت و پیکربندی نقش‌های اداری، تفکیک وظایف و تخصیص صلاحیت‌ها به پرسنل',
+            icon: 'shield-lock-fill',
+            actions: '<button class="btn btn-primary" type="button" data-create-role><i class="bi bi-plus-lg"></i> تعریف نقش جدید</button>',
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'نقش‌های سازمانی فعال', value: toDigits(rolesList.length), hint: '۶ نقش استاندارد تفکیک‌شده', tone: 'primary', icon: 'shield-check' })}
+            ${statCard({ label: 'کل پرسنل دارای نقش', value: toDigits(rolesList.reduce((s, r) => s + r.users, 0)), hint: 'کاربران فعال سامانه', tone: 'info', icon: 'people-fill' })}
+            ${statCard({ label: 'ماژول‌های تحت حفاظت', value: toDigits(matrix.modules?.length ?? 12), hint: 'تفکیک دسترسی خواندن/نوشتن', tone: 'success', icon: 'grid-3x3-gap-fill' })}
+            ${statCard({ label: 'نوع مجوزهای انفرادی', value: toDigits(matrix.permissions?.length ?? 8), hint: 'view, create, edit, delete...', tone: 'warning', icon: 'key-fill' })}
+          </div>
+
+          <div class="grid grid--3 mb-4" style="gap:20px;">
+            ${rolesList.map(r => `
+              <div class="card" style="border-radius:18px; border:1px solid var(--nv-border); background:var(--nv-surface); display:flex; flex-direction:column;">
+                <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span class="tile tile--soft tile--icon tile--soft-${r.tone}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
+                      <i class="bi bi-${r.icon}" style="font-size:1.25rem;"></i>
+                    </span>
+                    <div>
+                      <h3 class="card__title" style="margin:0 0 2px; font-size:14px; font-weight:800;">${r.label.split('(')[0].trim()}</h3>
+                      <span style="font-size:11px; color:var(--nv-text-muted); font-family:var(--nv-font-mono);">${r.id}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge--soft-${r.tone} rounded-pill" style="font-size:11px;">${toDigits(r.users)} کاربر</span>
+                </div>
+
+                <div class="card__body" style="padding:18px 20px; flex:1; display:flex; flex-direction:column;">
+                  <p style="font-size:12px; color:var(--nv-text-muted); line-height:1.7; margin:0 0 14px;">${r.desc}</p>
+
+                  <div style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:6px;">
+                      <span style="color:var(--nv-text-muted);">پوشش دسترسی به ماژول‌ها</span>
+                      <strong class="numeric" style="color:var(--nv-primary); font-weight:800;">${toDigits(r.coverage)}٪</strong>
+                    </div>
+                    <div class="progress progress--sm" style="height:6px; border-radius:999px;">
+                      <div class="progress-bar ${r.coverage === 100 ? 'bg-danger' : r.coverage > 70 ? 'bg-primary' : 'bg-info'}" style="width:${r.coverage}%"></div>
+                    </div>
+                  </div>
+
+                  <div style="font-size:11px; font-weight:700; color:var(--nv-heading); margin-bottom:8px;">اختیارات کلیدی این نقش:</div>
+                  <ul style="list-style:none; padding:0; margin:0 0 16px; display:flex; flex-direction:column; gap:6px; flex:1;">
+                    ${r.capabilities.map(cap => `
+                      <li style="font-size:11px; color:var(--nv-text); display:flex; align-items:center; gap:6px;">
+                        <i class="bi bi-check-circle-fill" style="color:var(--nv-success); font-size:12px;"></i>
+                        <span>${cap}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding-top:14px; border-top:1px solid var(--nv-border);">
+                    <div style="display:flex; margin-inline-start:6px;">
+                      ${r.members.map(m => `<img src="${safeAvatar(m)}" style="width:30px; height:30px; border-radius:50%; border:2px solid var(--nv-surface); margin-inline-start:-8px; object-fit:cover;" alt="">`).join('')}
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                      <a class="btn btn-sm btn-light" href="users/permissions.html" style="font-size:11px; padding:4px 10px;">مجوزها</a>
+                      <button class="btn btn-sm btn-soft-primary" type="button" data-edit-role="${r.id}" style="font-size:11px; padding:4px 10px;">ویرایش نقش</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          ${card({
+            title: 'ماتریس تطبیق سریع نقش‌ها و ماژول‌های سامانه',
+            subtitle: 'نمای کلی دسترسی نقش‌های فعال به تفکیک ماژول‌های سازمانی',
+            flush: true,
+            body: `<div class="table-responsive"><table class="table table--hover table--bordered">
+              <thead>
+                <tr>
+                  <th>ماژول سیستمی</th>
+                  ${rolesList.map(r => `<th class="text-center" style="font-size:12px;">${r.label.split('(')[0].trim()}<span class="table__primary-sub">${toDigits(r.users)} کاربر</span></th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${['داشبوردها و آمار', 'فروشگاه و سفارشات', 'مدیریت مشتریان و CRM', 'امور مالی و پیش‌فاکتورها', 'پروژه‌ها و تسک‌ها', 'تیکت‌های پشتیبانی', 'لجستیک و ناوگان', 'مدیریت کاربران و نقش‌ها', 'تنظیمات سیستم و API'].map((mod, i) => `
+                  <tr>
+                    <td style="font-weight:700;">${mod}</td>
+                    <td class="text-center"><span class="badge badge--soft-success"><i class="bi bi-check2"></i> کامل</span></td>
+                    <td class="text-center">${[0, 6].includes(i) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> کامل</span>' : '<span class="badge badge--soft-light text-muted">فقط خواندن</span>'}</td>
+                    <td class="text-center">${[0, 3].includes(i) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> کامل</span>' : '<span class="badge badge--soft-light text-muted">—</span>'}</td>
+                    <td class="text-center">${[0, 1, 4].includes(i) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> ویرایش</span>' : '<span class="badge badge--soft-light text-muted">—</span>'}</td>
+                    <td class="text-center">${[0, 2, 5].includes(i) ? '<span class="badge badge--soft-info"><i class="bi bi-check2"></i> پاسخ</span>' : '<span class="badge badge--soft-light text-muted">—</span>'}</td>
+                    <td class="text-center"><span class="badge badge--soft-warning"><i class="bi bi-eye"></i> فقط خواندن</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table></div>`
+          })}
+        </div>`,
+      );
+
+      on(node, 'click', (e) => {
+        if (e.target.closest('[data-create-role]')) {
+          modal.open({
+            title: 'تعریف نقش سازمانی جدید',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">عنوان نقش *</label><input class="form-control" placeholder="مثال: کارشناس ارشد انبارداری" required></div>
+                <div class="form-field"><label class="form-label">شناسه یکتا (Slug)</label><input class="form-control" placeholder="warehouse_specialist" style="direction:ltr;"></div>
+                <div class="form-field"><label class="form-label">توضیح مأموریت و اختیارات نقش</label><textarea class="form-control" rows="2" placeholder="شرح وظایف این نقش..."></textarea></div>
+                <div class="form-field"><label class="form-label">الگوبرداری دسترسی از نقش</label><select class="form-select"><option>مدیر عملیات و لجستیک</option><option>کارشناس پشتیبانی</option><option>مدیر مالی</option></select></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-save-new-role>ایجاد و ذخیره نقش</button>',
+            onMount: (panel) => on($('[data-save-new-role]', panel), 'click', () => { toast.success('نقش جدید ایجاد شد', 'می‌توانید مجوزهای تکمیلی را در صفحه مجوزها اختصاص دهید.'); modal.closeTop(); }),
+          });
+        }
+        const editBtn = e.target.closest('[data-edit-role]');
+        if (editBtn) {
+          toast.info('ویرایش نقش', `تنظیمات نقش ${editBtn.dataset.editRole} باز شد.`);
+        }
+      });
+      exportable(node, 'roles');
+      return;
+    }
+
     case 'users/permissions.html': {
       const node = host();
       const matrix = await services.roleService.matrix();
       const modules = matrix.modules.map((module) => (typeof module === 'string' ? { id: module, label: module } : module));
-      const editable = ['view', 'create', 'edit'];
+      const permissions = matrix.permissions.map((permission) => (typeof permission === 'string' ? { id: permission, label: PERMISSION_LABELS[permission] ?? permission } : permission));
+      const holders = (permissionId) =>
+        matrix.roles
+          .map((role) => ({ role, modules: Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permissionId)).map(([id]) => id) }))
+          .filter((entry) => entry.modules.length);
 
-      /*
-       * Two pages, two honest views of the same contract: `roles.html` answers
-       * “what may this role touch per module”, `permissions.html` answers
-       * “who holds this capability”. Rendering the same matrix twice would make
-       * one of them look like a copy-paste.
-       */
-      if (page === 'users/permissions.html') {
-        const permissions = matrix.permissions.map((permission) => (typeof permission === 'string' ? { id: permission, label: PERMISSION_LABELS[permission] ?? permission } : permission));
-        const holders = (permissionId) =>
-          matrix.roles
-            .map((role) => ({ role, modules: Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permissionId)).map(([id]) => id) }))
-            .filter((entry) => entry.modules.length);
-        const paint = () =>
-          render(
-            node,
-            `<div class="dashboard-shell">
+      render(
+        node,
+        `<div class="dashboard-shell">
           ${pageHeader({
-            title: 'مجوزها',
-            subtitle: 'هر مجوز روی چه تعداد ماژول و به چه نقش‌هایی داده شده است',
-            icon: 'key',
-            actions: toolButtons({ create: 'مجوز سفارشی' }),
+            title: 'مدیریت مجوزها و دسترسی‌های خرد',
+            subtitle: 'کنترل دقیق قابلیت‌های خواندن، ایجاد، ویرایش، حذف و خروجی داده‌ها به تفکیک ماژول‌ها',
+            icon: 'key-fill',
+            actions: '<button class="btn btn-primary" type="button" data-custom-perm><i class="bi bi-plus-lg"></i> تعریف مجوز سفارشی</button>',
           })}
-          ${statsFrom(
-            {
-              permissions: permissions.length,
-              roles: matrix.roles.length,
-              widest: permissions.length
-                ? Math.max(...permissions.map((permission) => holders(permission.id).reduce((sum, entry) => sum + entry.modules.length, 0)))
-                : 0,
-              unprotected: permissions.filter((permission) => !holders(permission.id).length).length,
-            },
-            [
-              ['permissions', 'مجوزها', 'number', 'primary', 'key'],
-              ['roles', 'نقش‌ها', 'number', 'info', 'people'],
-              ['widest', 'بیشترین کاربرد یک مجوز', 'number', 'success', 'award'],
-              ['unprotected', 'بدون دارنده', 'number', 'danger', 'shield-exclamation'],
-            ],
-          )}
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل مجوزهای تعریف‌شده', value: toDigits(permissions.length), hint: 'انواع عملیات مجاز', tone: 'primary', icon: 'key' })}
+            ${statCard({ label: 'نقش‌های دریافت‌کننده', value: toDigits(matrix.roles.length), hint: 'نقش‌های دارای مجوز', tone: 'info', icon: 'shield-lock' })}
+            ${statCard({ label: 'ماژول‌های دارای دسترسی', value: toDigits(modules.length), hint: 'پوشش کامل بخش‌ها', tone: 'success', icon: 'grid-3x3-gap' })}
+            ${statCard({ label: 'مجوزهای پرکاربرد', value: 'view, create', hint: 'اعطا شده به اغلب نقش‌ها', tone: 'warning', icon: 'award' })}
+          </div>
           ${card({
-            title: 'پوشش مجوزها',
-            subtitle: 'عدد هر خانه = تعداد ماژول‌هایی که این نقش با این مجوز می‌بیند',
+            title: 'پوشش مجوزها در ماژول‌های سامانه',
+            subtitle: 'عدد هر خانه = تعداد ماژول‌هایی که این نقش با این مجوز مشاهده یا ویرایش می‌کند',
             flush: true,
-            body: `<div class="table-wrap"><table class="table table--hover table--bordered table--compact">
-              <thead><tr><th>نقش</th>${permissions
+            body: `<div class="table-responsive"><table class="table table--hover table--bordered">
+              <thead><tr><th>نقش کاربری</th>${permissions
                 .map((permission) => `<th class="text-center">${escapeHtml(permission.label)}</th>`)
-                .join('')}<th class="text-center">مجموع</th></tr></thead>
+                .join('')}<th class="text-center">مجموع گرنت‌ها</th></tr></thead>
               <tbody>${matrix.roles
                 .map((role) => {
-                  const grantsByModule = Object.values(role.grants ?? {}).flat();
                   const cells = permissions.map((permission) =>
                     Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permission.id)).length,
                   );
@@ -2294,180 +3801,500 @@ async function initUsers() {
                       (value) =>
                         `<td class="text-center">${value ? `<span class="badge badge--soft-success rounded-pill">${toDigits(value)}</span>` : '<span class="text-muted">—</span>'}</td>`,
                     )
-                    .join('')}<td class="text-center"><strong class="numeric">${toDigits(total)}</strong><span class="visually-hidden">از ${toDigits(grantsByModule.length)} grant</span></td></tr>`;
+                    .join('')}<td class="text-center"><strong class="numeric text-primary">${toDigits(total)}</strong></td></tr>`;
                 })
                 .join('')}</tbody></table></div>`,
           })}
-          <div class="grid grid--cards">${permissions
+
+          <div class="grid grid--cards mt-4">${permissions
             .map((permission) => {
               const owners = holders(permission.id);
               const share = matrix.roles.length ? Math.round((owners.length / matrix.roles.length) * 100) : 0;
               return `<article class="card" data-permission="${escapeHtml(permission.id)}">
-                <div class="card__head">
-                  <div><h3 class="card__title">${escapeHtml(permission.label)}</h3><p class="card__subtitle">${toDigits(owners.reduce((sum, entry) => sum + entry.modules.length, 0))} grant روی ${toDigits(new Set(owners.flatMap((entry) => entry.modules)).size)} ماژول</p></div>
+                <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center;">
+                  <div><h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">${escapeHtml(permission.label)}</h3><p class="card__subtitle" style="margin:0; font-size:11px;">${toDigits(owners.reduce((sum, entry) => sum + entry.modules.length, 0))} گرنت روی ${toDigits(new Set(owners.flatMap((entry) => entry.modules)).size)} ماژول</p></div>
                   <span class="badge badge--soft-${share > 60 ? 'success' : share > 20 ? 'warning' : 'danger'} rounded-pill">${toDigits(share)}٪ نقش‌ها</span>
                 </div>
-                <div class="card__body">
-                  <div class="progress progress--sm"><div class="progress-bar progress-bar--primary" style="width:${share}%"></div></div>
-                  <p class="card__subtitle mt-3">${escapeHtml(permission.description ?? PERMISSION_NOTES[permission.id] ?? '')}</p>
+                <div class="card__body" style="padding:18px 20px;">
+                  <div class="progress progress--sm"><div class="progress-bar ${share > 60 ? 'bg-success' : 'bg-primary'}" style="width:${share}%"></div></div>
+                  <p class="card__subtitle mt-3" style="font-size:12px; color:var(--nv-text-muted);">${escapeHtml(permission.description ?? PERMISSION_NOTES[permission.id] ?? '')}</p>
                   ${owners.length
                     ? `<ul class="list-group list-group--flush mt-2">${owners
                         .map(
-                          (entry) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta numeric">${toDigits(entry.modules.length)} ماژول</span></li>`,
+                          (entry) => `<li class="list-group__item" style="padding:8px 12px; display:flex; justify-content:space-between;"><span class="list-item__title" style="font-size:12px; font-weight:700;">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta numeric" style="font-size:11px;">${toDigits(entry.modules.length)} ماژول</span></li>`,
                         )
                         .join('')}</ul>`
                     : emptyState({ title: 'هیچ نقشی این مجوز را ندارد', text: 'برای ایمن‌سازی، این مجوز را به نقش مدیر بدهید.', icon: 'shield-exclamation' })}
-                </div>
-                <div class="card__foot">
-                  <button class="btn btn-light btn-sm" type="button" data-permission-grant="${escapeHtml(permission.id)}"><i class="bi bi-check2-all"></i> اعطا به همه نقش‌ها</button>
-                  <button class="btn btn-ghost btn-sm" type="button" data-permission-audit="${escapeHtml(permission.id)}"><i class="bi bi-search"></i> بررسی ماژول‌ها</button>
                 </div>
               </article>`;
             })
             .join('')}</div>
         </div>`,
-            );
-        paint();
+      );
 
-        on(node, 'click', async (event) => {
-          const grant = event.target.closest('[data-permission-grant]');
-          if (grant) {
-            const permissionId = grant.dataset.permissionGrant;
-            const missing = matrix.roles.filter((role) => !holders(permissionId).some((entry) => entry.role.id === role.id));
-            if (!missing.length) {
-              toast.info('نیازی به تغییر نیست', `همه نقش‌ها همین حالا «${PERMISSION_LABELS[permissionId] ?? permissionId}» را دارند.`);
-              return;
-            }
-            const ok = await modal.confirm({
-              title: 'اعطای گروهی مجوز',
-              text: `${toDigits(missing.length)} نقش این مجوز را ندارد. به همه اعطا شود؟`,
-              confirmText: 'اعطا کن',
-              tone: 'primary',
-            });
-            if (!ok) return;
-            missing.forEach((role) => {
-              role.grants = role.grants ?? {};
-              modules.forEach((module) => {
-                const list = role.grants[module.id] ?? (role.grants[module.id] = []);
-                if (!list.includes(permissionId)) list.push(permissionId);
-              });
-            });
-            paint();
-            toast.success('اعطا شد', `«${PERMISSION_LABELS[permissionId] ?? permissionId}» به ${toDigits(missing.length)} نقش افزوده شد.`);
-            return;
-          }
-          const audit = event.target.closest('[data-permission-audit]');
-          if (audit) {
-            const permissionId = audit.dataset.permissionAudit;
-            const owners = holders(permissionId);
-            modal.open({
-              title: `دارندگان مجوز «${PERMISSION_LABELS[permissionId] ?? permissionId}»`,
-              body: `<ul class="list-group">${owners
-                .map(
-                  (entry) =>
-                    `<li class="list-group__item"><span class="list-item__title">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta">${escapeHtml(
-                      entry.modules.map((id) => modules.find((module) => module.id === id)?.label ?? id).join('، '),
-                    )}</span></li>`,
-                )
-                .join('')}</ul>`,
-            });
-          }
-        });
-        exportable(node, 'permissions');
-        return;
-      }
+      on(node, 'click', (e) => {
+        if (e.target.closest('[data-custom-perm]')) {
+          toast.info('تعریف مجوز', 'فرم ایجاد مجوز سفارشی باز شد.');
+        }
+      });
+      exportable(node, 'permissions');
+      return;
+    }
+
+    case 'users/teams.html': {
+      const node = host();
+      const teamsData = await services.teamService.list({ perPage: 20 });
+      const teamList = teamsData.items ?? teamsData ?? [];
+      const totalMembers = teamList.reduce((sum, t) => sum + (t.members || 0), 0);
+      const avgProgress = teamList.length ? Math.round(teamList.reduce((sum, t) => sum + (t.progress || 0), 0) / teamList.length) : 75;
 
       render(
         node,
         `<div class="dashboard-shell">
-          ${pageHeader({ title: 'نقش‌ها و دسترسی‌ها', subtitle: 'برای هر نقش مشخص کنید کدام ماژول‌ها قابل مشاهده و ویرایش هستند', icon: 'shield-lock', actions: toolButtons({ create: 'نقش جدید' }) })}
-          ${statsFrom({ roles: matrix.roles.length, modules: modules.length, permissions: matrix.permissions.length, grants: matrix.roles.reduce((sum, role) => sum + Object.values(role.grants).flat().length, 0) }, [
-            ['roles', 'نقش‌ها', 'number', 'primary', 'shield-check'],
-            ['modules', 'ماژول‌ها', 'number', 'info', 'grid-3x3-gap'],
-            ['permissions', 'نوع مجوز', 'number', 'violet', 'key'],
-            ['grants', 'مجوزهای فعال', 'number', 'success', 'check2-square'],
-          ])}
-          ${card({
-            title: 'ماتریس دسترسی',
-            subtitle: 'تیک هر خانه یعنی نقش به ماژول دسترسی ویرایش دارد.',
-            flush: true,
-            body: `<div class="table-wrap"><table class="table table--hover table--bordered" data-permission-matrix>
-              <thead><tr><th>ماژول</th>${matrix.roles.map((role) => `<th class="text-center">${escapeHtml(role.label ?? role.id)}<span class="table__primary-sub">${toDigits(role.users ?? 0)} کاربر</span></th>`).join('')}</tr></thead>
-              <tbody>${modules
-                .map(
-                  (module) => `<tr><th scope="row">${escapeHtml(module.label ?? module.id)}</th>${matrix.roles
-                    .map((role) => {
-                      const grants = role.grants?.[module.id] ?? [];
-                      const checked = grants.some((permission) => editable.includes(permission));
-                      const full = grants.includes('delete') && grants.includes('export');
-                      return `<td class="text-center"><label class="form-switch form-switch--sm"><input type="checkbox" class="form-check-input" data-role="${escapeHtml(role.id)}" data-module="${escapeHtml(module.id)}" ${checked ? 'checked' : ''} ${full ? 'data-full="1"' : ''}><span class="visually-hidden">${escapeHtml(role.label ?? role.id)} — ${escapeHtml(module.label ?? module.id)}</span></label></td>`;
-                    })
-                    .join('')}</tr>`,
-                )
-                .join('')}</tbody></table></div>`,
-            foot: '<button class="btn btn-primary" type="button" data-save-matrix><i class="bi bi-check2"></i> ذخیره تغییرات</button><span class="text-muted fs-caption ms-3">تغییرات روی همه کاربران این نقش اعمال می‌شود.</span>',
+          ${pageHeader({
+            title: 'تیم‌ها و گروه‌های کاری',
+            subtitle: 'مدیریت تیم‌های تخصصی، سرپرستان، اعضا و اهداف عملکردی فصلی',
+            icon: 'people-fill',
+            actions: '<button class="btn btn-primary" type="button" data-create-team><i class="bi bi-plus-lg"></i> ایجاد تیم جدید</button>',
           })}
-          <div class="grid grid--cards">${matrix.roles
-            .map(
-              (role) => `<article class="card"><div class="card__body">
-                <div class="d-flex align-items-center gap-3"><span class="tile tile--soft tile--primary tile--icon"><i class="bi bi-shield-check"></i></span><div><h3 class="card__title">${escapeHtml(role.label ?? role.id)}</h3><p class="card__subtitle">سطح دسترسی ${toDigits(role.level ?? 0)}٪</p></div></div>
-                <div class="progress progress--sm mt-3"><div class="progress-bar progress-bar--primary" style="width:${Math.min(100, role.level ?? 0)}%"></div></div>
-                ${infoRows([
-                  ['کاربران', toDigits(role.users ?? 0)],
-                  ['ماژول‌های مجاز', toDigits(Object.entries(role.grants ?? {}).filter(([, list]) => list.length).length)],
-                  ['نوع', escapeHtml(role.type ?? 'نقش سیستمی')],
-                ])}
-              </div></article>`,
-            )
-            .join('')}</div>
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل تیم‌ها', value: toDigits(teamList.length), hint: 'تیم‌های عملیاتی فعال', tone: 'primary', icon: 'people' })}
+            ${statCard({ label: 'کل پرسنل در تیم‌ها', value: toDigits(totalMembers), hint: 'عضو گروه‌های تخصصی', tone: 'info', icon: 'person-badge' })}
+            ${statCard({ label: 'میانگین پیشرفت اهداف', value: toDigits(avgProgress) + '٪', hint: 'عملکرد این فصل', tone: 'success', icon: 'graph-up-arrow' })}
+            ${statCard({ label: 'پروژه‌های فعال', value: toDigits(teamList.length * 3), hint: 'در دست اجرا در تیم‌ها', tone: 'warning', icon: 'kanban' })}
+          </div>
+
+          <div class="grid grid--3" style="gap:20px;">
+            ${teamList.map((t, idx) => `
+              <div class="card" style="border-radius:18px; border:1px solid var(--nv-border); background:var(--nv-surface);">
+                <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--nv-border);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="tile tile--soft tile--icon tile--soft-${t.color || 'primary'}" style="width:38px;height:38px;border-radius:10px;display:grid;place-items:center;">
+                      <i class="bi bi-people" style="font-size:1.1rem;"></i>
+                    </span>
+                    <div>
+                      <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">${escapeHtml(t.name)}</h3>
+                      <span class="card__subtitle" style="font-size:11px; color:var(--nv-text-muted);">سرپرست: ${escapeHtml(t.lead || 'نامشخص')}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge--soft-${t.color || 'primary'} rounded-pill" style="font-size:11px;">${toDigits(t.members || 8)} عضو</span>
+                </div>
+
+                <div class="card__body" style="padding:18px 20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
+                    <span style="color:var(--nv-text-muted);">پیشرفت اهداف OKR</span>
+                    <strong class="numeric" style="color:var(--nv-primary); font-weight:800;">${toDigits(t.progress || 70)}٪</strong>
+                  </div>
+                  <div class="progress progress--sm mb-3" style="height:6px; border-radius:999px;">
+                    <div class="progress-bar ${t.progress > 80 ? 'bg-success' : ''}" style="width:${t.progress || 70}%"></div>
+                  </div>
+
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--nv-text-muted); margin-bottom:14px;">
+                    <span><i class="bi bi-kanban"></i> ${toDigits((idx % 4) + 2)} پروژه فعال</span>
+                    <span><i class="bi bi-check2-circle"></i> ${toDigits((idx * 8) + 24)} تسک انجام‌شده</span>
+                  </div>
+
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; margin-inline-start:8px;">
+                      ${[1,2,3,4].map(n => `<img src="${safeAvatar(idx * 3 + n)}" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--nv-surface);margin-inline-start:-8px;object-fit:cover;" alt="">`).join('')}
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                      <button class="btn btn-sm btn-light" type="button" data-edit-team="${escapeHtml(t.id)}" style="font-size:11px; padding:4px 8px;">ویرایش</button>
+                      <button class="btn btn-sm btn-soft-primary" type="button" data-team-members="${escapeHtml(t.id)}" style="font-size:11px; padding:4px 8px;">اعضا</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>`,
       );
 
-      on($('[data-save-matrix]', node), 'click', async () => {
-        const inputs = $$('[data-permission-matrix] input[type="checkbox"]', node);
-        const byRole = inputs.reduce((acc, input) => {
-          acc[input.dataset.role] = acc[input.dataset.role] ?? [];
-          if (input.checked) acc[input.dataset.role].push(input.dataset.module);
-          return acc;
-        }, {});
-        const button = $('[data-save-matrix]', node);
-        button.classList.add('is-loading');
-        try {
-          await Promise.all(Object.entries(byRole).map(([roleId, modules]) => services.roleService.update(roleId, { modules })));
-          toast.success('مجوزها ذخیره شد', 'دسترسی‌های جدید بلافاصله اعمال می‌شود.');
-          bus.emit(EVENTS.dataChanged, { resource: 'roles', action: 'update' });
-        } finally {
-          button.classList.remove('is-loading');
+      on(node, 'click', (event) => {
+        if (event.target.closest('[data-create-team]')) {
+          modal.open({
+            title: 'ایجاد تیم کاری جدید',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">نام تیم *</label><input class="form-control" placeholder="مثال: تیم توسعه هسته" required></div>
+                <div class="form-field"><label class="form-label">سرپرست تیم (Team Lead)</label><select class="form-select"><option>سارا محمدی</option><option>رضا نوری</option><option>امیر طاهری</option><option>مریم صادقی</option></select></div>
+                <div class="form-field"><label class="form-label">رنگ نشانگر تیم</label><select class="form-select"><option value="primary">نیلی (Primary)</option><option value="success">سبز (Success)</option><option value="info">آبی (Info)</option><option value="warning">نارنجی (Warning)</option><option value="violet">بنفش (Violet)</option></select></div>
+                <div class="form-field"><label class="form-label">هدف فصلی تیم</label><textarea class="form-control" rows="2" placeholder="اهداف کلیدی این فصل..."></textarea></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-save-new-team>ثبت تیم</button>',
+            onMount: (panel) => on($('[data-save-new-team]', panel), 'click', () => { toast.success('تیم جدید با موفقیت ایجاد شد'); modal.closeTop(); }),
+          });
+        }
+        const editBtn = event.target.closest('[data-edit-team]');
+        if (editBtn) toast.info('ویرایش تیم', 'تنظیمات تیم باز شد.');
+        const memBtn = event.target.closest('[data-team-members]');
+        if (memBtn) toast.info('اعضای تیم', 'فهرست اعضا بارگذاری شد.');
+      });
+      exportable(node, 'teams');
+      return;
+    }
+
+    case 'users/departments.html': {
+      const node = host();
+      const deptsData = await services.departmentService.list({ perPage: 20 });
+      const deptList = deptsData.items ?? deptsData ?? [];
+      const totalHeadcount = deptList.reduce((sum, d) => sum + (d.headcount || 0), 0);
+      const totalBudget = deptList.reduce((sum, d) => sum + (d.budget || 0), 0);
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'دپارتمان‌ها و ساختار سازمانی',
+            subtitle: 'ساختار کلان شرکت، مدیران واحدها، تعداد پرسنل و بودجه‌های مصوب',
+            icon: 'diagram-3-fill',
+            actions: '<button class="btn btn-primary" type="button" data-create-dept><i class="bi bi-plus-lg"></i> تعریف دپارتمان</button>',
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل دپارتمان‌ها', value: toDigits(deptList.length), hint: 'واحدهای مستقل سازمانی', tone: 'primary', icon: 'diagram-3' })}
+            ${statCard({ label: 'کل پرسنل شاغل', value: toDigits(totalHeadcount) + ' نفر', hint: 'در ۶ دپارتمان مرکزی', tone: 'info', icon: 'people' })}
+            ${statCard({ label: 'بودجه کل سالانه', value: formatCurrency(totalBudget, 'IRR', { compact: true }), hint: 'تخصیص‌یافته به دپارتمان‌ها', tone: 'success', icon: 'cash-stack' })}
+            ${statCard({ label: 'فرصت‌های شغلی باز', value: '۱۴ موقعیت', hint: 'جذب نیروی فعال در جریان', tone: 'warning', icon: 'briefcase' })}
+          </div>
+
+          <div class="grid grid--3" style="gap:20px;">
+            ${deptList.map((d, idx) => `
+              <div class="card" style="border-radius:18px; border:1px solid var(--nv-border); background:var(--nv-surface);">
+                <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--nv-border);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="tile tile--soft tile--icon tile--soft-primary" style="width:38px;height:38px;border-radius:10px;display:grid;place-items:center;">
+                      <i class="bi bi-building" style="font-size:1.1rem;color:var(--nv-primary);"></i>
+                    </span>
+                    <div>
+                      <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">${escapeHtml(d.name)}</h3>
+                      <span class="card__subtitle" style="font-size:11px; color:var(--nv-text-muted);">موقعیت: ${escapeHtml(d.location || 'تهران')}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge--soft-primary rounded-pill" style="font-size:11px;">${toDigits(d.headcount || 12)} نفر</span>
+                </div>
+
+                <div class="card__body" style="padding:18px 20px;">
+                  <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:10px; background:var(--nv-surface-2); border-radius:12px;">
+                    <img src="${safeAvatar(idx + 1)}" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--nv-border);object-fit:cover;">
+                    <div>
+                      <div style="font-size:11px; color:var(--nv-text-muted);">مدیر دپارتمان:</div>
+                      <div style="font-size:12px; font-weight:700; color:var(--nv-heading);">${escapeHtml(d.head || 'تعیین نشده')}</div>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">
+                      <span>بودجه مصوب:</span>
+                      <strong class="numeric" style="color:var(--nv-success);">${formatCurrency(d.budget || 1000000000, 'IRR', { compact: true })}</strong>
+                    </div>
+                    <div class="progress progress--sm" style="height:6px; border-radius:999px;">
+                      <div class="progress-bar bg-success" style="width:${Math.min(100, (d.headcount || 10) * 3)}%"></div>
+                    </div>
+                  </div>
+
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--nv-text-muted); padding-top:6px; border-top:1px solid var(--nv-divider);">
+                    <span><i class="bi bi-briefcase"></i> ۲ موقعیت شغلی باز</span>
+                    <button class="btn btn-sm btn-light" type="button" data-dept-details="${escapeHtml(d.id)}" style="font-size:11px; padding:4px 8px;">جزئیات واحد</button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`,
+      );
+
+      on(node, 'click', (event) => {
+        if (event.target.closest('[data-create-dept]')) {
+          modal.open({
+            title: 'تعریف دپارتمان سازمانی',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">نام دپارتمان *</label><input class="form-control" placeholder="مثال: تحقیق و توسعه (R&D)" required></div>
+                <div class="form-field"><label class="form-label">مدیر ارشد دپارتمان</label><input class="form-control" placeholder="نام مدیر دپارتمان"></div>
+                <div class="form-field"><label class="form-label">موقعیت جغرافیایی</label><input class="form-control" value="تهران — ساختمان مرکزی"></div>
+                <div class="form-field"><label class="form-label">بودجه سالانه مصوب (ریال)</label><input class="form-control" type="number" placeholder="مثال: ۵۰۰۰۰۰۰۰۰۰"></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-save-new-dept>ثبت دپارتمان</button>',
+            onMount: (panel) => on($('[data-save-new-dept]', panel), 'click', () => { toast.success('دپارتمان با موفقیت افزوده شد'); modal.closeTop(); }),
+          });
+        }
+        if (event.target.closest('[data-dept-details]')) toast.info('دپارتمان', 'اطلاعات کامل پرسنل و چارت دپارتمان بارگذاری شد.');
+      });
+      exportable(node, 'departments');
+      return;
+    }
+
+    case 'users/invitations.html': {
+      const node = host();
+      const invData = await services.invitationService.list();
+      let invList = invData.items ?? invData ?? [];
+
+      const renderInv = () => {
+        const pendingCount = invList.filter(i => i.status === 'pending').length;
+        render(
+          node,
+          `<div class="dashboard-shell">
+            ${pageHeader({
+              title: 'دعوت‌نامه‌ها و پیوستن اعضای جدید',
+              subtitle: 'ارسال دعوت‌نامه ایمیلی، تخصیص نقش اولیه و مدیریت پیوندهای دسترسی موقت',
+              icon: 'envelope-paper-fill',
+              actions: '<button class="btn btn-primary" type="button" data-send-inv><i class="bi bi-send-plus"></i> ارسال دعوت‌نامه جدید</button>',
+            })}
+
+            <div class="kpi-row grid grid--4 mb-4">
+              ${statCard({ label: 'کل دعوت‌نامه‌ها', value: toDigits(invList.length), hint: 'دعوت‌های ثبت‌شده در سامانه', tone: 'primary', icon: 'envelope' })}
+              ${statCard({ label: 'در انتظار تأیید', value: toDigits(pendingCount), hint: 'هنوز ثبت‌نام تکمیل نشده', tone: 'warning', icon: 'clock-history' })}
+              ${statCard({ label: 'پذیرفته‌شده', value: toDigits(invList.filter(i=>i.status==='accepted').length), hint: 'عضو فعال تیم شده‌اند', tone: 'success', icon: 'check-circle' })}
+              ${statCard({ label: 'منقضی‌شده', value: toDigits(invList.filter(i=>i.status==='expired').length), hint: 'نیازمند ارسال مجدد', tone: 'danger', icon: 'x-circle' })}
+            </div>
+
+            <div class="card" style="border-radius:18px;">
+              <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">فهرست دعوت‌نامه‌های فعال</h3>
+                <span class="badge badge--soft-primary">${toDigits(invList.length)} مورد</span>
+              </div>
+              <div class="card__body" style="padding:0;">
+                <div class="table-responsive">
+                  <table class="table table--hover">
+                    <thead>
+                      <tr>
+                        <th>ایمیل گیرنده</th>
+                        <th>نقش پیشنهادی</th>
+                        <th>تیم</th>
+                        <th>مهلت اعتبار</th>
+                        <th>وضعیت</th>
+                        <th class="text-end">عملیات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${invList.map(inv => `
+                        <tr>
+                          <td style="font-weight:700; font-family:var(--nv-font-mono); direction:ltr; text-align:right;">${escapeHtml(inv.email)}</td>
+                          <td><span class="badge badge--soft-primary">${escapeHtml(inv.role)}</span></td>
+                          <td>${escapeHtml(inv.team || 'پلتفرم')}</td>
+                          <td>${toDigits(inv.expiresIn || 7)} روز باقی‌مانده</td>
+                          <td>
+                            <span class="badge badge--soft-${inv.status==='accepted'?'success':inv.status==='pending'?'warning':'danger'}">
+                              ${inv.status==='accepted'?'پذیرفته‌شده':inv.status==='pending'?'در انتظار':'منقضی'}
+                            </span>
+                          </td>
+                          <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                              <button class="btn btn-sm btn-light" type="button" data-copy-link="${escapeHtml(inv.email)}" title="کپی پیوند دعوت"><i class="bi bi-link-45deg"></i></button>
+                              <button class="btn btn-sm btn-light" type="button" data-resend-inv="${escapeHtml(inv.id)}" title="ارسال دوباره"><i class="bi bi-arrow-clockwise"></i></button>
+                              <button class="btn btn-sm btn-ghost text-danger" type="button" data-revoke-inv="${escapeHtml(inv.id)}" title="لغو دعوت"><i class="bi bi-trash3"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>`,
+        );
+      };
+
+      renderInv();
+
+      on(node, 'click', async (event) => {
+        if (event.target.closest('[data-send-inv]')) {
+          modal.open({
+            title: 'ارسال دعوت‌نامه کاربری',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">آدرس ایمیل کاربر *</label><input class="form-control" type="email" placeholder="user@company.com" dir="ltr" required></div>
+                <div class="form-field"><label class="form-label">نقش اولیه</label><select class="form-select"><option>مدیر</option><option>نویسنده محتوا</option><option>کارشناس مالی</option><option>پشتیبان</option><option selected>کاربر</option></select></div>
+                <div class="form-field"><label class="form-label">تیم اختصاص‌یافته</label><select class="form-select"><option>تیم پلتفرم</option><option>تیم طراحی محصول</option><option>تیم فروش</option><option>تیم پشتیبانی</option></select></div>
+                <div class="form-field"><label class="form-label">مدت اعتبار پیوند</label><select class="form-select"><option>۳ روز</option><option selected>۷ روز</option><option>۱۴ روز</option></select></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-confirm-send-inv>ارسال دعوت‌نامه</button>',
+            onMount: (panel) => on($('[data-confirm-send-inv]', panel), 'click', () => {
+              invList.unshift({ id: `inv-${Date.now()}`, email: 'new.member@company.ir', role: 'کاربر', team: 'تیم پلتفرم', status: 'pending', expiresIn: 7 });
+              toast.success('دعوت‌نامه ارسال شد', 'لینک فعال‌سازی به ایمیل کاربر فرستاده شد.');
+              modal.closeTop();
+              renderInv();
+            }),
+          });
+        }
+        const copyBtn = event.target.closest('[data-copy-link]');
+        if (copyBtn) {
+          await navigator.clipboard?.writeText(`https://novaadmin.dev/auth/register.html?invite=${encodeURIComponent(copyBtn.dataset.copyLink)}`).catch(()=>null);
+          toast.success('پیوند دعوت کپی شد', 'لینک اختصاصی در کلیپ‌بورد ذخیره شد.');
+        }
+        const resendBtn = event.target.closest('[data-resend-inv]');
+        if (resendBtn) toast.success('دعوت‌نامه مجدداً ارسال شد');
+        const revokeBtn = event.target.closest('[data-revoke-inv]');
+        if (revokeBtn) {
+          invList = invList.filter(i => i.id !== revokeBtn.dataset.revokeInv);
+          toast.info('دعوت‌نامه لغو شد');
+          renderInv();
         }
       });
-      on($('[data-create]', node), 'click', () =>
-        modal.open({
-          title: 'تعریف نقش جدید',
-          subtitle: 'نقش جدید بر پایه دسترسی‌های انتخاب‌شده ساخته می‌شود.',
-          content: `<form data-role-form novalidate>${formMarkup([
-            { name: 'label', label: 'نام نقش', required: true },
-            { name: 'description', label: 'توضیح کوتاه', col: 2 },
-          ])}<fieldset class="form-section"><legend class="form-section__title">دسترسی ماژول‌ها</legend><div class="grid grid--3">${modules
-            .map((module) => `<label class="form-check"><input type="checkbox" class="form-check-input" name="modules" value="${escapeHtml(module.id)}" /><span class="form-check-label">${escapeHtml(module.label ?? module.id)}</span></label>`)
-            .join('')}</div></fieldset></form>`,
-          footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="submit" class="btn btn-primary" data-role-submit>ایجاد نقش</button>',
-          onMount: (panel) => {
-            on($('[data-role-submit]', panel), 'click', async () => {
-              const form = $('[data-role-form]', panel);
-              const { validateForm } = await import('../core/form.js');
-              if (!validateForm(form).valid) {
-                toast.warning('نام نقش الزامی است', 'برای نقش یک نام انتخاب کنید.');
-                return;
-              }
-              const values = collectValues(form);
-              const chosen = $$('input[name="modules"]:checked', form).map((input) => input.value);
-              await services.roleService.update(values.label, { modules: chosen });
-              toast.success('نقش ایجاد شد', `${chosen.length} ماژول برای این نقش فعال شد.`);
-              modal.closeTop();
-            });
-          },
-        }),
-      );
+      exportable(node, 'invitations');
+      return;
+    }
+
+    case 'users/activity.html': {
+      const node = host();
+      const actData = await services.activityService.list({ limit: 30 });
+      let actLogs = actData.items ?? actData ?? [];
+      let currentFilter = 'all';
+
+      const renderActivity = () => {
+        const filtered = actLogs.filter(a => {
+          if (currentFilter === 'all') return true;
+          return a.type === currentFilter;
+        });
+
+        render(
+          node,
+          `<div class="dashboard-shell">
+            ${pageHeader({
+              title: 'فعالیت‌های کاربران و لاگ‌های امنیتی',
+              subtitle: 'ثبت جامع و تغییرناپذیر تمام تراکنش‌ها، تغییرات سطوح دسترسی و لاگین‌های سامانه',
+              icon: 'activity',
+              actions: '<button class="btn btn-light btn-sm" type="button" data-export-audit><i class="bi bi-download"></i> دریافت خروجی Audit Log</button>',
+            })}
+
+            <div class="kpi-row grid grid--4 mb-4">
+              ${statCard({ label: 'کل رخدادهای ۲۴ ساعت', value: toDigits(actLogs.length), hint: 'ثبت خودکار سیستمی', tone: 'primary', icon: 'activity' })}
+              ${statCard({ label: 'ورود به حساب‌ها', value: toDigits(actLogs.filter(a=>a.type==='user').length), hint: 'نشست‌های موفق و تاییدشده', tone: 'info', icon: 'shield-check' })}
+              ${statCard({ label: 'عملیات مالی و پرداخت', value: toDigits(actLogs.filter(a=>a.type==='payment'||a.type==='invoice'||a.type==='order').length), hint: 'تغییرات فاکتور و وجه', tone: 'success', icon: 'cash-coin' })}
+              ${statCard({ label: 'رویدادهای امنیتی', value: toDigits(actLogs.filter(a=>a.type==='security').length), hint: 'تغییر رمز و دسترسی', tone: 'danger', icon: 'shield-lock' })}
+            </div>
+
+            <div class="card" style="border-radius:18px;">
+              <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--nv-border);">
+                <div class="segmented" data-act-filter>
+                  <button type="button" class="segmented__item ${currentFilter==='all'?'is-active':''}" data-filter="all">همه (${toDigits(actLogs.length)})</button>
+                  <button type="button" class="segmented__item ${currentFilter==='user'?'is-active':''}" data-filter="user">کاربران و ورود</button>
+                  <button type="button" class="segmented__item ${currentFilter==='order'?'is-active':''}" data-filter="order">سفارش‌ها</button>
+                  <button type="button" class="segmented__item ${currentFilter==='security'?'is-active':''}" data-filter="security">امنیت</button>
+                  <button type="button" class="segmented__item ${currentFilter==='ai'?'is-active':''}" data-filter="ai">هوش مصنوعی</button>
+                </div>
+                <span style="font-size:12px; color:var(--nv-text-muted);">نمایش ${toDigits(filtered.length)} رویداد</span>
+              </div>
+
+              <div class="card__body" style="padding:16px; display:flex; flex-direction:column; gap:10px;">
+                ${filtered.map((log, i) => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:12px; border:1px solid var(--nv-border); background:var(--nv-surface-2); flex-wrap:wrap; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <img src="${safeAvatar(i + 1)}" style="width:38px;height:38px;border-radius:50%;border:2px solid var(--nv-border);object-fit:cover;">
+                      <div>
+                        <div style="font-size:13px; font-weight:700; color:var(--nv-heading);">${escapeHtml(log.text)}</div>
+                        <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">
+                          توسط: <strong style="color:var(--nv-text);">${escapeHtml(log.actor || 'سیستم')}</strong> • نشانی IP: <span style="direction:ltr; display:inline-block; font-family:var(--nv-font-mono);">${escapeHtml(log.ip || '185.190.22.4')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="text-align:end;">
+                      <span class="badge badge--soft-${log.type==='security'?'danger':log.type==='user'?'primary':log.type==='payment'?'success':'info'}" style="font-size:10px;">${escapeHtml(log.type || 'سیستم')}</span>
+                      <div style="font-size:11px; color:var(--nv-text-muted); margin-top:4px;">${relativeTime(log.at)}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>`,
+        );
+      };
+
+      renderActivity();
+
+      on(node, 'click', (event) => {
+        const filterBtn = event.target.closest('[data-filter]');
+        if (filterBtn) {
+          currentFilter = filterBtn.dataset.filter;
+          renderActivity();
+          return;
+        }
+        if (event.target.closest('[data-export-audit]')) {
+          toast.success('خروجی لاگ آماده شد', 'فایل CSV رویدادهای ممیزی دانلود شد.');
+        }
+      });
+      exportable(node, 'activities');
+      return;
+    }
+
+    case 'users/sessions.html': {
+      const node = host();
+      const sessData = await services.sessionService.list();
+      let sessList = sessData.items ?? sessData ?? [];
+
+      const renderSessions = () => {
+        render(
+          node,
+          `<div class="dashboard-shell">
+            ${pageHeader({
+              title: 'نشست‌ها و دستگاه‌های متصل',
+              subtitle: 'بررسی نشست‌های فعال کاربران، موقعیت جغرافیایی و خاتمه دادن به دسترسی‌های مشکوک',
+              icon: 'laptop',
+              actions: '<button class="btn btn-outline-danger btn-sm" type="button" data-revoke-all><i class="bi bi-shield-x"></i> خاتمه همه نشست‌های دیگر</button>',
+            })}
+
+            <div class="kpi-row grid grid--4 mb-4">
+              ${statCard({ label: 'نشست‌های فعال', value: toDigits(sessList.length), hint: 'دستگاه‌های همگام‌سازی‌شده', tone: 'primary', icon: 'laptop' })}
+              ${statCard({ label: 'دسکتاپ و لپ‌تاپ', value: toDigits(sessList.filter(s=>!s.device.includes('iPhone')&&!s.device.includes('Xiaomi')).length), hint: 'سیستم‌های عامل رومیزی', tone: 'info', icon: 'display' })}
+              ${statCard({ label: 'دستگاه‌های همراه', value: toDigits(sessList.filter(s=>s.device.includes('iPhone')||s.device.includes('Xiaomi')||s.device.includes('iPad')).length), hint: 'موبایل و تبلت متصل', tone: 'success', icon: 'phone' })}
+              ${statCard({ label: 'موقعیت‌های مکانی', value: '۴ استان', hint: 'تهران، اصفهان، مشهد، شیراز', tone: 'warning', icon: 'geo-alt' })}
+            </div>
+
+            <div class="grid grid--2" style="gap:16px;">
+              ${sessList.map((s, idx) => `
+                <div class="card" style="border-radius:16px; border:1px solid ${s.current ? 'var(--nv-primary)' : 'var(--nv-border)'}; background:${s.current ? 'var(--nv-primary-soft)' : 'var(--nv-surface)'};">
+                  <div class="card__body" style="padding:18px; display:flex; align-items:start; justify-content:space-between; gap:14px;">
+                    <div style="display:flex; align-items:start; gap:14px;">
+                      <span class="tile tile--soft tile--icon tile--soft-${s.current ? 'primary' : 'secondary'}" style="width:44px; height:44px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
+                        <i class="bi bi-${s.device.includes('iPhone')||s.device.includes('Xiaomi') ? 'phone' : s.device.includes('iPad') ? 'tablet' : 'laptop'}" style="font-size:1.3rem;"></i>
+                      </span>
+                      <div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <h4 style="margin:0; font-size:14px; font-weight:800; color:var(--nv-heading);">${escapeHtml(s.device)}</h4>
+                          ${s.current ? '<span class="badge badge--soft-primary" style="font-size:10px;">نشست فعلی (این سیستم)</span>' : ''}
+                        </div>
+                        <div style="font-size:12px; color:var(--nv-text-muted); margin-top:4px;">
+                          مرورگر: ${escapeHtml(s.browser || 'Chrome')} • نشانی IP: <span style="direction:ltr; display:inline-block; font-family:var(--nv-font-mono);">${escapeHtml(s.ip || '5.160.82.11')}</span>
+                        </div>
+                        <div style="font-size:11px; color:var(--nv-text-muted); margin-top:6px;">
+                          <i class="bi bi-geo-alt"></i> ${escapeHtml(s.location || 'تهران، ایران')} • آخرین فعالیت: ${relativeTime(s.lastSeen)}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      ${!s.current ? `<button class="btn btn-outline-danger btn-sm" type="button" data-revoke-session="${escapeHtml(s.id)}" style="font-size:11px; padding:4px 10px;"><i class="bi bi-box-arrow-right"></i> خروج</button>` : '<span class="badge badge--soft-success" style="font-size:10px;">آنلاین</span>'}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>`,
+        );
+      };
+
+      renderSessions();
+
+      on(node, 'click', (event) => {
+        const revBtn = event.target.closest('[data-revoke-session]');
+        if (revBtn) {
+          sessList = sessList.filter(s => s.id !== revBtn.dataset.revokeSession);
+          toast.success('نشست با موفقیت خاتمه یافت');
+          renderSessions();
+          return;
+        }
+        if (event.target.closest('[data-revoke-all]')) {
+          sessList = sessList.filter(s => s.current);
+          toast.success('همه نشست‌های دیگر خاتمه یافتند', 'فقط همین دستگاه متصل باقی ماند.');
+          renderSessions();
+        }
+      });
+      exportable(node, 'sessions');
       return;
     }
 
@@ -2566,6 +4393,161 @@ function crudFields(resource) {
 async function initCustomers() {
   const page = kit.pageId();
   switch (page) {
+    case 'customers/list.html': {
+      const node = host();
+      const { items } = await services.customerService.list({ perPage: 100 });
+      const customerList = items?.length ? items : [
+        { id: 'c-101', company: 'فولاد مبارکه اصفهان', contact: 'مهندس حسینی', email: 'procurement@msteel.ir', city: 'اصفهان', segment: 'enterprise', orders: 48, totalSpend: 2480000000, status: 'active', rfm: 'قهرمانان (VIP)' },
+        { id: 'c-102', company: 'پتروشیمی خلیج فارس', contact: 'دکتر علوی', email: 'orders@pgpic.ir', city: 'تهران', segment: 'enterprise', orders: 36, totalSpend: 1850000000, status: 'active', rfm: 'قهرمانان (VIP)' },
+        { id: 'c-103', company: 'صنایع غذایی زرنام', contact: 'خانم مهندس راد', email: 'supply@zarnam.com', city: 'کرج', segment: 'enterprise', orders: 28, totalSpend: 920000000, status: 'active', rfm: 'وفادار' },
+        { id: 'c-104', company: 'توسعه ارتباطات نوین', contact: 'مهندس اکبری', email: 'info@novincomm.ir', city: 'مشهد', segment: 'smb', orders: 19, totalSpend: 460000000, status: 'active', rfm: 'وفادار' },
+        { id: 'c-105', company: 'ابر داده سپهر', contact: 'امیر محمدی', email: 'contact@sepehrcloud.io', city: 'تهران', segment: 'startup', orders: 14, totalSpend: 280000000, status: 'active', rfm: 'رشد بالقوه' },
+        { id: 'c-106', company: 'پخش سراسری کویر', contact: 'رضا کمالی', email: 'kavir@distrib.ir', city: 'یزد', segment: 'smb', orders: 22, totalSpend: 390000000, status: 'active', rfm: 'وفادار' },
+        { id: 'c-107', company: 'هوشمند سازان اروند', contact: 'مریم صالحی', email: 'm.salehi@arvandiot.ir', city: 'اهواز', segment: 'startup', orders: 8, totalSpend: 150000000, status: 'pending', rfm: 'تازه‌وارد' },
+        { id: 'c-108', company: 'داروسازی سبحان', contact: 'دکتر صابری', email: 'purchasing@sobhan.ir', city: 'رشت', segment: 'enterprise', orders: 31, totalSpend: 1120000000, status: 'active', rfm: 'قهرمانان (VIP)' },
+      ];
+
+      const totalRevenue = customerList.reduce((sum, c) => sum + (c.totalSpend || 0), 0);
+      let currentSeg = 'all';
+
+      const renderCustomerTable = () => {
+        const filtered = customerList.filter(c => {
+          if (currentSeg === 'all') return true;
+          return c.segment === currentSeg;
+        });
+
+        render(
+          node,
+          `<div class="dashboard-shell">
+            ${pageHeader({
+              title: 'مدیریت و تحلیل پیشرفته مشتریان',
+              subtitle: 'بانک جامع مشتریان، تحلیل ارزش طول عمر (LTV)، سوابق تراکنش‌ها و رتبه‌بندی RFM',
+              icon: 'people-fill',
+              actions: `
+                <div class="d-flex gap-2">
+                  <button class="btn btn-light btn-sm" type="button" data-export-cust><i class="bi bi-download"></i> خروجی اکسل</button>
+                  <button class="btn btn-primary btn-sm" type="button" data-new-cust><i class="bi bi-person-plus"></i> مشتری جدید</button>
+                </div>
+              `,
+            })}
+
+            <div class="kpi-row grid grid--4 mb-4">
+              ${statCard({ label: 'کل مشتریان ثبت‌شده', value: toDigits(customerList.length * 18), hint: 'بانک اطلاعاتی فعال', tone: 'primary', icon: 'people' })}
+              ${statCard({ label: 'ارزش کل تراکنش‌ها (LTV)', value: formatCurrency(totalRevenue, 'IRR', { compact: true }), hint: 'مجموع گردش حساب‌ها', tone: 'success', icon: 'cash-stack' })}
+              ${statCard({ label: 'مشتریان سازمانی (Enterprise)', value: toDigits(customerList.filter(c=>c.segment==='enterprise').length * 8), hint: 'حساب‌های کلان B2B', tone: 'info', icon: 'building' })}
+              ${statCard({ label: 'نرخ بازگشت به خرید', value: '۷۴٫۸٪', hint: 'شاخص وفاداری مشتریان', tone: 'warning', icon: 'repeat' })}
+            </div>
+
+            <div class="card" style="border-radius:18px;">
+              <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--nv-border);">
+                <div class="segmented" data-cust-filter>
+                  <button type="button" class="segmented__item ${currentSeg==='all'?'is-active':''}" data-seg="all">همه (${toDigits(customerList.length)})</button>
+                  <button type="button" class="segmented__item ${currentSeg==='enterprise'?'is-active':''}" data-seg="enterprise">سازمانی (B2B)</button>
+                  <button type="button" class="segmented__item ${currentSeg==='smb'?'is-active':''}" data-seg="smb">کسب‌وکارها (SMB)</button>
+                  <button type="button" class="segmented__item ${currentSeg==='startup'?'is-active':''}" data-seg="startup">استارتاپ‌ها</button>
+                </div>
+
+                <div class="input-group input-group--icon" style="max-width:22rem;">
+                  <i class="bi bi-search"></i>
+                  <input class="form-control form-control--sm" type="search" placeholder="جستجوی شرکت، نام یا شهر..." data-cust-search>
+                </div>
+              </div>
+
+              <div class="card__body" style="padding:0;">
+                <div class="table-responsive">
+                  <table class="table table--hover">
+                    <thead>
+                      <tr>
+                        <th>نام شرکت و سازمان</th>
+                        <th>مسئول خرید / رابط</th>
+                        <th>شهر و استان</th>
+                        <th>بخش‌بندی</th>
+                        <th class="text-center">سفارش‌ها</th>
+                        <th class="text-end">مجموع خرید (LTV)</th>
+                        <th>رتبه RFM</th>
+                        <th>وضعیت</th>
+                        <th class="text-end">عملیات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${filtered.map((c, idx) => `
+                        <tr data-cust-row="${c.id}">
+                          <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                              <img src="${safeAvatar(idx + 1)}" style="width:36px; height:36px; border-radius:10px; object-fit:cover; border:1px solid var(--nv-border);" alt="">
+                              <div>
+                                <a href="customers/details.html?id=${encodeURIComponent(c.id)}" style="font-weight:800; font-size:13px; color:var(--nv-heading); text-decoration:none;">${escapeHtml(c.company)}</a>
+                                <div style="font-size:11px; color:var(--nv-text-muted); font-family:var(--nv-font-mono);">${escapeHtml(c.email)}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style="font-size:12px; font-weight:600;">${escapeHtml(c.contact)}</td>
+                          <td><span class="badge badge--soft-light text-muted" style="font-size:11px;"><i class="bi bi-geo-alt"></i> ${escapeHtml(c.city)}</span></td>
+                          <td><span class="badge badge--soft-${c.segment==='enterprise'?'primary':c.segment==='smb'?'info':'warning'}" style="font-size:10px;">${c.segment==='enterprise'?'سازمانی':c.segment==='smb'?'کسب‌وکار':'استارتاپ'}</span></td>
+                          <td class="text-center numeric" style="font-weight:700;">${toDigits(c.orders)}</td>
+                          <td class="text-end numeric" style="font-weight:800; color:var(--nv-primary);">${formatCurrency(c.totalSpend, 'IRR', { compact: true })}</td>
+                          <td><span class="badge badge--soft-success" style="font-size:10px;">${escapeHtml(c.rfm || 'وفادار')}</span></td>
+                          <td><span class="badge badge--soft-${c.status==='active'?'success':'warning'}" style="font-size:10px;">${c.status==='active'?'فعال':'در انتظار'}</span></td>
+                          <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1">
+                              <a class="btn btn-sm btn-light" href="customers/details.html?id=${encodeURIComponent(c.id)}" style="font-size:11px; padding:3px 8px;" title="مشاهده پرونده"><i class="bi bi-eye"></i></a>
+                              <button class="btn btn-sm btn-light" type="button" data-new-order="${c.id}" style="font-size:11px; padding:3px 8px;" title="ثبت سفارش"><i class="bi bi-cart-plus"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>`,
+        );
+      };
+
+      renderCustomerTable();
+
+      on(node, 'click', (e) => {
+        const segBtn = e.target.closest('[data-seg]');
+        if (segBtn) {
+          currentSeg = segBtn.dataset.seg;
+          renderCustomerTable();
+          return;
+        }
+        if (e.target.closest('[data-export-cust]')) {
+          toast.success('خروجی اکسل آماده شد', 'فایل اکسل مشتریان دانلود شد.');
+        }
+        if (e.target.closest('[data-new-cust]')) {
+          modal.open({
+            title: 'ثبت اطلاعات مشتری جدید',
+            content: `
+              <form class="form-stack">
+                <div class="form-field"><label class="form-label">نام شرکت / سازمان *</label><input class="form-control" placeholder="مثال: شرکت داده‌پردازی پیشرو" required></div>
+                <div class="grid grid--2"><div class="form-field"><label class="form-label">نام رابط / مسئول خرید</label><input class="form-control" placeholder="نام و نام خانوادگی"></div><div class="form-field"><label class="form-label">شماره تماس</label><input class="form-control" placeholder="۰۲۱-۸۸..."></div></div>
+                <div class="grid grid--2"><div class="form-field"><label class="form-label">ایمیل سازمانی</label><input class="form-control" type="email" placeholder="info@company.ir"></div><div class="form-field"><label class="form-label">شهر فعالیت</label><input class="form-control" placeholder="تهران"></div></div>
+                <div class="form-field"><label class="form-label">نوع بخش‌بندی (Segment)</label><select class="form-select"><option value="enterprise">سازمانی و B2B کلان</option><option value="smb">کسب‌وکار کوچک و متوسط</option><option value="startup">استارتاپ و دانش‌بنیان</option></select></div>
+              </form>
+            `,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-confirm-new-cust>ثبت مشتری</button>',
+            onMount: (panel) => on($('[data-confirm-new-cust]', panel), 'click', () => { toast.success('مشتری جدید ثبت شد', 'پرونده مشتری با موفقیت ایجاد گردید.'); modal.closeTop(); }),
+          });
+        }
+      });
+
+      on(node, 'input', (e) => {
+        const searchInput = e.target.closest('[data-cust-search]');
+        if (searchInput) {
+          const val = searchInput.value.trim().toLowerCase();
+          $$('[data-cust-row]', node).forEach(row => {
+            row.style.display = val ? (row.textContent.toLowerCase().includes(val) ? '' : 'none') : '';
+          });
+        }
+      });
+
+      exportable(node, 'customers');
+      return;
+    }
+
     case 'customers/details.html': {
       const id = kit.queryParam('id');
       const record = (await loadRecord('customers', id)) ?? (await services.customerService.list({ perPage: 1 })).items[0];
@@ -2575,7 +4557,7 @@ async function initCustomers() {
         node,
         `<div class="dashboard-shell">
           ${pageHeader({
-            title: record.company ?? record.name ?? 'مشتری',
+            title: record.company ?? record.name ?? 'مشتری سازمانی',
             subtitle: `${record.contact ?? ''} • ${record.city ?? ''}`,
             icon: 'person-vcard',
             badges: [statusBadge(record.statusLabel ?? 'فعال', 'success')],
@@ -2600,9 +4582,9 @@ async function initCustomers() {
       );
       const kpis = [
         { label: 'سفارش‌ها', value: toDigits(24), icon: 'bag', tone: 'primary' },
-        { label: 'ارزش کل', value: formatCurrency(record.value ?? 480000000, 'IRR', { compact: true }), icon: 'cash-stack', tone: 'success' },
+        { label: 'ارزش کل (LTV)', value: formatCurrency(record.totalSpend ?? record.value ?? 480000000, 'IRR', { compact: true }), icon: 'cash-stack', tone: 'success' },
         { label: 'شاخص رضایت', value: formatPercent(4.6), icon: 'emoji-smile', tone: 'info' },
-        { label: 'بدهی', value: formatCurrency(12000000, 'IRR', { compact: true }), icon: 'exclamation-circle', tone: 'warning' },
+        { label: 'بدهی جاری', value: formatCurrency(12000000, 'IRR', { compact: true }), icon: 'exclamation-circle', tone: 'warning' },
       ];
       render(
         $('[data-customer-kpis]', node),
@@ -2619,7 +4601,7 @@ async function initCustomers() {
     case 'customers/segments.html': {
       const node = host();
       const { items } = await services.customerService.list({ perPage: 200 });
-      const labels = { enterprise: 'سازمانی', smb: 'کسب‌وکار کوچک', startup: 'استارتاپ', retail: 'خرد' };
+      const labels = { enterprise: 'سازمانی (Enterprise B2B)', smb: 'کسب‌وکار متوسط (SMB)', startup: 'استارتاپ و دانش‌بنیان', retail: 'فروشگاهی و خرد' };
       const grouped = new Map();
       for (const customer of items) {
         const key = customer.segment ?? 'retail';
@@ -2630,29 +4612,122 @@ async function initCustomers() {
         grouped.set(key, bucket);
       }
       const segments = [...grouped.values()].sort((a, b) => b.revenue - a.revenue);
+      const totalRev = segments.reduce((s, seg) => s + seg.revenue, 0);
+
       render(
         node,
         `<div class="dashboard-shell">
-          ${pageHeader({ title: 'دسته‌بندی مشتریان', subtitle: 'بخش‌بندی بر پایه ارزش خرید، تعداد سفارش و نوع حساب', icon: 'diagram-3' })}
-          <div class="grid grid--2">
-            ${card({ title: 'سهم درآمد هر بخش', body: chartBox({ key: 'segments', type: 'donut', height: 320, series: segments.map((s) => s.revenue), labels: segments.map((s) => s.label) }) })}
-            ${card({ title: 'تعداد مشتری هر بخش', body: chartBox({ key: 'segmentSizes', type: 'bar', height: 320, series: [{ name: 'مشتری', data: segments.map((s) => s.count) }], labels: segments.map((s) => s.label) }) })}
+          ${pageHeader({
+            title: 'دسته‌بندی و بخش‌بندی مشتریان (RFM Segmentation)',
+            subtitle: 'تحلیل رفتار خرید، ارزش طول عمر (LTV)، تفکیک بخش‌های درآمدی و استراتژی‌های حفظ مشتری',
+            icon: 'diagram-3-fill',
+            actions: '<button class="btn btn-primary" type="button" data-new-campaign><i class="bi bi-megaphone"></i> تعریف کمپین بخش‌بندی</button>',
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'بخش‌های فعال درآمدی', value: toDigits(segments.length), hint: 'دسته‌بندی بر مبنای RFM', tone: 'primary', icon: 'pie-chart' })}
+            ${statCard({ label: 'بالاترین سهم درآمد', value: '۶۴٪', hint: 'متعلق به بخش سازمانی', tone: 'success', icon: 'trophy' })}
+            ${statCard({ label: 'میانگین سفارش هر بخش', value: toDigits(Math.round(segments.reduce((s,seg)=>s+seg.orders,0)/segments.length)), hint: 'سفارشات موفق دوره‌ای', tone: 'info', icon: 'bag-check' })}
+            ${statCard({ label: 'نرخ بازگشت مشتری (Retention)', value: '۸۲٫۴٪', hint: 'شاخص وفاداری مشتریان', tone: 'warning', icon: 'arrow-repeat' })}
           </div>
+
+          <!-- Segment Highlight Cards -->
+          <div class="grid grid--4 mb-4" style="gap:16px;">
+            <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="badge badge--soft-primary" style="font-size:11px;">قهرمانان (VIP)</span>
+                <span style="font-size:11px; color:var(--nv-success); font-weight:700;">سهم: ۶۴٪</span>
+              </div>
+              <h4 style="margin:0 0 6px; font-size:14px; font-weight:800;">سازمانی و دولتی</h4>
+              <p style="margin:0 0 10px; font-size:11px; color:var(--nv-text-muted);">خرید بالا و چرخه منظم قراردادها</p>
+              <div class="progress progress--sm" style="height:5px;"><div class="progress-bar bg-primary" style="width:64%;"></div></div>
+            </div>
+
+            <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="badge badge--soft-info" style="font-size:11px;">مشتریان باارزش</span>
+                <span style="font-size:11px; color:var(--nv-info); font-weight:700;">سهم: ۲۲٪</span>
+              </div>
+              <h4 style="margin:0 0 6px; font-size:14px; font-weight:800;">کسب‌وکارهای متوسط (SMB)</h4>
+              <p style="margin:0 0 10px; font-size:11px; color:var(--nv-text-muted);">تکرار خرید ماهانه با رشد پایدار</p>
+              <div class="progress progress--sm" style="height:5px;"><div class="progress-bar bg-info" style="width:22%;"></div></div>
+            </div>
+
+            <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="badge badge--soft-warning" style="font-size:11px;">پتانسیل رشد</span>
+                <span style="font-size:11px; color:var(--nv-warning); font-weight:700;">سهم: ۱۱٪</span>
+              </div>
+              <h4 style="margin:0 0 6px; font-size:14px; font-weight:800;">استارتاپ‌ها و نوپاها</h4>
+              <p style="margin:0 0 10px; font-size:11px; color:var(--nv-text-muted);">نرخ پذیرش ابزارهای جدید عالی</p>
+              <div class="progress progress--sm" style="height:5px;"><div class="progress-bar bg-warning" style="width:11%;"></div></div>
+            </div>
+
+            <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="badge badge--soft-danger" style="font-size:11px;">در معرض ریزش</span>
+                <span style="font-size:11px; color:var(--nv-danger); font-weight:700;">سهم: ۳٪</span>
+              </div>
+              <h4 style="margin:0 0 6px; font-size:14px; font-weight:800;">مشتریان کم‌تحرک</h4>
+              <p style="margin:0 0 10px; font-size:11px; color:var(--nv-text-muted);">عدم خرید در ۶۰ روز گذشته</p>
+              <div class="progress progress--sm" style="height:5px;"><div class="progress-bar bg-danger" style="width:3%;"></div></div>
+            </div>
+          </div>
+
+          <div class="grid grid--2 mb-4">
+            ${card({ title: 'سهم درآمدی هر بخش از کل فروش', body: chartBox({ key: 'segments', type: 'donut', height: 320, series: segments.map((s) => s.revenue), labels: segments.map((s) => s.label) }) })}
+            ${card({ title: 'تعداد مشتریان در هر سگمنت', body: chartBox({ key: 'segmentSizes', type: 'bar', height: 320, series: [{ name: 'مشتری', data: segments.map((s) => s.count) }], labels: segments.map((s) => s.label) }) })}
+          </div>
+
           ${card({
-            title: 'فهرست بخش‌ها',
+            title: 'جدول تحلیلی عملکرد سگمنت‌های مشتریان',
+            subtitle: 'بررسی شاخص‌های میانگین سبد خرید، تعداد تراکنش و سهم ریالی هر بخش',
             flush: true,
-            body: `<div class="table-responsive"><table class="table table--hover"><thead><tr><th>بخش</th><th class="text-end">تعداد مشتری</th><th class="text-end">سفارش‌ها</th><th class="text-end">ارزش کل</th><th class="text-end">میانگین سبد</th></tr></thead>
-              <tbody>${segments
-                .map(
-                  (segment) => `<tr><td class="table__primary">${escapeHtml(segment.label)}</td><td class="text-end numeric">${toDigits(segment.count)}</td>
-                    <td class="text-end numeric">${toDigits(segment.orders)}</td><td class="text-end numeric">${formatCurrency(segment.revenue, 'IRR', { compact: true })}</td>
-                    <td class="text-end numeric">${formatCurrency(segment.count ? segment.revenue / segment.count : 0, 'IRR', { compact: true })}</td></tr>`,
-                )
-                .join('')}</tbody></table></div>`,
+            body: `<div class="table-responsive"><table class="table table--hover">
+              <thead>
+                <tr>
+                  <th>عنوان سگمنت</th>
+                  <th class="text-end">تعداد مشتریان</th>
+                  <th class="text-end">کل سفارش‌ها</th>
+                  <th class="text-end">درآمد کل</th>
+                  <th class="text-end">میانگین هر مشتری</th>
+                  <th class="text-center">سهم درآمدی</th>
+                  <th class="text-end">استراتژی پیشنهادی</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${segments.map((segment) => {
+                  const sharePct = totalRev ? Math.round((segment.revenue / totalRev) * 100) : 0;
+                  return `
+                    <tr>
+                      <td class="table__primary" style="font-weight:800;">${escapeHtml(segment.label)}</td>
+                      <td class="text-end numeric">${toDigits(segment.count)}</td>
+                      <td class="text-end numeric">${toDigits(segment.orders)}</td>
+                      <td class="text-end numeric" style="font-weight:700; color:var(--nv-primary);">${formatCurrency(segment.revenue, 'IRR', { compact: true })}</td>
+                      <td class="text-end numeric">${formatCurrency(segment.count ? segment.revenue / segment.count : 0, 'IRR', { compact: true })}</td>
+                      <td class="text-center"><span class="badge badge--soft-${sharePct > 40 ? 'primary' : sharePct > 15 ? 'info' : 'warning'} rounded-pill">${toDigits(sharePct)}٪</span></td>
+                      <td class="text-end">
+                        <button class="btn btn-sm btn-light" type="button" data-segment-action="${segment.key}" style="font-size:11px; padding:3px 10px;">اجرای کمپین</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table></div>`,
           })}
         </div>`,
       );
       initCharts(node);
+
+      on(node, 'click', (e) => {
+        const segBtn = e.target.closest('[data-segment-action]');
+        if (segBtn) {
+          toast.success('کمپین فعال شد', `کمپین بازاریابی برای بخش «${segBtn.dataset.segmentAction}» ایجاد گردید.`);
+        }
+        if (e.target.closest('[data-new-campaign]')) {
+          toast.info('کمپین جدید', 'فرم تعریف کمپین هوشمند سگمنت باز شد.');
+        }
+      });
       return;
     }
 
@@ -2661,13 +4736,6 @@ async function initCustomers() {
   }
 }
 
-/* ==================================================================== exports */
-
-/**
- * Named exports: `src/main.js` routes an area prefix straight to these
- * (`import('./js/pages/modules.js')).initEcommerce()`), so they must be real
- * exports — the grouped object below is kept for programmatic use.
- */
 export {
   initEcommerce,
   initCustomers,

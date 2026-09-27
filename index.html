@@ -123,7 +123,7 @@
         </nav>
 
         <div class="landing-header__actions">
-          <a class="btn btn-primary btn-sm d-none d-lg-inline-flex" href="dashboards/analytics.html" data-cta="demo">
+          <a class="btn btn-primary btn-sm d-none d-lg-inline-flex" href="auth/login.html" data-cta="demo">
             <i class="bi bi-play-fill" aria-hidden="true"></i>
             <span>دموی زنده</span>
           </a>
@@ -162,7 +162,7 @@
               <span class="badge badge--soft-warning rounded-pill"><i class="bi bi-moon-stars" aria-hidden="true"></i> روشن و تاریک</span>
             </div>
             <div class="landing-hero__actions">
-              <a class="btn btn-primary btn-lg" href="dashboards/analytics.html">
+              <a class="btn btn-primary btn-lg" href="auth/login.html" data-cta="demo">
                 <i class="bi bi-play-fill" aria-hidden="true"></i>
                 <span>دیدن دموی زنده</span>
               </a>
@@ -448,23 +448,41 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
         </div>
         <div class="landing-kit" data-reveal>
           <div class="landing-kit__row">
-            <button class="btn btn-primary" type="button">دکمه اصلی</button>
+            <button class="btn btn-primary" type="button"><i class="bi bi-stars me-1"></i> دکمه اصلی</button>
             <button class="btn btn-outline-primary" type="button">دکمه خطی</button>
             <button class="btn btn-light" type="button">دکمه روشن</button>
-            <span class="badge badge--soft-success rounded-pill">موفق</span>
-            <span class="badge badge--soft-warning rounded-pill">در انتظار</span>
-            <span class="badge badge--soft-danger rounded-pill">خطا</span>
-            <a class="btn btn-sm btn-link" href="ui/buttons.html">همه کامپوننت‌ها <i class="bi bi-box-arrow-up-left" aria-hidden="true"></i></a>
+            <div class="vr mx-2 text-muted opacity-25"></div>
+            <span class="badge badge--soft-success rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>تأییدشده</span>
+            <span class="badge badge--soft-warning rounded-pill px-3 py-2"><i class="bi bi-clock-fill me-1"></i>در انتظار بررسی</span>
+            <span class="badge badge--soft-danger rounded-pill px-3 py-2"><i class="bi bi-exclamation-circle-fill me-1"></i>خطای اعتبارسنجی</span>
+            <div class="avatar-group ms-auto d-none d-md-flex">
+              <img src="assets/img/avatars/avatar-01.svg" class="avatar avatar--sm" alt="">
+              <img src="assets/img/avatars/avatar-02.svg" class="avatar avatar--sm" alt="">
+              <img src="assets/img/avatars/avatar-03.svg" class="avatar avatar--sm" alt="">
+              <span class="avatar avatar--sm bg-primary text-white" style="font-size:11px;">+۴</span>
+            </div>
+            <a class="btn btn-sm btn-link fw-bold" href="ui/buttons.html">مشاهده ۶۳+ کامپوننت <i class="bi bi-arrow-left" aria-hidden="true"></i></a>
           </div>
           <div class="landing-kit__grid">
-            <div class="chart" data-chart="area" data-chart-height="210" data-chart-config='{"series":[{"id":"v","name":"بازدید","data":[12,18,15,24,20,28,26]}],"labels":["ش","ی","د","س","چ","پ","ج"]}'></div>
+            <div class="chart" data-chart="area" data-chart-height="220" data-chart-config='{"series":[{"id":"v","name":"عملکرد زنده","data":[14,22,18,32,26,38,34]}],"labels":["شنبه","۱شنبه","۲شنبه","۳شنبه","۴شنبه","۵شنبه","جمعه"]}'></div>
             <div class="landing-kit__list">
-              <div class="progress" style="height: 8px"><div class="progress-bar" style="width: 72%"></div></div>
-              <div class="progress" style="height: 8px"><div class="progress-bar bg-success" style="width: 54%"></div></div>
-              <div class="progress" style="height: 8px"><div class="progress-bar bg-warning" style="width: 33%"></div></div>
-              <div class="landing-kit__switch">
-                <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="kitSwitch1" checked /><label class="form-check-label" for="kitSwitch1">حالت فشرده</label></div>
-                <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="kitSwitch2" /><label class="form-check-label" for="kitSwitch2">انیمیشن‌ها</label></div>
+              <div>
+                <div class="d-flex justify-content-between small mb-1 fw-semibold">
+                  <span>تکمیل پروژه‌های جاری</span>
+                  <span class="text-primary numeric">۷۸٪</span>
+                </div>
+                <div class="progress" style="height: 8px; border-radius: 999px;"><div class="progress-bar" style="width: 78%"></div></div>
+              </div>
+              <div>
+                <div class="d-flex justify-content-between small mb-1 fw-semibold">
+                  <span>شاخص سلامت سرویس (SLA)</span>
+                  <span class="text-success numeric">۹۹٫۴٪</span>
+                </div>
+                <div class="progress" style="height: 8px; border-radius: 999px;"><div class="progress-bar bg-success" style="width: 99%"></div></div>
+              </div>
+              <div class="landing-kit__switch d-flex justify-content-between align-items-center pt-2 border-top">
+                <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="kitSwitch1" checked /><label class="form-check-label fw-semibold" for="kitSwitch1">حالت فشرده (Compact)</label></div>
+                <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="kitSwitch2" checked /><label class="form-check-label fw-semibold" for="kitSwitch2">انیمیشن‌های روان</label></div>
               </div>
             </div>
           </div>
@@ -619,7 +637,7 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
               </button>
             </form>
             <div class="landing-cta__actions">
-              <a class="btn btn-light btn-lg" href="dashboards/analytics.html"><i class="bi bi-play-fill" aria-hidden="true"></i> دموی زنده</a>
+              <a class="btn btn-light btn-lg" href="auth/login.html" data-cta="demo"><i class="bi bi-play-fill" aria-hidden="true"></i> دموی زنده</a>
               <a class="btn btn-outline-light btn-lg" href="auth/login.html"><i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> ورود به پنل</a>
             </div>
             <p class="landing-cta__note">با عضویت، ایمیل‌های اطلاع‌رسانی نسخه را دریافت می‌کنید؛ هر زمان می‌توانید لغو کنید.</p>

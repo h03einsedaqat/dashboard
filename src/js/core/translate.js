@@ -183,8 +183,12 @@ function translateTitle() {
     .trim();
 }
 
+let hasAppliedTranslation = false;
+
 export function apply(root = document.body) {
   if (!root || !enabled) return 0;
+  if (!current && !hasAppliedTranslation) return 0;
+  if (current) hasAppliedTranslation = true;
   translateTitle();
   /** `current === null` means "Persian": remembered originals are restored. */
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -214,6 +218,7 @@ function schedule(root = document.body) {
 /** Watches for late content (tables, modals, AI replies, chart labels). */
 export function observe(root = document.body) {
   if (observer || typeof MutationObserver === 'undefined') return observer;
+  if (!current && !hasAppliedTranslation) return null;
   observer = new MutationObserver((records) => {
     const interesting = records.some((record) => {
       if (record.type === 'attributes') return ATTRS.includes(record.attributeName);
@@ -258,6 +263,10 @@ export function audit(scope = document.body) {
 
 bus.on(EVENTS.language, () => {
   setPhraseLanguage(language());
+  if (current) {
+    hasAppliedTranslation = true;
+    observe();
+  }
   apply();
 });
 

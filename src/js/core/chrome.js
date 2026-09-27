@@ -290,36 +290,79 @@ export function openShortcuts() {
 
 /* ============================================================ notifications */
 
-async function renderNotifications() {
+let _currentNotifFilter = 'all';
+
+async function renderNotifications(filter = _currentNotifFilter) {
+  _currentNotifFilter = filter;
   const host = $('[data-notification-list]');
   if (!host) return;
   const items = await notificationService.list();
   const read = storage.get(KEYS.notificationsRead, []) ?? [];
+
+  const unreadCount = items.filter((item) => !item.read && !read.includes(item.id)).length;
+  const badge = $('[data-notif-count]');
+  if (badge) {
+    badge.textContent = toDigits(unreadCount);
+    badge.hidden = unreadCount === 0;
+  }
+  const headBadge = $('[data-notif-badge]');
+  if (headBadge) {
+    headBadge.textContent = unreadCount > 0 ? `${toDigits(unreadCount)} جدید` : 'خوانده‌شده';
+    headBadge.className = unreadCount > 0 ? 'badge badge--soft-primary rounded-pill' : 'badge badge--soft-secondary rounded-pill';
+  }
+
+  const filtered = items.filter((item) => {
+    const isUnread = !item.read && !read.includes(item.id);
+    if (filter === 'unread') return isUnread;
+    if (filter === 'system') return item.type === 'danger' || item.type === 'warning' || item.title.includes('پشتیبان') || item.title.includes('نسخه') || item.title.includes('درگاه');
+    if (filter === 'orders') return item.title.includes('پرداخت') || item.title.includes('موجودی') || item.title.includes('فروش');
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    render(
+      host,
+      `<div class="p-4 text-center text-muted" style="font-size:12px;">
+        <i class="bi bi-bell-slash fs-2 d-block mb-2 text-secondary opacity-50"></i>
+        <span>هیچ اعلانی در این دسته وجود ندارد.</span>
+      </div>`
+    );
+    return;
+  }
+
   render(
     host,
-    items
+    filtered
       .map(
-        (item) => `<button type="button" class="dropdown-item notification-item ${item.read || read.includes(item.id) ? '' : 'is-unread'}" role="listitem" data-notification="${item.id}">
-          <span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-${item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle'}" aria-hidden="true"></i></span>
-          <span class="notification-item__body">
-            <span class="notification-item__title">${escapeHtml(item.title)}</span>
-            <span class="notification-item__text">${escapeHtml(item.text)}</span>
-            ${item.at ? `<span class="notification-item__time">${escapeHtml(relativeTime(item.at))}</span>` : ''}
-          </span>
-        </button>`,
+        (item) => {
+          const isUnread = !item.read && !read.includes(item.id);
+          const icon = item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle';
+          return `<div class="notification-item ${isUnread ? 'is-unread' : ''}" role="listitem" data-notification="${item.id}" style="cursor:pointer;">
+            <span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-${icon}" aria-hidden="true"></i></span>
+            <span class="notification-item__body">
+              <span class="notification-item__title">${escapeHtml(item.title)}</span>
+              <span class="notification-item__text">${escapeHtml(item.text)}</span>
+              ${item.at ? `<span class="notification-item__time"><i class="bi bi-clock me-1"></i>${escapeHtml(relativeTime(item.at))}</span>` : ''}
+            </span>
+            ${isUnread ? `<button type="button" class="btn btn-sm btn-link p-0 text-muted ms-auto" data-mark-single-read="${item.id}" title="علامت خوانده شد"><i class="bi bi-check2"></i></button>` : ''}
+          </div>`;
+        }
       )
       .join(''),
   );
-  const badge = $('[data-notif-count]');
-  const unread = items.filter((item) => !item.read && !read.includes(item.id)).length;
-  if (badge) {
-    badge.textContent = toDigits(unread);
-    badge.hidden = unread === 0;
-  }
 }
 
 function initNotifications() {
   on(document, 'click', async (event) => {
+    const filterBtn = event.target.closest('[data-notif-filter]');
+    if (filterBtn) {
+      event.preventDefault();
+      const filter = filterBtn.dataset.notifFilter;
+      $$('[data-notif-filter]').forEach((b) => b.classList.toggle('is-active', b === filterBtn));
+      await renderNotifications(filter);
+      return;
+    }
+
     if (event.target.closest('[data-notif-read-all]')) {
       event.preventDefault();
       const items = await notificationService.list();
@@ -329,23 +372,45 @@ function initNotifications() {
       bus.emit(EVENTS.notifications, { readAll: true });
       return;
     }
+
+    const singleBtn = event.target.closest('[data-mark-single-read]');
+    if (singleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = singleBtn.dataset.markSingleRead;
+      const read = storage.get(KEYS.notificationsRead, []) ?? [];
+      if (!read.includes(id)) {
+        storage.set(KEYS.notificationsRead, [...new Set([...read, id])]);
+      }
+      await renderNotifications();
+      bus.emit(EVENTS.notifications, { id });
+      return;
+    }
+
     const item = event.target.closest('[data-notification]');
     if (!item) return;
     const read = storage.get(KEYS.notificationsRead, []) ?? [];
     if (!read.includes(item.dataset.notification)) {
       storage.set(KEYS.notificationsRead, [...new Set([...read, item.dataset.notification])]);
     }
-    item.closest('.notification-item')?.classList.remove('is-unread');
+    item.classList.remove('is-unread');
+    item.querySelector('[data-mark-single-read]')?.remove();
     const badge = $('[data-notif-count]');
     if (badge) {
       const next = Math.max(0, Number(toLatinDigits(badge.textContent)) - 1);
       badge.textContent = toDigits(next);
       badge.hidden = next === 0;
     }
+    const headBadge = $('[data-notif-badge]');
+    if (headBadge) {
+      const count = Number(toLatinDigits(headBadge.textContent.replace(/\D/g, '')) || 0) - 1;
+      headBadge.textContent = count > 0 ? `${toDigits(count)} جدید` : 'خوانده‌شده';
+      if (count <= 0) headBadge.className = 'badge badge--soft-secondary rounded-pill';
+    }
     bus.emit(EVENTS.notifications, { id: item.dataset.notification });
   });
   renderNotifications();
-  bus.on(EVENTS.dataChanged, renderNotifications);
+  bus.on(EVENTS.dataChanged, () => renderNotifications());
 }
 
 /* ========================================================= theme customizer */

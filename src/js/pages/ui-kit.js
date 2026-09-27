@@ -25,6 +25,7 @@ import { setLanguage } from '../core/i18n.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
 import { formatDate, relativeTime } from '../core/jalali.js';
 import { createDataTable } from '../core/datatable.js';
+import { url } from '../core/links.js';
 import { ICON_GROUPS, ICON_TOTAL } from '../../data/icons.js';
 import {
   card,
@@ -635,66 +636,132 @@ function buildProgress() {
 function buildAvatars() {
   const sections = [
     demoSection({
-      title: 'اندازه‌ها',
+      title: 'اندازه‌ها و مقیاس آواتار',
       body: [
-        demoItem('تصویری', row(['xs', 'sm', '', 'lg', 'xl'].map((size) => `<img class="avatar${size ? ` avatar--${size}` : ''}" src="assets/img/avatars/avatar-03.svg" alt="کاربر">`).join(''))),
-        demoItem('حرف اول', row(['xs', 'sm', '', 'lg'].map((size) => `<span class="avatar avatar--${size || 'md'} avatar--soft-primary">س</span>`).join(''))),
-        demoItem('وضعیت', row(`<span class="avatar"><img src="assets/img/avatars/avatar-04.svg" alt="کاربر"><span class="status-dot status-dot--success avatar__status"></span></span><span class="avatar"><img src="assets/img/avatars/avatar-05.svg" alt="کاربر"><span class="status-dot status-dot--warning avatar__status"></span></span>`)),
-        demoItem('گروه', `<div class="avatar-group">${[1, 2, 3, 4].map((i) => `<img class="avatar" src="assets/img/avatars/avatar-0${i}.svg" alt="کاربر ${toDigits(i)}">`).join('')}<span class="avatar avatar--soft-neutral">+${toDigits(8)}</span></div>`),
+        demoItem('تصویری با ابعاد مختلف', row(['xs', 'sm', '', 'lg', 'xl'].map((size) => `<img class="avatar${size ? ` avatar--${size}` : ''}" src="${url('assets/img/avatars/avatar-03.svg')}" alt="کاربر" style="object-fit:cover;">`).join(''))),
+        demoItem('حرف اول نام (Monogram)', row(['xs', 'sm', '', 'lg'].map((size) => `<span class="avatar avatar--${size || 'md'} avatar--soft-primary">س</span>`).join(''))),
+        demoItem('نشانگر وضعیت برخط (Online Status)', row(`<span class="avatar"><img src="${url('assets/img/avatars/avatar-04.svg')}" alt="کاربر" style="object-fit:cover;"><span class="status-dot status-dot--success avatar__status"></span></span><span class="avatar"><img src="${url('assets/img/avatars/avatar-05.svg')}" alt="کاربر" style="object-fit:cover;"><span class="status-dot status-dot--warning avatar__status"></span></span><span class="avatar"><img src="${url('assets/img/avatars/avatar-06.svg')}" alt="کاربر" style="object-fit:cover;"><span class="status-dot status-dot--danger avatar__status"></span></span>`)),
+        demoItem('گروه آواتار فشرده (Avatar Stack)', `<div class="avatar-group">${[1, 2, 3, 4].map((i) => `<img class="avatar" src="${url(`assets/img/avatars/avatar-0${i}.svg`)}" alt="کاربر ${toDigits(i)}" style="object-fit:cover;">`).join('')}<span class="avatar avatar--soft-primary" style="font-weight:800; font-size:12px;">+${toDigits(8)}</span></div>`),
       ],
       wide: true,
     }),
     demoSection({
-      title: 'ترکیب با متن',
+      title: 'ترکیب با متن و کارت‌های هویتی',
       body: [
-        demoItem('فهرست کاربران', `<ul class="list-group">${[1, 2, 3].map((i) => `<li class="list-item"><span class="table__primary"><img class="avatar avatar--sm" src="assets/img/avatars/avatar-0${i}.svg" alt=""><span class="table__primary-text"><span class="table__primary-title">کاربر نمونه ${toDigits(i)}</span><span class="table__primary-sub">نقش: کارشناس</span></span></span><span class="list-item__meta">${statusBadge('فعال', 'success')}</span></li>`).join('')}</ul>`),
+        demoItem('فهرست اعضا و وضعیت', `<ul class="list-group">${[1, 2, 3].map((i) => `<li class="list-item" style="padding:10px 14px;"><span class="table__primary"><img class="avatar avatar--sm" src="${url(`assets/img/avatars/avatar-0${i}.svg`)}" alt="" style="object-fit:cover;"><span class="table__primary-text"><span class="table__primary-title">کاربر متخصص ${toDigits(i)}</span><span class="table__primary-sub">دپارتمان طراحی محصول</span></span></span><span class="list-item__meta">${statusBadge('فعال', 'success')}</span></li>`).join('')}</ul>`),
       ],
     }),
   ];
-  return { title: 'آواتارها', subtitle: 'آواتارها، گروه‌ها و نشانگر وضعیت', icon: 'person-circle', sections };
+  return { title: 'آواتارها و هویت بصری', subtitle: 'انواع سایزها، نمادهای آنلاین، دسته‌های فشرده و کارت‌های پرسنلی', icon: 'person-circle', sections };
 }
 
 /* ================================================================ typography */
 
 function buildTypography() {
   const scale = [
-    ['display', '--nv-text-display', 'نمایشی — تیتر اصلی صفحه'],
-    ['h1', '--nv-text-h1', 'سرتیتر سطح یک'],
-    ['h2', '--nv-text-h2', 'سرتیتر سطح دو'],
-    ['h3', '--nv-text-h3', 'سرتیتر سطح سه'],
-    ['h4', '--nv-text-h4', 'سرتیتر کارت'],
-    ['body', '--nv-text-body', 'متن اصلی رابط کاربری'],
-    ['body-sm', '--nv-text-body-sm', 'متن کمکی'],
-    ['caption', '--nv-text-caption', 'برچسب و فراداده'],
-    ['micro', '--nv-text-micro', 'ریزترین اندازه'],
+    { name: 'Display', token: '--nv-text-display', size: '2.25rem (36px)', weight: '900', sample: 'تیتر بزرگ و برجسته برای هیرو و اعداد کلیدی' },
+    { name: 'Heading 1', token: '--nv-text-h1', size: '1.75rem (28px)', weight: '800', sample: 'سرتیتر سطح یک برای صفحات و داشبوردها' },
+    { name: 'Heading 2', token: '--nv-text-h2', size: '1.35rem (22px)', weight: '800', sample: 'سرتیتر سطح دو برای بخش‌ها و ماژول‌ها' },
+    { name: 'Heading 3', token: '--nv-text-h3', size: '1.15rem (18px)', weight: '700', sample: 'سرتیتر کارت‌ها و عناوین جدول‌ها' },
+    { name: 'Heading 4', token: '--nv-text-h4', size: '1.0rem (16px)', weight: '700', sample: 'عنوان گروه‌ها و سرتیترهای فرعی' },
+    { name: 'Body', token: '--nv-text-body', size: '0.875rem (14px)', weight: '400', sample: 'متن اصلی رابط کاربری با خوانایی فوق‌العاده و فواصل متعادل برای زبان فارسی' },
+    { name: 'Body Small', token: '--nv-text-body-sm', size: '0.8125rem (13px)', weight: '400', sample: 'متن توضیحات کمکی و راهنمای فیلدها' },
+    { name: 'Caption', token: '--nv-text-caption', size: '0.75rem (12px)', weight: '500', sample: 'برچسب‌ها، وضعیت‌ها و ارقام فشرده در جداول' },
+    { name: 'Micro', token: '--nv-text-micro', size: '0.6875rem (11px)', weight: '600', sample: 'ریزترین اندازه مجاز برای پاورقی و نشان‌ها' },
   ];
+
+  const weights = [
+    { label: 'سبک (Light 300)', weight: 300, text: 'طراحی سبک و مینی‌مال مناسب زیرعنوان‌های طولانی' },
+    { label: 'معمولی (Regular 400)', weight: 400, text: 'قلم متن پیش‌فرض سیستم برای محتوا و متون اداری' },
+    { label: 'متوسط (Medium 500)', weight: 500, text: 'تأکید نرم برای برچسب‌ها، منوها و گزینه‌های ناوبری' },
+    { label: 'نیمه‌ضخیم (SemiBold 600)', weight: 600, text: 'استحکام مناسب برای عناوین کارت‌ها و ارقام مهم' },
+    { label: 'ضخیم (Bold 700)', weight: 700, text: 'وضوح بالا برای سرتیترها و دکمه‌های اصلی فراخوان' },
+    { label: 'بسیار ضخیم (Black 900)', weight: 900, text: 'اثرگذاری حداکثری برای تیترهای اصلی و بنرها' },
+  ];
+
   const sections = [
-    demoSection({
-      title: 'مقیاس تایپوگرافی',
-      subtitle: 'فونت وزیرمتن با اعداد فارسی؛ اندازه‌ها از توکن‌های CSS می‌آیند و در تنظیمات ظاهر قابل تغییرند',
-      wide: true,
-      body: scale.map(([name, token, sample]) => `<div class="demo-type-row"><span class="demo-type-row__sample" style="font-size:var(${token})">${sample}</span><span class="demo-type-row__meta">${name} · ${token}</span></div>`).join(''),
+    card({
+      title: 'مقیاس کامل تایپوگرافی (Type Scale)',
+      subtitle: 'فونت استاندارد فارسی Vazirmatn؛ با فواصل خطوط هماهنگ برای نمایشگرهای رتینا',
+      body: `
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          ${scale.map(s => `
+            <div style="padding:16px 20px; border-radius:14px; background:var(--nv-surface-2); border:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+              <div style="flex:1; min-width:280px;">
+                <div style="font-size:var(${s.token}); font-weight:${s.weight}; color:var(--nv-heading); line-height:1.6;">${escapeHtml(s.sample)}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+                <span class="badge badge--soft-primary" style="font-size:11px;">${s.size}</span>
+                <span class="badge badge--soft-neutral" style="font-size:11px;">وزن: ${s.weight}</span>
+                <code style="font-size:11px; direction:ltr; background:var(--nv-surface); padding:4px 8px; border-radius:6px; border:1px solid var(--nv-border);">${s.token}</code>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `,
     }),
-    demoSection({
-      title: 'متن و فهرست',
-      body: [
-        demoItem('پاراگراف', `<p>این پاراگراف نمونه با فاصله خطوط متعادل نمایش داده می‌شود؛ ارتفاع خط و فاصله حروف برای متن فارسی تنظیم شده است تا خواندن متن‌های طولانی راحت باشد.</p><p class="mb-0 text-muted">متن کم‌رنگ برای توضیحات ثانویه.</p>`),
-        demoItem('فهرست‌ها', `<ul><li>فهرست نقطه‌ای ساده</li><li>با آیتم دوم<ul><li>زیرفهرست</li></ul></li></ul><ol><li>فهرست شماره‌دار</li><li>آیتم دوم</li></ol>`),
-        demoItem('نقل‌قول', `<blockquote>طراحی خوب دیده نمی‌شود؛ فقط کار می‌کند.<footer class="fs-caption text-muted">— ضرب‌المثلی در طراحی محصول</footer></blockquote>`),
-        demoItem('کد و کلید', `<p>برای اجرای پروژه <code>npm run dev</code> را بزنید و سپس کلید <kbd>Ctrl</kbd> + <kbd>K</kbd> را امتحان کنید.</p><pre class="demo-code">npm install\nnpm run dev</pre>`),
-      ],
+    card({
+      title: 'وزن‌های قلم وزیرمتن (Font Weights)',
+      subtitle: 'پوشش ۶ وزن استاندارد برای ایجاد سلسله‌مراتب بصری روشن',
+      body: `
+        <div class="grid grid--2" style="gap:16px;">
+          ${weights.map(w => `
+            <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong style="font-size:13px; color:var(--nv-primary);">${w.label}</strong>
+                <span class="badge badge--soft-neutral" style="font-size:10px;">font-weight: ${w.weight}</span>
+              </div>
+              <p style="margin:0; font-size:14px; font-weight:${w.weight}; color:var(--nv-heading); line-height:1.7;">${w.text}</p>
+            </div>
+          `).join('')}
+        </div>
+      `,
     }),
-    demoSection({
-      title: 'اعداد، ارز و تاریخ',
-      body: [
-        demoItem('اعداد فارسی', `<p class="mb-1 numeric">${toDigits(1234567)}</p><p class="mb-0 fs-caption text-muted">جداکننده هزار و ارقام فارسی</p>`),
-        demoItem('ارز', `<p class="mb-1 numeric">${formatCurrency(48500000, 'IRR')}</p><p class="mb-0 numeric fs-caption text-muted">${formatCurrency(12400, 'USD')}</p>`),
-        demoItem('درصد و کسر', `<p class="mb-1 numeric">${formatPercent(37.4, { decimals: 1 })}</p><p class="mb-0 numeric fs-caption text-muted">${formatNumber(0.42, { decimals: 2 })}</p>`),
-        demoItem('تاریخ شمسی و نسبی', `<p class="mb-1">${formatDate(new Date(), { format: 'long' })}</p><p class="mb-0 fs-caption text-muted">${relativeTime(new Date(Date.now() - 5400000).toISOString())}</p>`),
-      ],
+    card({
+      title: 'متن، نقل‌قول و پاراگراف‌ها',
+      body: `
+        <div class="grid grid--2" style="gap:20px;">
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border);">
+            <h4 style="font-size:14px; font-weight:800; margin-bottom:8px;">پاراگراف استاندارد</h4>
+            <p style="font-size:13px; line-height:1.9; color:var(--nv-text); margin-bottom:12px;">نواادمین اولین سیستم طراحی و قالب مدیریت جامع است که از ابتدا با اولویت زبان فارسی، تقویم جلالی و جهت راست‌به‌چپ واقعی مهندسی شده است. رعایت تناسب بین اندازه و فاصله بین خطوط، چشم کاربر را در پیمایش‌های طولانی خسته نمی‌کند.</p>
+            <p style="font-size:12px; line-height:1.8; color:var(--nv-text-muted); margin:0;">متن‌های ثانویه و توضیحات کمکی با این سبک رندر می‌شوند.</p>
+          </div>
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border);">
+            <h4 style="font-size:14px; font-weight:800; margin-bottom:8px;">نقل‌قول و کدهای درون‌خطی</h4>
+            <blockquote style="border-inline-start:4px solid var(--nv-primary); padding:12px 16px; background:var(--nv-primary-soft); border-radius:12px; margin:0 0 12px; font-size:13px; line-height:1.8; color:var(--nv-heading);">
+              «طراحی خوب دیده نمی‌شود؛ طراحی خوب احساس می‌شود و کارایی سامانه را بالا می‌برد.»
+              <footer style="font-size:11px; color:var(--nv-text-muted); margin-top:6px;">— اصل اساسی در طراحی تجربه کاربری مدرن</footer>
+            </blockquote>
+            <p style="font-size:12px; margin:0;">استفاده از <code style="padding:2px 6px; border-radius:6px; background:var(--nv-surface); border:1px solid var(--nv-border);">inline code</code> و کلیدهای میانبر مانند <kbd style="padding:2px 6px; border-radius:6px; background:var(--nv-surface); border:1px solid var(--nv-border);">Ctrl + K</kbd> برای دسترسی سریع.</p>
+          </div>
+        </div>
+      `,
+    }),
+    card({
+      title: 'اعداد فارسی، ارزها و تاریخ',
+      body: `
+        <div class="grid grid--4" style="gap:16px;">
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border); text-align:center;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">ارقام فارسی و جداکننده</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-primary);" class="numeric">${toDigits(14850900)}</div>
+          </div>
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border); text-align:center;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">واحد پولی تومان</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-success);" class="numeric">${formatCurrency(48500000, 'IRR', { compact: true })}</div>
+          </div>
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border); text-align:center;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">درصد و نسبت</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-info);" class="numeric">۸۴٫۶٪</div>
+          </div>
+          <div style="padding:16px; border-radius:12px; background:var(--nv-surface-2); border:1px solid var(--nv-border); text-align:center;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">تاریخ رسمی شمسی</div>
+            <div style="font-size:14px; font-weight:800; color:var(--nv-heading); margin-top:6px;">${formatDate(new Date(), { format: 'long' })}</div>
+          </div>
+        </div>
+      `,
     }),
   ];
-  return { title: 'تایپوگرافی', subtitle: 'مقیاس کامل تایپوگرافی، متن، فهرست و قالب‌بندی', icon: 'fonts', sections };
+  return { title: 'کیت تایپوگرافی و مقیاس فونت', subtitle: 'مقیاس کامل فونت وزیرمتن با اعداد فارسی، وزن‌ها و فاصله‌بندی استاندارد', icon: 'fonts', sections };
 }
 
 /* ====================================================================== grid */

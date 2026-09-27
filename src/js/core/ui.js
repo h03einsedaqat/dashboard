@@ -209,7 +209,7 @@ function initDateRanges(root = document) {
     if (!preset) return;
     const name = preset.dataset.rangePreset;
     $$('[data-range-preset]', preset.closest('[data-range]') ?? document).forEach((node) => node.classList.toggle('is-active', node === preset));
-    $$('[data-range-label]').forEach((label) => {
+    $$('span[data-range-label], [data-range-display-label]').forEach((label) => {
       label.textContent = preset.dataset.rangeLabel ?? preset.textContent.trim();
     });
     bus.emit('range:change', { range: name });

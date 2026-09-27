@@ -12,10 +12,15 @@ import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initCalendar } from '../core/calendar.js';
-import { goTo } from '../core/links.js';
+import { goTo, url } from '../core/links.js';
 import * as kit from './kit.js';
 
-const { card, infoRows, host, pageHeader, formMarkup, openRecordForm, exportable, emptyState, statusBadge, toolButtons, chartBox, services } = kit;
+const { card, statCard, infoRows, host, pageHeader, formMarkup, openRecordForm, exportable, emptyState, statusBadge, toolButtons, chartBox, services } = kit;
+
+const safeAvatar = (i = 1) => {
+  const n = ((Math.abs(Number(i) || 1) - 1) % 24) + 1;
+  return url(`assets/img/avatars/avatar-${String(n).padStart(2, '0')}.svg`);
+};
 
 /* ====================================================================== mail PRO */
 
@@ -238,10 +243,10 @@ async function chatApp() {
 
   // Fallback data if empty
   const convList = conversations.length ? conversations : [
-    { id: 'c1', name: 'سارا محمدی', avatar: 'assets/img/avatars/avatar-08.svg', role: 'مدیر محصول', preview: 'فایل طراحی جدید رو دیدی؟ عالی شده!', unread: 2, updatedAt: new Date().toISOString(), status: 'online' },
-    { id: 'c2', name: 'تیم طراحی', avatar: 'assets/img/avatars/avatar-03.svg', role: 'گروه', preview: 'علی: جلسه فردا ساعت ۱۰', unread: 0, updatedAt: new Date(Date.now()-3600000).toISOString(), status: 'online' },
-    { id: 'c3', name: 'رضا کریمی', avatar: 'assets/img/avatars/avatar-05.svg', role: 'توسعه‌دهنده ارشد', preview: 'مرج ریکوئست رو بررسی کردم', unread: 1, updatedAt: new Date(Date.now()-7200000).toISOString(), status: 'busy' },
-    { id: 'c4', name: 'مریم حسینی', avatar: 'assets/img/avatars/avatar-12.svg', role: 'پشتیبانی', preview: 'تیکت جدید ثبت شد', unread: 0, updatedAt: new Date(Date.now()-86400000).toISOString(), status: 'away' },
+    { id: 'c1', name: 'سارا محمدی', avatar: safeAvatar(8), role: 'مدیر محصول', preview: 'فایل طراحی جدید رو دیدی؟ عالی شده!', unread: 2, updatedAt: new Date().toISOString(), status: 'online' },
+    { id: 'c2', name: 'تیم طراحی', avatar: safeAvatar(3), role: 'گروه', preview: 'علی: جلسه فردا ساعت ۱۰', unread: 0, updatedAt: new Date(Date.now()-3600000).toISOString(), status: 'online' },
+    { id: 'c3', name: 'رضا کریمی', avatar: safeAvatar(5), role: 'توسعه‌دهنده ارشد', preview: 'مرج ریکوئست رو بررسی کردم', unread: 1, updatedAt: new Date(Date.now()-7200000).toISOString(), status: 'busy' },
+    { id: 'c4', name: 'مریم حسینی', avatar: safeAvatar(12), role: 'پشتیبانی', preview: 'تیکت جدید ثبت شد', unread: 0, updatedAt: new Date(Date.now()-86400000).toISOString(), status: 'away' },
   ];
   const presenceList = presence.length ? presence : convList.slice(0,6);
 
@@ -258,7 +263,7 @@ async function chatApp() {
               <div class="chat-presence-row">${presenceList
                 .slice(0, 8)
                 .map((person) => `<button type="button" class="chat-presence ${person.status==='online'?'chat-presence--online': person.status==='busy'?'chat-presence--busy':''}" data-presence="${escapeHtml(person.id)}" title="${escapeHtml(person.name)}">
-                  <img src="${escapeHtml(person.avatar)}" alt="">
+                  <img src="${url(person.avatar)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
                   <span class="chat-presence__dot chat-presence__dot--${person.status==='online'?'online': person.status==='busy'?'busy': person.status==='away'?'away':'offline'}"></span>
                 </button>`)
                 .join('')}</div>
@@ -270,7 +275,7 @@ async function chatApp() {
           <div class="chat-sidebar__list" style="padding:12px; display:flex; flex-direction:column; gap:6px; overflow:auto; max-height:560px;">${convList
             .map(
               (conversation, index) => `<button type="button" class="chat-contact ${index === 0 ? 'is-active' : ''}" data-chat="${escapeHtml(conversation.id)}">
-                <img class="avatar" src="${escapeHtml(conversation.avatar ?? 'assets/img/avatars/avatar-02.svg')}" alt="" style="width:44px; height:44px; border-radius:14px; object-fit:cover;">
+                <img class="avatar" src="${url(conversation.avatar ?? safeAvatar(2))}" alt="" style="width:44px; height:44px; border-radius:14px; object-fit:cover; flex-shrink:0;">
                 <div class="chat-contact__body">
                   <div class="chat-contact__top"><span class="chat-contact__name">${escapeHtml(conversation.name)}</span><span class="chat-contact__time">${relativeTime(conversation.updatedAt)}</span></div>
                   <div class="chat-contact__preview"><i class="bi bi-check2-all" style="color:var(--nv-success);"></i> ${escapeHtml(conversation.preview ?? '')}</div>
@@ -284,7 +289,7 @@ async function chatApp() {
         <section class="chat-panel" style="display:flex; flex-direction:column;">
           <header class="chat-panel__head">
             <div class="chat-user">
-              <div class="chat-user__avatar"><img src="${escapeHtml(convList[0]?.avatar)}" alt=""><span class="chat-user__avatar__status"></span></div>
+              <div class="chat-user__avatar"><img src="${url(convList[0]?.avatar)}" alt="" style="width:44px;height:44px;border-radius:14px;object-fit:cover;"><span class="chat-user__avatar__status"></span></div>
               <div><div class="chat-user__name" data-chat-name>${escapeHtml(convList[0]?.name)}</div><div class="chat-user__sub"><span class="status-dot status-dot--online"></span> آنلاین • در حال تایپ...</div></div>
             </div>
             <div class="chat-panel__actions" style="display:flex; gap:6px;">
@@ -324,7 +329,8 @@ async function chatApp() {
       const conv = convList.find(c=>c.id===active);
       if (conv) {
         $('[data-chat-name]', node).textContent = conv.name;
-        $('.chat-user__avatar img', node).src = conv.avatar;
+        const avatarImg = $('.chat-user__avatar img', node);
+        if (avatarImg) avatarImg.src = url(conv.avatar);
       }
       render(stream, await chatStreamMarkup(active, convList));
       scroll();
@@ -343,7 +349,7 @@ async function chatApp() {
       modal.open({
         title: 'اطلاعات گفتگو',
         size: 'md',
-        content: `<div style="text-align:center; padding:20px;"><img src="${escapeHtml(conversation?.avatar)}" style="width:88px; height:88px; border-radius:28px; margin:0 auto 16px; display:block; border:3px solid var(--nv-surface); box-shadow:var(--nv-shadow-lg);"><h3 style="margin:0 0 4px; font-weight:900;">${escapeHtml(conversation?.name ?? '')}</h3><p style="color:var(--nv-text-muted); font-size:12px; margin:0;">${escapeHtml(conversation?.role ?? '')}</p><div style="display:flex; gap:8px; justify-content:center; margin-top:16px;"><span class="badge badge--soft-success">آنلاین</span><span class="badge badge--soft-primary">${toDigits(128)} پیام</span></div></div>`,
+        content: `<div style="text-align:center; padding:20px;"><img src="${url(conversation?.avatar)}" style="width:88px; height:88px; border-radius:28px; margin:0 auto 16px; display:block; border:3px solid var(--nv-surface); box-shadow:var(--nv-shadow-lg); object-fit:cover;"><h3 style="margin:0 0 4px; font-weight:900;">${escapeHtml(conversation?.name ?? '')}</h3><p style="color:var(--nv-text-muted); font-size:12px; margin:0;">${escapeHtml(conversation?.role ?? '')}</p><div style="display:flex; gap:8px; justify-content:center; margin-top:16px;"><span class="badge badge--soft-success">آنلاین</span><span class="badge badge--soft-primary">${toDigits(128)} پیام</span></div></div>`,
         footer: '<button type="button" class="btn btn-light" data-modal-close>بستن</button>',
       });
     }
@@ -367,7 +373,7 @@ async function chatApp() {
       $('[data-chat-typing]', stream)?.remove();
       const person = convList.find((item) => item.id === active);
       const text2 = person?.autoReply ?? 'دریافت شد، بررسی می‌کنم و به‌زودی پاسخ می‌دهم.';
-      stream.insertAdjacentHTML('beforeend', `<article class="msg msg--in"><span class="msg__avatar"><img src="${escapeHtml(person?.avatar ?? 'assets/img/avatars/avatar-02.svg')}" alt="" style="width:32px; height:32px; border-radius:10px;"></span><div class="msg__body"><div class="msg__bubble">${escapeHtml(text2)}</div><div class="msg__meta"><time>همین حالا</time></div></div></article>`);
+      stream.insertAdjacentHTML('beforeend', `<article class="msg msg--in"><span class="msg__avatar"><img src="${url(person?.avatar ?? safeAvatar(2))}" alt="" style="width:32px; height:32px; border-radius:10px; object-fit:cover;"></span><div class="msg__body"><div class="msg__bubble">${escapeHtml(text2)}</div><div class="msg__meta"><time>همین حالا</time></div></div></article>`);
       scroll();
     }, 900);
   });
@@ -399,12 +405,12 @@ async function chatStreamMarkup(conversationId, fallbackList = []) {
   ];
   const fallback = fallbackList.find(c=>c.id===conversationId);
   const name = detail?.name ?? fallback?.name ?? 'همکار';
-  const avatar = detail?.avatar ?? fallback?.avatar ?? 'assets/img/avatars/avatar-02.svg';
+  const avatar = detail?.avatar ?? fallback?.avatar ?? safeAvatar(2);
   if (!messages.length) return emptyState({ title: 'اینجا ساکت است', text: 'اولین پیام را بفرستید.', icon: 'chat-square-dots' });
   return `<div class="chat-day-divider" style="text-align:center; margin:8px 0;"><span style="background:var(--nv-surface-2); padding:4px 12px; border-radius:999px; font-size:11px; color:var(--nv-text-muted);">امروز • ${formatDate(new Date(), { format: 'medium' })}</span></div>
     ${messages.map((message) => `
       <article class="msg ${message.from === 'me' ? 'msg--out' : 'msg--in'}">
-        ${message.from !== 'me' ? `<span class="msg__avatar"><img src="${escapeHtml(avatar)}" alt=""></span>` : ''}
+        ${message.from !== 'me' ? `<span class="msg__avatar"><img src="${url(avatar)}" alt="" style="width:36px; height:36px; border-radius:12px; object-fit:cover; display:block;"></span>` : ''}
         <div class="msg__body">
           <div class="msg__bubble">${escapeHtml(message.text)}</div>
           <div class="msg__meta"><time>${relativeTime(message.at)} ${message.from==='me'?'• ✓✓':''}</time></div>
@@ -503,44 +509,64 @@ async function calendarApp() {
 async function fileManager() {
   const node = host();
   const [files, storageInfo] = await Promise.all([services.fileService.list({ perPage: 20 }).catch(()=>({items:[]})), services.mediaService.list({ perPage: 1 }).catch(()=>({storage:{used:68,total:200}}))]);
-  const items = files.items ?? files;
+  const defaultFiles = [
+    { id: 'f1', name: 'صورت‌های مالی و ترازنامه ۱۴۰۳.pdf', type: 'pdf', size: '۴٫۲ MB', updatedAt: 'امروز، ۱۰:۳۰' },
+    { id: 'f2', name: 'دیزاین سیستم و کتابخانه کامپوننت نواادمین.fig', type: 'fig', size: '۲۸٫۵ MB', updatedAt: 'دیروز، ۱۶:۱۵' },
+    { id: 'f3', name: 'کاتالوگ جامع محصولات سازمانی نسخه پاییز.pdf', type: 'pdf', size: '۱۲٫۱ MB', updatedAt: '۳ روز پیش' },
+    { id: 'f4', name: 'پایگاه داده مشتریان و بخش‌بندی RFM.xlsx', type: 'xlsx', size: '۱٫۸ MB', updatedAt: '۴ روز پیش' },
+    { id: 'f5', name: 'ویدیو موشن معرفی داشبورد و راهنمای کاربری.mp4', type: 'mp4', size: '۸۴٫۰ MB', updatedAt: 'هفته گذشته' },
+    { id: 'f6', name: 'سورس کامل قالب پنل مدیریت نواادمین نسخه ۱.۰.۲.zip', type: 'zip', size: '۱۵٫۶ MB', updatedAt: 'هفته گذشته' },
+    { id: 'f7', name: 'قرارداد رسمی همکاری و پیمانکاری شرکت.docx', type: 'docx', size: '۵۲۰ KB', updatedAt: '۲ هفته پیش' },
+    { id: 'f8', name: 'لوگوتایپ و هویت بصری برند نوا.svg', type: 'svg', size: '۱۸۰ KB', updatedAt: '۳ هفته پیش' },
+    { id: 'f9', name: 'فایل صوتی جلسه هیئت مدیره و تصمیمات اسپرینت.m4a', type: 'audio', size: '۲۲٫۴ MB', updatedAt: '۳ هفته پیش' },
+    { id: 'f10', name: 'تیزر تبلیغاتی رونمایی تابستانه محصولات.mp4', type: 'mp4', size: '۱۱۰٫۵ MB', updatedAt: 'یک ماه پیش' },
+    { id: 'f11', name: 'گزارش تحلیل شاخص رضایت مشتریان NPS.pdf', type: 'pdf', size: '۳٫۶ MB', updatedAt: 'یک ماه پیش' },
+    { id: 'f12', name: 'مستندات راهنمای فنی API و وب‌هوک‌ها.pdf', type: 'pdf', size: '۵٫۴ MB', updatedAt: 'دو ماه پیش' },
+  ];
+  const items = files.items?.length ? files.items : defaultFiles;
   render(
     node,
     `<div class="dashboard-shell">
       ${pageHeader({
-        title: 'مدیریت فایل',
-        subtitle: 'نمای شبکه‌ای و فهرستی با اشتراک‌گذاری، تغییر نام و حذف گروهی',
+        title: 'مدیریت فایل و اسناد',
+        subtitle: 'مدیریت متمرکز، اشتراک‌گذاری، پیش‌نمایش و فضای ابری سازمانی',
         icon: 'folder2-open',
-        actions: toolButtons({ extra: '<button class="btn btn-light" type="button" data-new-folder><i class="bi bi-folder-plus"></i> پوشه جدید</button><label class="btn btn-primary"><i class="bi bi-cloud-arrow-up"></i> بارگذاری<input type="file" hidden data-upload></label>' }),
+        actions: toolButtons({ extra: '<button class="btn btn-light" type="button" data-new-folder><i class="bi bi-folder-plus"></i> پوشه جدید</button><label class="btn btn-primary"><i class="bi bi-cloud-arrow-up"></i> بارگذاری فایل<input type="file" hidden data-upload></label>' }),
       })}
       <div class="files-layout">
         <aside class="files-nav">
           <ul class="files-nav__list">${[
             ['همه فایل‌ها', 'folder2-open', items.length],
+            ['اسناد مالی و قراردادها', 'file-earmark-text', 4],
+            ['رسانه‌ها و ویدیوها', 'camera-video', 3],
+            ['آرشیو و فشرده', 'archive', 2],
             ['مورد علاقه', 'star', 6],
             ['اشتراک‌گذاشته‌شده', 'share', 3],
             ['سطل زباله', 'trash3', 2],
           ].map(([label, icon, count], index) => `<li><a class="files-nav__link ${index === 0 ? 'is-active' : ''}" href="#"><i class="bi bi-${icon}"></i><span>${label}</span><span class="files-nav__meta">${toDigits(count)}</span></a></li>`).join('')}</ul>
           <div class="files-storage">
-            <p class="files-storage__title">فضای ذخیره‌سازی</p>
-            <div class="progress progress--sm"><div class="progress-bar" style="width:${Math.min(100, storageInfo.storage?.used ?? 68)}%"></div></div>
-            <p class="files-storage__text">${toDigits(storageInfo.storage?.used ?? 68)}٪ از ${toDigits(storageInfo.storage?.total ?? 200)} گیگابایت</p>
+            <p class="files-storage__title">فضای ابری سازمانی</p>
+            <div class="progress progress--sm mb-2"><div class="progress-bar" style="width:${Math.min(100, storageInfo.storage?.used ?? 68)}%"></div></div>
+            <p class="files-storage__text" style="font-size:11px; margin:0; display:flex; justify-content:space-between;">
+              <span>مصرف‌شده: <strong>${toDigits(storageInfo.storage?.used ?? 68)} GB</strong></span>
+              <span>کل فضا: <strong>${toDigits(storageInfo.storage?.total ?? 200)} GB</strong></span>
+            </p>
           </div>
         </aside>
         <section class="files-panel">
-          <div class="files-breadcrumb"><a href="#">خانه</a><i class="bi bi-chevron-left"></i><a href="#">اسناد</a><i class="bi bi-chevron-left"></i><span>۱۴۰۵</span></div>
+          <div class="files-breadcrumb"><a href="#">خانه</a><i class="bi bi-chevron-left"></i><a href="#">اسناد سازمانی</a><i class="bi bi-chevron-left"></i><span>۱۴۰۳</span></div>
           <div class="d-flex align-items-center gap-2 mb-3">
-            <div class="input-group input-group--icon" style="max-width:22rem"><i class="bi bi-search"></i><input class="form-control form-control--sm" type="search" placeholder="جستجوی فایل" data-file-search></div>
+            <div class="input-group input-group--icon" style="max-width:24rem"><i class="bi bi-search"></i><input class="form-control form-control--sm" type="search" placeholder="جستجوی نام یا پسوند فایل..." data-file-search></div>
             <div class="view-switch ms-auto" data-view-switch="files"><button class="view-switch__btn is-active" type="button" data-view="grid"><i class="bi bi-grid"></i></button><button class="view-switch__btn" type="button" data-view="list"><i class="bi bi-list-ul"></i></button></div>
           </div>
-          <div class="files-grid" data-files-grid>${(items.length?items.slice(0,16):[]).map((file) => fileCard(file)).join('')}</div>
+          <div class="files-grid" data-files-grid>${items.map((file) => fileCard(file)).join('')}</div>
         </section>
       </div>
     </div>`,
   );
   on($('[data-file-search]', node), 'input', (event) => {
-    const term = event.target.value.trim();
-    $$('.file-card', node).forEach((item) => { item.hidden = term ? !item.textContent.includes(term) : false; });
+    const term = event.target.value.trim().toLowerCase();
+    $$('.file-card', node).forEach((item) => { item.hidden = term ? !item.textContent.toLowerCase().includes(term) : false; });
   });
   on($('[data-new-folder]', node), 'click', async () => {
     const name = await modal.prompt({ title: 'پوشه جدید', label: 'نام پوشه', validate: (value) => (value?.trim() ? null : 'نام پوشه الزامی است') });
@@ -551,21 +577,42 @@ async function fileManager() {
     const card2 = event.target.closest('.file-card');
     if (!card2) return;
     if (event.target.closest('[data-file-rename]')) {
-      const name = await modal.prompt({ title: 'تغییر نام', label: 'نام جدید', value: card2.dataset.name });
+      const name = await modal.prompt({ title: 'تغییر نام فایل', label: 'نام جدید', value: card2.dataset.name });
       if (!name) return;
       card2.querySelector('.file-card__name').textContent = name;
+      card2.dataset.name = name;
       toast.success('نام تغییر کرد', 'نام جدید ذخیره شد.');
+      return;
+    }
+    if (event.target.closest('[data-file-delete]')) {
+      const ok = await modal.confirm({ title: 'حذف فایل', text: `آیا از انتقال «${card2.dataset.name}» به سطل زباله اطمینان دارید؟`, tone: 'danger', confirmText: 'حذف فایل' });
+      if (ok) {
+        card2.remove();
+        toast.success('فایل حذف شد', 'فایل به سطل زباله منتقل گردید.');
+      }
       return;
     }
     card2.classList.toggle('is-selected');
   });
   exportable(node, 'files');
 }
-const fileCard = (file) => `<figure class="file-card" data-id="${escapeHtml(file.id ?? file.name)}" data-name="${escapeHtml(file.name)}">
-    <div class="file-card__thumb">${/image|png|jpg|svg/i.test(file.type ?? '') ? `<img src="${escapeHtml(file.url ?? 'assets/img/products/product-03.svg')}" alt="" loading="lazy">` : `<span class="file-card__icon"><i class="bi bi-file-earmark-text"></i></span>`}</div>
-    <figcaption class="file-card__meta"><span class="file-card__name">${escapeHtml(file.name)}</span><span class="list-item__sub">${escapeHtml(file.size ?? '')}</span></figcaption>
-    <div class="file-card__check"><button class="icon-btn icon-btn--sm" type="button" data-file-rename><i class="bi bi-pencil"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" type="button" data-file-delete><i class="bi bi-trash3"></i></button></div>
+const fileCard = (file) => {
+  const ext = (file.name || '').split('.').pop().toLowerCase();
+  let iconClass = 'bi-file-earmark-text text-primary';
+  if (['pdf'].includes(ext)) iconClass = 'bi-file-earmark-pdf-fill text-danger';
+  else if (['fig', 'zip', 'rar', '7z', 'tar'].includes(ext)) iconClass = 'bi-file-earmark-zip-fill text-warning';
+  else if (['xlsx', 'xls', 'csv'].includes(ext)) iconClass = 'bi-file-earmark-excel-fill text-success';
+  else if (['doc', 'docx'].includes(ext)) iconClass = 'bi-file-earmark-word-fill text-info';
+  else if (['mp4', 'mkv', 'mov'].includes(ext)) iconClass = 'bi-file-earmark-play-fill text-danger';
+  else if (['mp3', 'm4a', 'wav'].includes(ext)) iconClass = 'bi-file-earmark-music-fill text-violet';
+  else if (['svg', 'png', 'jpg', 'webp'].includes(ext)) iconClass = 'bi-file-earmark-image-fill text-success';
+
+  return `<figure class="file-card" data-id="${escapeHtml(file.id ?? file.name)}" data-name="${escapeHtml(file.name)}">
+    <div class="file-card__thumb"><span class="file-card__icon"><i class="bi ${iconClass}" style="font-size:2rem;"></i></span></div>
+    <figcaption class="file-card__meta"><span class="file-card__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span class="list-item__sub">${escapeHtml(file.size ?? '')} • ${escapeHtml(file.updatedAt ?? 'امروز')}</span></figcaption>
+    <div class="file-card__check"><button class="icon-btn icon-btn--sm" type="button" data-file-rename title="تغییر نام"><i class="bi bi-pencil"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" type="button" data-file-delete title="حذف"><i class="bi bi-trash3"></i></button></div>
   </figure>`;
+};
 
 /* ============================================================== media + notifications (kept simple) */
 
@@ -584,14 +631,159 @@ async function mediaLibrary() {
 
 async function notificationsPage() {
   const node = host();
-  const items = await services.notificationService.list().catch(()=>[]);
-  render(
-    node,
-    `<div class="dashboard-shell">
-      ${pageHeader({ title: 'مرکز اعلان‌ها', subtitle: 'همه رویدادهای سیستم', icon: 'bell' })}
-      <div class="card"><div class="card__body" data-notif-list>${items.map((item) => `<div class="list-item"><span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-info-circle"></i></span><span class="list-item__title">${escapeHtml(item.title)}<span class="list-item__sub">${escapeHtml(item.text)}</span></span></div>`).join('')}</div></div>
-    </div>`,
-  );
+  let notifications = [
+    { id: 'notif-1', category: 'finance', priority: 'high', type: 'success', icon: 'credit-card-2-front-fill', title: 'پرداخت موفق سفارش #ORD-۱۰۸۴', text: 'مبلغ ۶۸,۵۰۰,۰۰۰ ریال از طریق درگاه پرداخت با موفقیت تسویه و به حساب متصل شد.', time: '۵ دقیقه پیش', read: false, action: { label: 'مشاهده سفارش', url: 'ecommerce/orders.html' } },
+    { id: 'notif-2', category: 'security', priority: 'urgent', type: 'danger', icon: 'shield-exclamation', title: 'هشدار امنیتی: تلاش برای ورود ناموفق', text: '۳ تلاش ناموفق برای ورود به حساب مدیر ارشد از نشانی IP: 185.220.101.5 (فرانکفورت، آلمان) ثبت شد.', time: '۲۲ دقیقه پیش', read: false, action: { label: 'بررسی امنیت', url: 'profile/security.html' } },
+    { id: 'notif-3', category: 'system', priority: 'normal', type: 'info', icon: 'cpu-fill', title: 'تکمیل پشتیبان‌گیری خودکار دیتابیس', text: 'پشتیبان هفتگی پایگاه داده با حجم ۱٫۴ گیگابایت با موفقیت در فضای ابری ذخیره شد.', time: '۱ ساعت پیش', read: false, action: { label: 'تنظیمات سیستم', url: 'settings/system.html' } },
+    { id: 'notif-4', category: 'orders', priority: 'normal', type: 'primary', icon: 'box-seam-fill', title: 'سفارش جدید نیازمند آماده‌سازی', text: 'مشتری «شرکت داده‌پردازان پارس» پیش‌فاکتور شماره INV-۲۳۸۱ را تأیید کرد.', time: '۲ ساعت پیش', read: false, action: { label: 'مشاهده فاکتور', url: 'finance/invoices.html' } },
+    { id: 'notif-5', category: 'ai', priority: 'normal', type: 'warning', icon: 'stars', title: 'مصرف ۷۵٪ از سهمیه توکن ماهانه هوش مصنوعی', text: 'در ۳۰ روز گذشته بیش از ۷۵۰ هزار توکن مصرف شده است. برای جلوگیری از وقفه پلن خود را ارتقا دهید.', time: '۳ ساعت پیش', read: false, action: { label: 'کارگاه هوش مصنوعی', url: 'ai/dashboard.html' } },
+    { id: 'notif-6', category: 'orders', priority: 'high', type: 'primary', icon: 'truck', title: 'محموله NVX-101 وارد محدوده تحویل شد', text: 'کامیون حامل تجهیزات سرور به انبار مرکزی اصفهان رسید و در صف تخلیه قرار گرفت.', time: '۵ ساعت پیش', read: false, action: { label: 'ردیابی زنده', url: 'logistics/tracking.html' } },
+    { id: 'notif-7', category: 'finance', priority: 'normal', type: 'success', icon: 'cash-stack', title: 'واریز پورسانت همکاران فروش', text: 'تسویه حساب ماهانه برای ۱۲ نماینده فروش با موفقیت پردازش و حواله شد.', time: 'دیروز', read: true, action: { label: 'گزارش مالی', url: 'finance/overview.html' } },
+    { id: 'notif-8', category: 'security', priority: 'normal', type: 'info', icon: 'key-fill', title: 'ایجاد کلید جدید API با دسترسی نوشتن', text: 'کلید Production-Mobile توسط کاربر «سارا محمدی» با موفقیت صادر شد.', time: 'دیروز', read: true, action: { label: 'کلیدهای API', url: 'profile/api-keys.html' } },
+    { id: 'notif-9', category: 'system', priority: 'normal', type: 'info', icon: 'patch-check-fill', title: 'انتشار نسخه جدید NOVAADMIN ۱٫۰٫۲', text: 'بهینه‌سازی کارایی هسته، تقویم جلالی بهبودیافته و نقشه‌های ناوگان افزوده شد.', time: '۲ روز پیش', read: true, action: { label: 'تغییرات نسخه', url: 'system/changelog.html' } },
+    { id: 'notif-10', category: 'orders', priority: 'normal', type: 'success', icon: 'chat-left-heart-fill', title: 'ثبت دیدگاه ۵ ستاره جدید برای محصول', text: 'کاربر رضا نوری برای «قالب داشبورد نواادمین» امتیاز کامل ثبت کرد.', time: '۳ روز پیش', read: true, action: { label: 'دیدگاه‌ها', url: 'cms/comments.html' } },
+  ];
+
+  let currentCategory = 'all';
+
+  const renderContent = () => {
+    const unreadCount = notifications.filter(n => !n.read).length;
+    const filtered = notifications.filter(n => {
+      if (currentCategory === 'all') return true;
+      if (currentCategory === 'unread') return !n.read;
+      return n.category === currentCategory;
+    });
+
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'مرکز اعلان‌ها و رخدادهای سیستم',
+          subtitle: 'مدیریت و پیگیری هشدارهای بلادرنگ امنیتی، مالی، انبار و عملکرد محصول',
+          icon: 'bell-fill',
+          actions: `
+            <div class="d-flex gap-2">
+              <button class="btn btn-light btn-sm" type="button" data-mark-all-read><i class="bi bi-check2-all"></i> خواندن همه</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-clear-read><i class="bi bi-trash3"></i> پاک‌سازی خوانده‌شده‌ها</button>
+              <a class="btn btn-light btn-sm" href="settings/notifications.html"><i class="bi bi-gear"></i> تنظیمات</a>
+            </div>
+          `,
+        })}
+
+        <div class="kpi-row grid grid--4 mb-4">
+          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">کل اعلان‌ها</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-heading);">${toDigits(notifications.length)}</div>
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-top:4px;">در ۳۰ روز گذشته</div>
+          </div>
+          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">اعلان‌های خوانده‌نشده</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-primary);">${toDigits(unreadCount)}</div>
+            <div style="font-size:11px; color:var(--nv-primary); margin-top:4px;">${unreadCount > 0 ? 'نیازمند بررسی شما' : 'همه موارد بررسی شد'}</div>
+          </div>
+          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">هشدارهای امنیتی</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-danger);">${toDigits(notifications.filter(n=>n.category==='security').length)}</div>
+            <div style="font-size:11px; color:var(--nv-danger); margin-top:4px;">۱ مورد با اولویت بالا</div>
+          </div>
+          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
+            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">تراکنش‌ها و مالی</div>
+            <div style="font-size:22px; font-weight:900; color:var(--nv-success);">${toDigits(notifications.filter(n=>n.category==='finance').length)}</div>
+            <div style="font-size:11px; color:var(--nv-success); margin-top:4px;">تسویه موفق بانکی</div>
+          </div>
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--nv-border);">
+            <div class="segmented" data-notif-filter style="overflow-x:auto; max-width:100%;">
+              <button type="button" class="segmented__item ${currentCategory==='all'?'is-active':''}" data-cat="all">همه (${toDigits(notifications.length)})</button>
+              <button type="button" class="segmented__item ${currentCategory==='unread'?'is-active':''}" data-cat="unread">خوانده‌نشده (${toDigits(unreadCount)})</button>
+              <button type="button" class="segmented__item ${currentCategory==='finance'?'is-active':''}" data-cat="finance">مالی</button>
+              <button type="button" class="segmented__item ${currentCategory==='security'?'is-active':''}" data-cat="security">امنیت</button>
+              <button type="button" class="segmented__item ${currentCategory==='orders'?'is-active':''}" data-cat="orders">سفارش‌ها و لجستیک</button>
+              <button type="button" class="segmented__item ${currentCategory==='system'?'is-active':''}" data-cat="system">سیستم و هوش مصنوعی</button>
+            </div>
+            <div style="font-size:12px; color:var(--nv-text-muted);">
+              نمایش ${toDigits(filtered.length)} اعلان
+            </div>
+          </div>
+
+          <div class="card__body" style="padding:12px; display:flex; flex-direction:column; gap:10px;" data-notif-list>
+            ${filtered.length === 0 ? `
+              <div style="padding:48px 24px; text-align:center;">
+                <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--nv-text-muted); opacity:0.6;"></i>
+                <h4 style="margin:12px 0 6px; font-size:15px; font-weight:800;">هیچ اعلانی در این دسته یافت نشد</h4>
+                <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">می‌توانید فیلترهای دیگر را انتخاب کنید.</p>
+              </div>
+            ` : filtered.map(item => `
+              <div class="notif-card ${!item.read ? 'notif-card--unread' : ''}" data-id="${item.id}" style="padding:16px; border-radius:14px; border:1px solid ${!item.read ? 'var(--nv-primary)' : 'var(--nv-border)'}; background:${!item.read ? 'var(--nv-primary-soft)' : 'var(--nv-surface-2)'}; display:flex; align-items:start; gap:14px; transition:all 0.2s;">
+                <span class="tile tile--soft tile--icon tile--soft-${item.type}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
+                  <i class="bi bi-${item.icon}" style="font-size:1.25rem;"></i>
+                </span>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <strong style="font-size:13px; font-weight:800; color:var(--nv-heading);">${escapeHtml(item.title)}</strong>
+                      ${!item.read ? '<span class="status-dot status-dot--primary" title="خوانده‌نشده"></span>' : ''}
+                      ${item.priority === 'urgent' ? '<span class="badge badge--soft-danger" style="font-size:10px;">فوری</span>' : item.priority === 'high' ? '<span class="badge badge--soft-warning" style="font-size:10px;">مهم</span>' : ''}
+                    </div>
+                    <small style="font-size:11px; color:var(--nv-text-muted);">${item.time}</small>
+                  </div>
+                  <p style="margin:0 0 10px; font-size:12px; color:var(--nv-text); line-height:1.7;">${escapeHtml(item.text)}</p>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    ${item.action ? `<a class="btn btn-sm btn-primary" href="${item.action.url}" style="font-size:11px; padding:4px 10px;">${item.action.label} <i class="bi bi-arrow-left"></i></a>` : ''}
+                    <button class="btn btn-sm btn-light" type="button" data-toggle-read="${item.id}" style="font-size:11px; padding:4px 10px;">${item.read ? 'علامت به عنوان خوانده‌نشده' : 'علامت خوانده شد'}</button>
+                    <button class="btn btn-sm btn-ghost text-danger" type="button" data-delete-notif="${item.id}" style="font-size:11px; padding:4px 8px;" title="حذف اعلان"><i class="bi bi-trash3"></i></button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>`,
+    );
+  };
+
+  renderContent();
+
+  on(node, 'click', async (event) => {
+    const catBtn = event.target.closest('[data-cat]');
+    if (catBtn) {
+      currentCategory = catBtn.dataset.cat;
+      renderContent();
+      return;
+    }
+    const toggleBtn = event.target.closest('[data-toggle-read]');
+    if (toggleBtn) {
+      const id = toggleBtn.dataset.toggleRead;
+      const target = notifications.find(n => n.id === id);
+      if (target) {
+        target.read = !target.read;
+        renderContent();
+      }
+      return;
+    }
+    const deleteBtn = event.target.closest('[data-delete-notif]');
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.deleteNotif;
+      notifications = notifications.filter(n => n.id !== id);
+      toast.info('اعلان حذف شد');
+      renderContent();
+      return;
+    }
+    if (event.target.closest('[data-mark-all-read]')) {
+      notifications.forEach(n => n.read = true);
+      toast.success('همه اعلان‌ها خوانده شدند');
+      renderContent();
+      return;
+    }
+    if (event.target.closest('[data-clear-read]')) {
+      notifications = notifications.filter(n => !n.read);
+      toast.info('اعلان‌های خوانده‌شده پاک شدند');
+      renderContent();
+      return;
+    }
+  });
 }
 
 /* ====================================================================== CMS PRO */
@@ -744,69 +936,475 @@ export async function initCms() {
     return;
   }
 
-  // generic CMS list pages - PRO tables
-  const titles = {
-    'cms/posts.html': { title: 'نوشته‌ها', icon: 'journal-text', subtitle: 'مدیریت مقالات با ویرایشگر حرفه‌ای و سئو' },
-    'cms/pages.html': { title: 'برگه‌ها', icon: 'file-earmark-text', subtitle: 'صفحات ایستا با صفحه‌ساز کشیدن و رها کردن' },
-    'cms/categories.html': { title: 'دسته‌بندی‌ها', icon: 'folder2', subtitle: 'ساختاردهی محتوا با سلسله مراتب' },
-    'cms/tags.html': { title: 'برچسب‌ها', icon: 'tags', subtitle: 'برچسب‌گذاری هوشمند برای سئو' },
-    'cms/comments.html': { title: 'دیدگاه‌ها', icon: 'chat-left-text', subtitle: 'مدیریت نظرات با تشخیص اسپم' },
-    'cms/media.html': { title: 'رسانه', icon: 'images', subtitle: 'کتابخانه تصاویر و فایل‌ها' },
+  // CMS datasets & bespoke views
+  const cmsData = {
+    posts: [
+      { id: 'p-1', title: 'راهنمای جامع سئو و بهینه‌سازی وب در سال ۲۰۲۶', category: 'سئو و بازاریابی', author: 'سارا محمدی', avatar: 'assets/img/avatars/avatar-01.svg', views: 4250, comments: 18, date: '۴ مهر ۱۴۰۳', status: 'published', tags: ['سئو', 'تولید محتوا'] },
+      { id: 'p-2', title: 'معماری میکروسرویس‌ها و مقیاس‌پذیری با کوبرنتیز', category: 'فناوری و توسعه', author: 'امیر طاهری', avatar: 'assets/img/avatars/avatar-02.svg', views: 3180, comments: 12, date: '۱ مهر ۱۴۰۳', status: 'published', tags: ['دوآپس', 'کلود'] },
+      { id: 'p-3', title: 'استراتژی هوش مصنوعی برای مدیران ارشد کسب‌وکار', category: 'هوش مصنوعی', author: 'سارا محمدی', avatar: 'assets/img/avatars/avatar-01.svg', views: 5900, comments: 34, date: '۲۸ شهریور ۱۴۰۳', status: 'published', tags: ['هوش مصنوعی', 'مدیریت'] },
+      { id: 'p-4', title: 'اصول طراحی تجربه کاربری (UI/UX) در اپلیکیشن‌های مالی', category: 'طراحی محصول', author: 'نگار کریمی', avatar: 'assets/img/avatars/avatar-06.svg', views: 2640, comments: 9, date: '۲۴ شهریور ۱۴۰۳', status: 'published', tags: ['دیزاین سیستم', 'UI/UX'] },
+      { id: 'p-5', title: 'آموزش پیاده‌سازی احراز هویت دوعاملی (2FA) در وب', category: 'امنیت سایبری', author: 'رضا نوری', avatar: 'assets/img/avatars/avatar-03.svg', views: 1850, comments: 8, date: '۲۰ شهریور ۱۴۰۳', status: 'published', tags: ['امنیت وب', 'احراز هویت'] },
+      { id: 'p-6', title: 'بررسی روندهای بازاریابی محتوایی در شبکه‌های اجتماعی', category: 'سئو و بازاریابی', author: 'الهام رستمی', avatar: 'assets/img/avatars/avatar-08.svg', views: 820, comments: 3, date: '۱۸ شهریور ۱۴۰۳', status: 'draft', tags: ['مارکتینگ', 'سوشال'] },
+      { id: 'p-7', title: 'معرفی قابلیت‌های جدید نسخه ۱٫۰٫۲ قالب نواادمین', category: 'اطلاعیه‌ها', author: 'سارا محمدی', avatar: 'assets/img/avatars/avatar-01.svg', views: 9400, comments: 52, date: '۱۵ شهریور ۱۴۰۳', status: 'published', tags: ['نواادمین', 'آپدیت'] },
+      { id: 'p-8', title: 'راهنمای اتصال پایگاه‌های داده توزیع‌شده با تأخیر کم', category: 'فناوری و توسعه', author: 'امیر طاهری', avatar: 'assets/img/avatars/avatar-02.svg', views: 1200, comments: 4, date: '۱۲ شهریور ۱۴۰۳', status: 'review', tags: ['دیتابیس', 'سرعت'] },
+    ],
+    pages: [
+      { id: 'pg-1', title: 'صفحه اصلی (Landing Page)', slug: '/', template: 'لندینگ پیشرفته', updated: 'امروز', status: 'published' },
+      { id: 'pg-2', title: 'درباره ما و داستان شرکت', slug: '/about-us', template: 'برگه شرکتی', updated: '۵ روز پیش', status: 'published' },
+      { id: 'pg-3', title: 'تماس با ما و شعبات', slug: '/contact', template: 'فرم تماس + نقشه', updated: '۲ هفته پیش', status: 'published' },
+      { id: 'pg-4', title: 'قوانین و شرایط استفاده از خدمات', slug: '/terms', template: 'متنی حقوقی', updated: '۱ ماه پیش', status: 'published' },
+      { id: 'pg-5', title: 'سیاست حفظ حریم خصوصی کاربران', slug: '/privacy', template: 'متنی حقوقی', updated: '۱ ماه پیش', status: 'published' },
+      { id: 'pg-6', title: 'تعرفه‌ها و مقایسه پلن‌ها', slug: '/pricing', template: 'جدول تعرفه', updated: '۳ روز پیش', status: 'published' },
+      { id: 'pg-7', title: 'فرصت‌های همکاری و جذب نیرو', slug: '/careers', template: 'لیست فرصت‌ها', updated: 'دیروز', status: 'draft' },
+    ],
+    categories: [
+      { id: 'cat-1', name: 'فناوری و مهندسی وب', slug: 'tech', parent: '—', count: 24, icon: 'code-slash', color: 'primary' },
+      { id: 'cat-2', name: 'هوش مصنوعی و داده', slug: 'ai', parent: '—', count: 18, icon: 'stars', color: 'violet' },
+      { id: 'cat-3', name: 'سئو و دیجیتال مارکتینگ', slug: 'marketing', parent: '—', count: 15, icon: 'graph-up-arrow', color: 'success' },
+      { id: 'cat-4', name: 'طراحی محصول و تجربه کاربری', slug: 'ui-ux', parent: '—', count: 12, icon: 'palette', color: 'warning' },
+      { id: 'cat-5', name: 'امنیت سایبری و شبکه', slug: 'security', parent: '—', count: 9, icon: 'shield-check', color: 'danger' },
+      { id: 'cat-6', name: 'آموزش‌ها و راهنمای کاربری', slug: 'tutorials', parent: '—', count: 31, icon: 'book', color: 'info' },
+    ],
+    tags: [
+      { id: 'tag-1', name: 'سئو (SEO)', slug: 'seo', count: 18, views: '۱۲٫۴k', color: 'primary' },
+      { id: 'tag-2', name: 'هوش مصنوعی', slug: 'ai', count: 22, views: '۲۴٫۱k', color: 'violet' },
+      { id: 'tag-3', name: 'ری‌اکت (React)', slug: 'react', count: 14, views: '۹٫۸k', color: 'info' },
+      { id: 'tag-4', name: 'دیزاین سیستم', slug: 'design-system', count: 11, views: '۷٫۲k', color: 'success' },
+      { id: 'tag-5', name: 'بوت‌استرپ ۵', slug: 'bootstrap-5', count: 9, views: '۵٫۶k', color: 'warning' },
+      { id: 'tag-6', name: 'داکر و دوآپس', slug: 'devops', count: 8, views: '۴٫۹k', color: 'danger' },
+      { id: 'tag-7', name: 'امنیت وب', slug: 'web-security', count: 13, views: '۸٫۱k', color: 'primary' },
+      { id: 'tag-8', name: 'نواادمین', slug: 'novaadmin', count: 25, views: '۳۲٫۰k', color: 'success' },
+    ],
+    comments: [
+      { id: 'com-1', author: 'مهدی رضایی', avatar: 'assets/img/avatars/avatar-11.svg', post: 'راهنمای جامع سئو و بهینه‌سازی وب در سال ۲۰۲۶', text: 'قالب فوق‌العاده زیبا و سریعی هست، مخصوصاً تقویم شمسی و نمودارها خیلی تمیز کار شدن.', date: '۱۰ دقیقه پیش', status: 'approved' },
+      { id: 'com-2', author: 'علی سلیمانی', avatar: 'assets/img/avatars/avatar-04.svg', post: 'بررسی روندهای بازاریابی محتوایی', text: 'آیا امکان اضافه کردن اتصال به درگاه پرداخت بانکی هم وجود دارد؟', date: '۴۲ دقیقه پیش', status: 'approved' },
+      { id: 'com-3', author: 'شیما کریمی', avatar: 'assets/img/avatars/avatar-06.svg', post: 'استراتژی هوش مصنوعی برای مدیران ارشد', text: 'خسته نباشید به تیم توسعه، این بهترین داشبورد فارسی هست که دیدم.', date: '۲ ساعت پیش', status: 'approved' },
+      { id: 'com-4', author: 'حسین طاهری', avatar: 'assets/img/avatars/avatar-03.svg', post: 'معماری میکروسرویس‌ها و مقیاس‌پذیری', text: 'لینک دانلود فایل سورس در انتهای مقاله باز نمی‌شود، لطفاً بررسی کنید.', date: '۵ ساعت پیش', status: 'pending' },
+      { id: 'com-5', author: 'پگاه افشار', avatar: 'assets/img/avatars/avatar-08.svg', post: 'اصول طراحی تجربه کاربری (UI/UX)', text: 'ممنون از مقاله خوب و کاربردیتون، منتظر قسمت دوم هستیم.', date: '۱ روز پیش', status: 'approved' },
+      { id: 'com-6', author: 'کاربر ناشناس', avatar: 'assets/img/avatars/avatar-12.svg', post: 'آموزش احراز هویت دوعاملی', text: 'Buy cheap crypto fast now visit spam-link.xyz for details...', date: '۲ روز پیش', status: 'spam' },
+    ],
+    media: [
+      { id: 'm-1', name: 'hero-banner-dark.jpg', type: 'image', size: '۴۲۰ KB', res: '۱۹۲۰ × ۱۰۸۰', date: 'امروز', url: 'assets/img/shots/analytics-dark.jpg' },
+      { id: 'm-2', name: 'ai-studio-cover.jpg', type: 'image', size: '۳۸۰ KB', res: '۱۴۴۰ × ۹۰۰', date: 'دیروز', url: 'assets/img/shots/ai-studio-dark.jpg' },
+      { id: 'm-3', name: 'product-catalog.svg', type: 'image', size: '۶۵ KB', res: '۸۰۰ × ۸۰۰', date: '۳ روز پیش', url: 'assets/img/products/product-01.svg' },
+      { id: 'm-4', name: 'company-profile.pdf', type: 'doc', size: '۲٫۴ MB', res: 'سند PDF', date: '۵ روز پیش', url: 'assets/logo-mark.svg' },
+      { id: 'm-5', name: 'brand-mark-logo.svg', type: 'image', size: '۱۸ KB', res: '۵۱۲ × ۵۱۲', date: '۱ هفته پیش', url: 'assets/logo-mark.svg' },
+      { id: 'm-6', name: 'analytics-light.svg', type: 'image', size: '۱۴۰ KB', res: '۱۲۰۰ × ۷۵۰', date: '۲ هفته پیش', url: 'assets/img/previews/analytics-light.svg' },
+    ],
   };
-  const meta = titles[page] || { title: 'محتوا', icon: 'journal-text', subtitle: 'مدیریت محتوا' };
 
-  const stats = {
-    'cms/posts.html': [
-      { label: 'کل نوشته‌ها', value: '۲۴۸', icon: 'journal-text', tone: 'primary' },
-      { label: 'منتشر شده', value: '۱۸۶', icon: 'check-circle', tone: 'success' },
-      { label: 'پیش‌نویس', value: '۳۲', icon: 'file-earmark', tone: 'warning' },
-      { label: 'بازدید امروز', value: '۴.۲k', icon: 'eye', tone: 'info' },
-    ],
-    'cms/pages.html': [
-      { label: 'کل برگه‌ها', value: '۳۴', icon: 'file-earmark-text', tone: 'primary' },
-      { label: 'منتشر شده', value: '۲۸', icon: 'check-circle', tone: 'success' },
-      { label: 'پیش‌نویس', value: '۶', icon: 'file-earmark', tone: 'warning' },
-    ],
-    'cms/categories.html': [
-      { label: 'دسته‌ها', value: '۱۲', icon: 'folder2', tone: 'primary' },
-      { label: 'نوشته‌ها', value: '۲۴۸', icon: 'journal-text', tone: 'info' },
-    ],
-    'cms/tags.html': [
-      { label: 'برچسب‌ها', value: '۸۴', icon: 'tags', tone: 'primary' },
-      { label: 'محبوب‌ترین', value: 'سئو', icon: 'star', tone: 'warning' },
-    ],
-    'cms/comments.html': [
-      { label: 'کل دیدگاه', value: '۱.۲k', icon: 'chat-left-text', tone: 'primary' },
-      { label: 'تأیید شده', value: '۹۸۴', icon: 'check-circle', tone: 'success' },
-      { label: 'در انتظار', value: '۴۲', icon: 'clock', tone: 'warning' },
-      { label: 'اسپم', value: '۱۸', icon: 'shield-exclamation', tone: 'danger' },
-    ],
-  };
+  if (page === 'cms/posts.html') {
+    let posts = [...cmsData.posts];
+    const renderPosts = () => {
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'نوشته‌ها و مقالات وبلاگ',
+            subtitle: 'مدیریت مقالات، بررسی وضعیت سئو، دسته‌بندی و تعداد بازدیدها',
+            icon: 'journal-text',
+            actions: '<a class="btn btn-primary" href="cms/post-create.html"><i class="bi bi-plus-lg"></i> نوشته جدید</a>',
+          })}
 
-  render(
-    node,
-    `<div class="cms-pro">
-      ${pageHeader({ title: meta.title, subtitle: meta.subtitle, icon: meta.icon, actions: toolButtons({ create: 'افزودن جدید', exportResource: resource }) })}
-      ${stats[page] ? `<div class="cms-stat-row">${stats[page].map(s=>`<div class="cms-stat"><div class="cms-stat__icon cms-stat__icon--${s.tone}"><i class="bi bi-${s.icon}"></i></div><div><div class="cms-stat__value">${s.value}</div><div class="cms-stat__label">${s.label}</div></div></div>`).join('')}</div>` : ''}
-      <div class="card cms-table-card"><div class="card__head" style="display:flex; align-items:center; justify-content:space-between;"><h3 style="margin:0; font-size:14px; font-weight:800;">فهرست ${meta.title}</h3><div style="display:flex; gap:8px;"><div class="input-group input-group--icon" style="max-width:220px;"><i class="bi bi-search"></i><input class="form-control form-control--sm" type="search" placeholder="جستجو..." data-cms-search></div><button class="btn btn-light btn-sm" data-cms-filter><i class="bi bi-funnel"></i> فیلتر</button></div></div><div class="card__body" style="padding:0;" data-datatable data-resource="${escapeHtml(resource)}"><div class="table-wrap"><table class="table table--hover"><thead><tr></tr></thead><tbody data-datatable-body></tbody></table></div><div class="datatable__foot" data-datatable-foot></div></div></div>
-    </div>`,
-  );
-  const table = createDataTable($('[data-datatable]', node), { resource });
-  on($('[data-create]', node), 'click', () => {
-    const fields = {
-      posts: [{ name: 'title', label: 'عنوان', required: true, col: 2 }, { name: 'category', label: 'دسته' }, { name: 'status', label: 'وضعیت', type: 'select', options: ['published','draft'] }],
-      pages: [{ name: 'title', label: 'عنوان', required: true }, { name: 'slug', label: 'نامک' }],
-      categories: [{ name: 'name', label: 'نام دسته', required: true }, { name: 'parent', label: 'والد' }],
-      tags: [{ name: 'name', label: 'برچسب', required: true }, { name: 'slug', label: 'نامک' }],
-      comments: [{ name: 'author', label: 'نویسنده' }, { name: 'body', label: 'متن', type: 'textarea', col: 2 }],
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل مقالات', value: toDigits(posts.length), hint: 'محتواهای تولیدشده', tone: 'primary', icon: 'journal-text' })}
+            ${statCard({ label: 'منتشرشده', value: toDigits(posts.filter(p=>p.status==='published').length), hint: 'نمایش در وب‌سایت', tone: 'success', icon: 'check-circle' })}
+            ${statCard({ label: 'پیش‌نویس و بازبینی', value: toDigits(posts.filter(p=>p.status!=='published').length), hint: 'در انتظار انتشار', tone: 'warning', icon: 'file-earmark' })}
+            ${statCard({ label: 'کل بازدیدها', value: '۲۹٫۲k', hint: 'در ۳۰ روز گذشته', tone: 'info', icon: 'eye' })}
+          </div>
+
+          <div class="card" style="border-radius:18px;">
+            <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">فهرست مطالب</h3>
+              <div class="input-group input-group--icon" style="max-width:240px;">
+                <i class="bi bi-search"></i>
+                <input class="form-control form-control--sm" type="search" placeholder="جستجو در مقالات..." data-post-search>
+              </div>
+            </div>
+            <div class="card__body" style="padding:0;">
+              <div class="table-responsive">
+                <table class="table table--hover">
+                  <thead>
+                    <tr>
+                      <th>عنوان نوشته</th>
+                      <th>نویسنده</th>
+                      <th>دسته‌بندی</th>
+                      <th>بازدید</th>
+                      <th>دیدگاه‌ها</th>
+                      <th>تاریخ</th>
+                      <th>وضعیت</th>
+                      <th class="text-end">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${posts.map(p => `
+                      <tr>
+                        <td style="font-weight:700; max-width:280px;">${escapeHtml(p.title)}</td>
+                        <td>
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            <img src="${p.avatar}" style="width:28px;height:28px;border-radius:50%;">
+                            <span style="font-size:12px;">${p.author}</span>
+                          </div>
+                        </td>
+                        <td><span class="badge badge--soft-primary">${p.category}</span></td>
+                        <td class="numeric">${toDigits(p.views)}</td>
+                        <td class="numeric">${toDigits(p.comments)}</td>
+                        <td style="font-size:12px; color:var(--nv-text-muted);">${p.date}</td>
+                        <td><span class="badge badge--soft-${p.status==='published'?'success':p.status==='draft'?'warning':'info'}">${p.status==='published'?'منتشرشده':p.status==='draft'?'پیش‌نویس':'بازبینی'}</span></td>
+                        <td class="text-end">
+                          <div class="d-inline-flex gap-1">
+                            <a class="btn btn-sm btn-light" href="cms/post-create.html" title="ویرایش"><i class="bi bi-pencil"></i></a>
+                            <button class="btn btn-sm btn-ghost text-danger" type="button" data-del-post="${p.id}" title="حذف"><i class="bi bi-trash3"></i></button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>`,
+      );
     };
-    openRecordForm({ resource, title: `افزودن ${meta.title}`, fields: fields[resource] ?? fields.posts, onSaved: () => table.reload() });
-  });
-  on($('[data-cms-search]', node), 'input', (e) => {
-    const term = e.target.value.trim().toLowerCase();
-    $$('tbody tr', node).forEach(tr => { tr.hidden = term ? !tr.textContent.toLowerCase().includes(term) : false; });
-  });
-  exportable(node, resource);
+    renderPosts();
+    on(node, 'click', (e) => {
+      const del = e.target.closest('[data-del-post]');
+      if (del) {
+        posts = posts.filter(p => p.id !== del.dataset.delPost);
+        toast.info('نوشته حذف شد');
+        renderPosts();
+      }
+    });
+    on(node, 'input', (e) => {
+      if (e.target.matches('[data-post-search]')) {
+        const q = e.target.value.toLowerCase().trim();
+        $$('tbody tr', node).forEach(tr => {
+          tr.hidden = q ? !tr.textContent.toLowerCase().includes(q) : false;
+        });
+      }
+    });
+    exportable(node, 'posts');
+    return;
+  }
+
+  if (page === 'cms/pages.html') {
+    let pages = [...cmsData.pages];
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'مدیریت برگه‌ها (صفحات سایت)',
+          subtitle: 'طراحی، ویرایش و انتشار صفحات ایستا و فرود وب‌سایت',
+          icon: 'file-earmark-text-fill',
+          actions: '<a class="btn btn-primary" href="cms/page-builder.html"><i class="bi bi-layout-text-window-reverse"></i> صفحه‌ساز زنده</a>',
+        })}
+
+        <div class="kpi-row grid grid--4 mb-4">
+          ${statCard({ label: 'کل برگه‌ها', value: toDigits(pages.length), hint: 'صفحات فعال وب‌سایت', tone: 'primary', icon: 'file-earmark-text' })}
+          ${statCard({ label: 'منتشرشده', value: toDigits(pages.filter(p=>p.status==='published').length), hint: 'قابل مشاهده کاربران', tone: 'success', icon: 'check-circle' })}
+          ${statCard({ label: 'پیش‌نویس', value: toDigits(pages.filter(p=>p.status==='draft').length), hint: 'صفحات در حال ساخت', tone: 'warning', icon: 'file-earmark' })}
+          ${statCard({ label: 'صفحه‌ساز زنده', value: 'فعال', hint: 'کشیدن و رها کردن بلوک‌ها', tone: 'info', icon: 'stars' })}
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">فهرست برگه‌ها</h3>
+            <span class="badge badge--soft-primary">${toDigits(pages.length)} برگه</span>
+          </div>
+          <div class="card__body" style="padding:0;">
+            <div class="table-responsive">
+              <table class="table table--hover">
+                <thead>
+                  <tr>
+                    <th>عنوان برگه</th>
+                    <th>نامک (URL)</th>
+                    <th>قالب برگه</th>
+                    <th>آخرین تغییر</th>
+                    <th>وضعیت</th>
+                    <th class="text-end">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pages.map(pg => `
+                    <tr>
+                      <td style="font-weight:700;">${escapeHtml(pg.title)}</td>
+                      <td><code style="font-size:12px; direction:ltr;">${pg.slug}</code></td>
+                      <td><span class="badge badge--soft-primary">${pg.template}</span></td>
+                      <td style="font-size:12px; color:var(--nv-text-muted);">${pg.updated}</td>
+                      <td><span class="badge badge--soft-${pg.status==='published'?'success':'warning'}">${pg.status==='published'?'منتشرشده':'پیش‌نویس'}</span></td>
+                      <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                          <a class="btn btn-sm btn-primary" href="cms/page-builder.html" title="ویرایش با صفحه‌ساز"><i class="bi bi-magic"></i> صفحه‌ساز</a>
+                          <button class="btn btn-sm btn-light" type="button" title="پیش‌نمایش"><i class="bi bi-eye"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+    exportable(node, 'pages');
+    return;
+  }
+
+  if (page === 'cms/categories.html') {
+    let cats = [...cmsData.categories];
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'دسته‌بندی‌های محتوا',
+          subtitle: 'ساختاردهی مقالات، اخبار و اسناد با دسته‌بندی‌های سلسله‌مراتبی',
+          icon: 'folder2-open',
+          actions: '<button class="btn btn-primary" type="button" data-create-cat><i class="bi bi-plus-lg"></i> دسته جدید</button>',
+        })}
+
+        <div class="grid grid--3 mb-4" style="gap:16px;">
+          ${cats.map(c => `
+            <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface);">
+              <div class="card__body" style="padding:18px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span class="tile tile--soft tile--icon tile--soft-${c.color}" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;">
+                    <i class="bi bi-${c.icon}" style="font-size:1.2rem;"></i>
+                  </span>
+                  <div>
+                    <h4 style="margin:0; font-size:14px; font-weight:800; color:var(--nv-heading);">${escapeHtml(c.name)}</h4>
+                    <span style="font-size:11px; color:var(--nv-text-muted);">نامک: <code>${c.slug}</code></span>
+                  </div>
+                </div>
+                <div style="text-align:end;">
+                  <span class="badge badge--soft-${c.color} rounded-pill">${toDigits(c.count)} نوشته</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`,
+    );
+    on(node, 'click', (e) => {
+      if (e.target.closest('[data-create-cat]')) {
+        toast.info('افزودن دسته', 'فرم دسته جدید باز شد.');
+      }
+    });
+    exportable(node, 'categories');
+    return;
+  }
+
+  if (page === 'cms/tags.html') {
+    let tags = [...cmsData.tags];
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'برچسب‌ها (Tags)',
+          subtitle: 'مدیریت کلمات کلیدی، برچسب‌های پرطرفدار و پایش بازدید تگ‌ها',
+          icon: 'tags-fill',
+          actions: '<button class="btn btn-primary" type="button" data-create-tag><i class="bi bi-plus-lg"></i> برچسب جدید</button>',
+        })}
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">ابر برچسب‌ها و آمار استفاده</h3>
+            <span class="badge badge--soft-primary">${toDigits(tags.length)} برچسب فعال</span>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px;">
+              ${tags.map(t => `
+                <span class="badge badge--soft-${t.color}" style="font-size:13px; padding:8px 14px; border-radius:999px; display:inline-flex; align-items:center; gap:8px;">
+                  <i class="bi bi-tag-fill"></i> ${escapeHtml(t.name)}
+                  <small style="opacity:0.8; font-weight:800;">${toDigits(t.count)}</small>
+                </span>
+              `).join('')}
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table--hover">
+                <thead>
+                  <tr>
+                    <th>نام برچسب</th>
+                    <th>نامک (Slug)</th>
+                    <th>تعداد مقالات</th>
+                    <th>کل بازدیدهای مرتبط</th>
+                    <th class="text-end">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tags.map(t => `
+                    <tr>
+                      <td style="font-weight:700;"><i class="bi bi-tag text-${t.color} me-1"></i> ${escapeHtml(t.name)}</td>
+                      <td><code>${t.slug}</code></td>
+                      <td class="numeric">${toDigits(t.count)} مقاله</td>
+                      <td class="numeric">${t.views}</td>
+                      <td class="text-end">
+                        <button class="btn btn-sm btn-light" type="button" title="ویرایش"><i class="bi bi-pencil"></i></button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+    exportable(node, 'tags');
+    return;
+  }
+
+  if (page === 'cms/comments.html') {
+    let comments = [...cmsData.comments];
+    const renderComments = () => {
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'دیدگاه‌ها و نظرات کاربران',
+            subtitle: 'بررسی نظرات مقالات، تأیید، پاسخگویی و غربالگری اسپم‌ها',
+            icon: 'chat-left-text-fill',
+            actions: '<button class="btn btn-outline-danger btn-sm" type="button" data-clear-spam><i class="bi bi-trash3"></i> پاک‌سازی اسپم‌ها</button>',
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'کل دیدگاه‌ها', value: toDigits(comments.length), hint: 'دیدگاه‌های دریافتی', tone: 'primary', icon: 'chat-left-text' })}
+            ${statCard({ label: 'تأییدشده', value: toDigits(comments.filter(c=>c.status==='approved').length), hint: 'نمایش در سایت', tone: 'success', icon: 'check-circle' })}
+            ${statCard({ label: 'در انتظار بازبینی', value: toDigits(comments.filter(c=>c.status==='pending').length), hint: 'نیازمند بررسی', tone: 'warning', icon: 'clock-history' })}
+            ${statCard({ label: 'اسپم مسدودشده', value: toDigits(comments.filter(c=>c.status==='spam').length), hint: 'شناسایی با فیلتر هوشمند', tone: 'danger', icon: 'shield-x' })}
+          </div>
+
+          <div class="card" style="border-radius:18px;">
+            <div class="card__body" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+              ${comments.map(c => `
+                <div class="comment-card" style="padding:16px; border-radius:14px; border:1px solid ${c.status==='pending'?'var(--nv-warning)':c.status==='spam'?'var(--nv-danger)':'var(--nv-border)'}; background:${c.status==='pending'?'var(--nv-surface-2)':'var(--nv-surface)'}; display:flex; align-items:start; gap:14px;">
+                  <img src="${c.avatar}" style="width:40px;height:40px;border-radius:50%;border:2px solid var(--nv-border);flex-shrink:0;">
+                  <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:8px;">
+                      <div>
+                        <strong style="font-size:13px; color:var(--nv-heading);">${escapeHtml(c.author)}</strong>
+                        <span style="font-size:11px; color:var(--nv-text-muted); margin-inline-start:8px;">روی مقاله: <em style="color:var(--nv-primary);">${escapeHtml(c.post)}</em></span>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="badge badge--soft-${c.status==='approved'?'success':c.status==='pending'?'warning':'danger'}" style="font-size:10px;">${c.status==='approved'?'تأیید شده':c.status==='pending'?'در انتظار':'اسپم'}</span>
+                        <small style="font-size:11px; color:var(--nv-text-muted);">${c.date}</small>
+                      </div>
+                    </div>
+                    <p style="margin:0 0 10px; font-size:12px; line-height:1.7; color:var(--nv-text);">${escapeHtml(c.text)}</p>
+                    <div style="display:flex; gap:8px;">
+                      ${c.status !== 'approved' ? `<button class="btn btn-sm btn-soft-success" type="button" data-approve="${c.id}" style="font-size:11px; padding:3px 10px;"><i class="bi bi-check2"></i> تأیید نظر</button>` : ''}
+                      <button class="btn btn-sm btn-light" type="button" data-reply="${c.id}" style="font-size:11px; padding:3px 10px;"><i class="bi bi-reply"></i> پاسخ</button>
+                      <button class="btn btn-sm btn-ghost text-danger" type="button" data-del-com="${c.id}" style="font-size:11px; padding:3px 8px;"><i class="bi bi-trash3"></i></button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>`,
+      );
+    };
+    renderComments();
+    on(node, 'click', (e) => {
+      const appBtn = e.target.closest('[data-approve]');
+      if (appBtn) {
+        const item = comments.find(c => c.id === appBtn.dataset.approve);
+        if (item) item.status = 'approved';
+        toast.success('دیدگاه تأیید شد');
+        renderComments();
+        return;
+      }
+      const replyBtn = e.target.closest('[data-reply]');
+      if (replyBtn) {
+        toast.info('پاسخ به دیدگاه', 'کادر ارسال پاسخ فعال شد.');
+        return;
+      }
+      const delBtn = e.target.closest('[data-del-com]');
+      if (delBtn) {
+        comments = comments.filter(c => c.id !== delBtn.dataset.delCom);
+        toast.info('دیدگاه حذف شد');
+        renderComments();
+        return;
+      }
+      if (e.target.closest('[data-clear-spam]')) {
+        comments = comments.filter(c => c.status !== 'spam');
+        toast.success('دیدگاه‌های اسپم پاک‌سازی شدند');
+        renderComments();
+      }
+    });
+    exportable(node, 'comments');
+    return;
+  }
+
+  if (page === 'cms/media.html') {
+    let mediaItems = [...cmsData.media];
+    render(
+      node,
+      `<div class="dashboard-shell">
+        ${pageHeader({
+          title: 'کتابخانه رسانه و اسناد',
+          subtitle: 'مدیریت فایل‌ها، تصاویر شاخص، اسناد سازمانی و پیش‌نمایش فایل‌ها',
+          icon: 'images',
+          actions: '<label class="btn btn-primary"><i class="bi bi-cloud-arrow-up"></i> بارگذاری فایل جدید<input type="file" hidden multiple accept="image/*,application/pdf" data-media-upload></label>',
+        })}
+
+        <div class="kpi-row grid grid--4 mb-4">
+          ${statCard({ label: 'کل فایل‌ها', value: toDigits(mediaItems.length), hint: 'در کتابخانه ابری', tone: 'primary', icon: 'images' })}
+          ${statCard({ label: 'تصاویر', value: toDigits(mediaItems.filter(m=>m.type==='image').length), hint: 'JPG, SVG, WebP', tone: 'info', icon: 'file-image' })}
+          ${statCard({ label: 'اسناد و PDF', value: toDigits(mediaItems.filter(m=>m.type==='doc').length), hint: 'فایل‌های پیوست', tone: 'warning', icon: 'file-earmark-pdf' })}
+          ${statCard({ label: 'فضای مصرفی', value: '۳٫۴ MB', hint: 'از ۵۰ GB مجاز', tone: 'success', icon: 'hdd-network' })}
+        </div>
+
+        <div class="card" style="border-radius:18px;">
+          <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">گالری پرونده‌های چندرسانه‌ای</h3>
+            <span class="badge badge--soft-primary">${toDigits(mediaItems.length)} فایل</span>
+          </div>
+          <div class="card__body" style="padding:20px;">
+            <div class="grid grid--3" style="gap:16px;">
+              ${mediaItems.map(m => `
+                <div class="card" style="border-radius:14px; border:1px solid var(--nv-border); overflow:hidden; background:var(--nv-surface-2);">
+                  <div style="height:150px; background:var(--nv-surface-3); display:grid; place-items:center; overflow:hidden;">
+                    ${m.type === 'image' ? `<img src="${m.url}" style="max-height:100%; max-width:100%; object-fit:contain;" alt="">` : `<i class="bi bi-file-earmark-pdf" style="font-size:3rem; color:var(--nv-danger);"></i>`}
+                  </div>
+                  <div style="padding:12px;">
+                    <strong style="font-size:12px; color:var(--nv-heading); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(m.name)}</strong>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--nv-text-muted); margin-top:4px;">
+                      <span>${m.size}</span>
+                      <span>${m.res}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid var(--nv-divider); padding-top:8px;">
+                      <span style="font-size:10px; color:var(--nv-text-muted);">${m.date}</span>
+                      <div class="d-inline-flex gap-1">
+                        <button class="btn btn-sm btn-light" type="button" data-copy-media-url="${m.url}" title="کپی آدرس فایل" style="font-size:10px; padding:2px 6px;"><i class="bi bi-link-45deg"></i></button>
+                        <a class="btn btn-sm btn-light" href="${m.url}" download title="دانلود" style="font-size:10px; padding:2px 6px;"><i class="bi bi-download"></i></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>`,
+    );
+    on(node, 'click', async (e) => {
+      const copyBtn = e.target.closest('[data-copy-media-url]');
+      if (copyBtn) {
+        await navigator.clipboard?.writeText(copyBtn.dataset.copyMediaUrl).catch(()=>null);
+        toast.success('آدرس فایل کپی شد');
+      }
+    });
+    on(node, 'change', (e) => {
+      if (e.target.matches('[data-media-upload]')) {
+        toast.success('فایل‌ها با موفقیت بارگذاری شدند');
+      }
+    });
+    exportable(node, 'media');
+    return;
+  }
 }
 
 export async function initApp() {

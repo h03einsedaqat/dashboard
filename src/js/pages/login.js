@@ -167,10 +167,12 @@ function markup() {
 }
 
 export function initLoginPro() {
-  const main = document.getElementById('main-content') ?? document.querySelector('.auth-page');
+  const main = document.getElementById('main-content') ?? document.querySelector('.auth-page') ?? document.querySelector('.lx-page');
   if (!main) return false;
-  main.className = 'lx-page';
-  main.innerHTML = `<h1 class="visually-hidden">ورود به NOVAADMIN</h1>${markup()}`;
+  if (!main.querySelector('.lx')) {
+    main.className = 'lx-page';
+    main.innerHTML = `<h1 class="visually-hidden">ورود به NOVAADMIN</h1>${markup()}`;
+  }
   document.body.classList.add('lx-body');
 
   const form = $('[data-lx-form]', main);
@@ -229,20 +231,32 @@ export function initLoginPro() {
     }
     submit.classList.add('is-loading');
     submit.disabled = true;
-    await Promise.all([services.authService?.login?.(values).catch(() => null), new Promise((r) => setTimeout(r, 900))]);
-    const session = JSON.stringify({ email: values.email, name: 'سارا محمدی', at: Date.now() });
+
+    // Immediately persist authentication session
+    const session = JSON.stringify({ email: values.email, name: 'سارا محمدی', role: 'مدیر ارشد', at: Date.now() });
     try {
-      const remember = $('[name="remember"]', form)?.checked;
-      (remember ? window.localStorage : window.sessionStorage).setItem('nova:session', session);
-    } catch {
-      /* storage unavailable: the guard treats that as signed in */
-    }
+      window.localStorage.setItem('nova:session', session);
+      window.sessionStorage.setItem('nova:session', session);
+      document.documentElement.classList.remove('is-guarded');
+    } catch {}
+
+    try {
+      await services.authService?.login?.(values).catch(() => null);
+    } catch {}
+
     const overlay = $('[data-lx-success]', main);
-    overlay.hidden = false;
-    requestAnimationFrame(() => overlay.classList.add('is-visible'));
+    if (overlay) {
+      overlay.hidden = false;
+      requestAnimationFrame(() => overlay.classList.add('is-visible'));
+    }
+
+    toast.success('ورود موفق', 'در حال انتقال به داشبورد مدیریت…');
+
     const next = new URLSearchParams(window.location.search).get('next');
     const target = next && /^[a-z0-9][a-z0-9./_-]*\.html$/i.test(next) && !next.startsWith('auth/') ? next : 'dashboards/analytics.html';
-    setTimeout(() => goTo(target), 1600);
+    setTimeout(() => {
+      goTo(target);
+    }, 600);
   };
 
   on(form, 'submit', (event) => {
@@ -250,19 +264,10 @@ export function initLoginPro() {
     signIn();
   });
 
-  on($('[data-lx-demo]', main), 'click', async () => {
-    /* Types the demo credentials visibly, then signs in. */
-    email.value = '';
-    password.value = '';
-    for (const ch of DEMO.email) {
-      email.value += ch;
-      await new Promise((r) => setTimeout(r, 18));
-    }
-    refresh();
-    for (const ch of DEMO.password) {
-      password.value += ch;
-      await new Promise((r) => setTimeout(r, 30));
-    }
+  on($('[data-lx-demo]', main), 'click', (event) => {
+    event.preventDefault();
+    email.value = DEMO.email;
+    password.value = DEMO.password;
     refresh();
     signIn();
   });
