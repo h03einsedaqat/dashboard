@@ -55,6 +55,11 @@
   background: var(--nv-surface-3);
   color: var(--nv-text-2);
 }
+.badge--soft-light {
+  background: var(--nv-surface-2);
+  border-color: var(--nv-border);
+  color: var(--nv-text-muted);
+}
 
 .badge--solid-primary {
   background: var(--nv-primary);

@@ -167,6 +167,16 @@
   --btn-bg: var(--nv-surface-3);
   --btn-fg: var(--nv-heading);
 }
+.btn-outline-danger {
+  --btn-bg: transparent;
+  --btn-fg: var(--nv-danger);
+  --btn-border: color-mix(in srgb, var(--nv-danger) 40%, transparent);
+}
+.btn-outline-danger:hover {
+  --btn-bg: var(--nv-danger-soft);
+  --btn-fg: var(--nv-danger-soft-fg);
+  --btn-border: var(--nv-danger);
+}
 
 /* ------------------------------------------------------------------- soft */
 @mixin soft-button($soft, $fg) {
@@ -216,6 +226,12 @@
   min-height: var(--nv-control-h-sm);
   padding-inline: var(--nv-space-4);
   font-size: var(--nv-text-caption);
+  border-radius: var(--nv-radius-sm);
+}
+.btn-xs {
+  min-height: 1.75rem;
+  padding-inline: var(--nv-space-3);
+  font-size: var(--nv-text-micro);
   border-radius: var(--nv-radius-sm);
 }
 .btn-lg {

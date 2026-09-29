@@ -2214,7 +2214,11 @@ export async function initAuth() {
     return `<div class="lx-top">
       <a class="lx-back" href="${url('index.html')}"><i class="bi bi-arrow-right"></i> صفحه اصلی</a>
       <div class="lx-top__tools">
-        <button class="lx-icon-btn" type="button" data-lx-theme aria-label="تغییر تم"><i class="bi bi-moon-stars"></i></button>
+        <div class="dropdown">
+          <button class="lx-icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان"><i class="bi bi-translate"></i></button>
+          <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+        </div>
+        <button class="lx-icon-btn" type="button" data-theme-toggle aria-label="تغییر تم"><i class="bi bi-moon-stars"></i></button>
       </div>
     </div>`;
   }
@@ -2668,11 +2672,6 @@ export async function initAuth() {
     });
   }
 
-  on(rootEl.querySelector('[data-lx-theme]'), 'click', async () => {
-    const { toggleTheme } = await import('../core/theme.js');
-    toggleTheme();
-  });
-
   // FIX: Ensure all auth links work correctly - landing, login, etc
   // Fix topBar "صفحه اصلی" -> should go to landing (index.html)
   on(rootEl, 'click', (e) => {
@@ -3026,7 +3025,7 @@ export async function initSystemPages() {
               <span class="text-warning numeric">۷۸٪</span>
             </div>
             <div class="progress" style="height:8px; border-radius:999px;">
-              <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width:78%;"></div>
+              <div class="progress-bar progress-bar--warning progress-bar--striped progress-bar--animated" style="width:78%;"></div>
             </div>
             <small style="color:var(--nv-text-muted); font-size:11px; display:block; margin-top:6px;">زمان تقریبی باقیمانده: ۳۰ دقیقه</small>
           </div>

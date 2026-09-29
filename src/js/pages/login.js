@@ -9,7 +9,7 @@
  */
 import { $, $$, on, escapeHtml } from '../core/dom.js';
 import { toast } from '../core/toast.js';
-import { toggleTheme } from '../core/theme.js';
+
 import { goTo, url } from '../core/links.js';
 import * as services from '../../services/index.js';
 
@@ -46,7 +46,11 @@ function markup() {
       <div class="lx-top">
         <a class="lx-back" href="${url('index.html')}"><i class="bi bi-arrow-right" aria-hidden="true"></i> صفحه اصلی</a>
         <div class="lx-top__tools">
-          <button class="lx-icon-btn" type="button" data-lx-theme aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
+          <div class="dropdown">
+            <button class="lx-icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان"><i class="bi bi-translate" aria-hidden="true"></i></button>
+            <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+          </div>
+          <button class="lx-icon-btn" type="button" data-theme-toggle aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
         </div>
       </div>
 
@@ -276,8 +280,6 @@ export function initLoginPro() {
     const social = event.target.closest('[data-lx-social]');
     if (social) toast.info('ورود با ' + social.dataset.lxSocial, 'در نسخه نمایشی از «ورود سریع با حساب دمو» استفاده کنید.');
   });
-  on($('[data-lx-theme]', main), 'click', () => toggleTheme());
-
   /* Rotating testimonial. */
   let index = 0;
   const quote = $('[data-lx-quote]', main);

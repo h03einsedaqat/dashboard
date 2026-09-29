@@ -80,6 +80,20 @@
   background: var(--nv-surface-2);
 }
 
+/* Dense variant for embedded/profile tables. */
+.table-sm > thead th {
+  padding-block: calc(var(--nv-cell-pad-y) * 0.65);
+}
+.table-sm > tbody td {
+  padding-block: calc(var(--nv-cell-pad-y) * 0.65);
+}
+
+/* Borderless variant: no row separators (e.g. profile summary tables). */
+.table-borderless > thead th,
+.table-borderless > tbody td {
+  border-block-end: 0;
+}
+
 .table--bordered > tbody td,
 .table--bordered > thead th {
   border-inline-end: 1px solid var(--nv-divider);

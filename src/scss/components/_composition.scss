@@ -24,6 +24,9 @@
 .grid--3 {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
 }
+.grid--4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
 .grid--cards {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
 }
@@ -34,6 +37,32 @@
   .grid--sidebar {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Cards composed at runtime by page controllers (notifications, comments,
+   layout/theme pickers). The static look is set inline by the templates;
+   these rules provide the base shape plus the states the controllers toggle. */
+.notif-card,
+.comment-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  min-width: 0;
+}
+.layout-card,
+.theme-choice-card {
+  cursor: pointer;
+  user-select: none;
+  transition: border-color var(--nv-dur) var(--nv-ease), box-shadow var(--nv-dur) var(--nv-ease);
+}
+.layout-card.is-active,
+.theme-choice-card.is-active {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nv-primary) 18%, transparent);
+}
+.layout-card:focus-visible,
+.theme-choice-card:focus-visible {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
 }
 
 .stack {

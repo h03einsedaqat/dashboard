@@ -717,7 +717,7 @@ async function notificationsPage() {
               </div>
             ` : filtered.map(item => `
               <div class="notif-card ${!item.read ? 'notif-card--unread' : ''}" data-id="${item.id}" style="padding:16px; border-radius:14px; border:1px solid ${!item.read ? 'var(--nv-primary)' : 'var(--nv-border)'}; background:${!item.read ? 'var(--nv-primary-soft)' : 'var(--nv-surface-2)'}; display:flex; align-items:start; gap:14px; transition:all 0.2s;">
-                <span class="tile tile--soft tile--icon tile--soft-${item.type}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
+                <span class="tile tile--soft tile--icon tile--soft-${item.type || 'primary'}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
                   <i class="bi bi-${item.icon}" style="font-size:1.25rem;"></i>
                 </span>
                 <div style="flex:1; min-width:0;">
@@ -1169,7 +1169,7 @@ export async function initCms() {
             <div class="card" style="border-radius:16px; border:1px solid var(--nv-border); background:var(--nv-surface);">
               <div class="card__body" style="padding:18px; display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                  <span class="tile tile--soft tile--icon tile--soft-${c.color}" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;">
+                  <span class="tile tile--soft tile--icon tile--soft-${c.color || 'primary'}" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;">
                     <i class="bi bi-${c.icon}" style="font-size:1.2rem;"></i>
                   </span>
                   <div>

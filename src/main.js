@@ -14,8 +14,8 @@ import { $, $$, ready, on } from './js/core/dom.js';
 import { bus, EVENTS } from './js/core/bus.js';
 import { toast } from './js/core/toast.js';
 import { modal } from './js/core/modal.js';
-import { i18n, initI18n, setLanguage } from './js/core/i18n.js';
-import { theme, initThemeControls } from './js/core/theme.js';
+import { i18n, initI18n, initSelectors, renderLanguageLabels, setLanguage } from './js/core/i18n.js';
+import { theme, initThemeControls, bindThemeToggles } from './js/core/theme.js';
 import { layout } from './js/core/layout.js';
 import { chrome, initChrome, openPalette, openShortcuts, openCustomizer, closeCustomizer } from './js/core/chrome.js';
 import { initForms } from './js/core/form.js';
@@ -406,6 +406,14 @@ async function boot() {
   }
   /** Late content (tables, footers, badges) gets the active language too. */
   applyPhrases(document.body);
+  /**
+   * Global controls on chrome rendered late by page controllers (the auth top
+   * bars) get the theme/direction toggles bound and their language lists
+   * filled. Every binding is guarded per element, so re-running is safe.
+   */
+  bindThemeToggles(document);
+  initSelectors(document);
+  renderLanguageLabels(document.body);
   /** Header dedup: the controller's own header card is folded into the page
       head so a screen opens with one toolbar instead of two. */
   observePageHeads(document.body);
@@ -438,10 +446,21 @@ async function boot() {
     window.__novaLanguageReload = true;
     document.documentElement.classList.add('is-switching-language');
     window.setTimeout(() => {
-      /* Some embedded webviews expose a `location` without `reload`; a plain
-         navigation to the same URL is an equivalent, safe fallback. */
-      if (typeof window.location.reload === 'function') window.location.reload();
-      else window.location.assign(window.location.href);
+      /**
+       * Reload carrying the language in the URL (`?lang=…`): storage may be
+       * unavailable in embedded webviews/iframes, so the URL is the source
+       * of truth for the reloaded paint (i18n reads it first). A plain
+       * navigation is also the safer fallback where `location.reload`
+       * itself is blocked.
+       */
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.location.assign(url.toString());
+      } catch {
+        if (typeof window.location.reload === 'function') window.location.reload();
+        else window.location.assign(window.location.href);
+      }
     }, 80);
   });
   document.documentElement.classList.add('app-ready');

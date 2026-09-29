@@ -52,28 +52,46 @@
         <i class="bi bi-bell" aria-hidden="true"></i>
         <span class="icon-btn__dot" data-notif-count hidden>0</span>
       </button>
-      <div class="dropdown-menu dropdown-menu--notifications dropdown-menu--wide" data-dropdown-menu>
+      <div class="dropdown-menu notif-panel" data-dropdown-menu>
         <div class="notif-panel__head">
-          <div class="d-flex align-items-center justify-content-between w-100 mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <span class="notif-panel__title">مرکز اعلان‌ها</span>
-              <span class="badge badge--soft-primary rounded-pill notif-panel__unread-badge" data-notif-badge>۳ جدید</span>
+          <div class="notif-panel__head-top">
+            <div class="notif-panel__brand">
+              <span class="notif-panel__brand-icon"><i class="bi bi-bell" aria-hidden="true"></i></span>
+              <div class="notif-panel__brand-text">
+                <h4 class="notif-panel__title" data-i18n="ui.notifCenterTitle">مرکز اعلان‌ها</h4>
+                <span class="notif-panel__subtitle" data-notif-badge data-i18n="ui.notifAllRead">همه اعلان‌ها خوانده شد</span>
+              </div>
             </div>
-            <button class="btn btn-sm btn-link p-0 text-decoration-none text-primary" type="button" data-notif-read-all title="علامت‌گذاری همه به عنوان خوانده‌شده">
-              <i class="bi bi-check2-all me-1"></i>خواندن همه
+            <button class="notif-panel__read-all" type="button" data-notif-read-all data-i18n-title="ui.notifMarkAllReadTitle" title="علامت‌گذاری همه به عنوان خوانده‌شده">
+              <i class="bi bi-check2-all" aria-hidden="true"></i>
+              <span data-i18n="ui.markAllRead">خواندن همه</span>
             </button>
           </div>
-          <div class="notif-panel__tabs" data-notif-tabs>
-            <button class="notif-tab is-active" type="button" data-notif-filter="all">همه</button>
-            <button class="notif-tab" type="button" data-notif-filter="unread">خوانده نشده</button>
-            <button class="notif-tab" type="button" data-notif-filter="system">سیستم</button>
-            <button class="notif-tab" type="button" data-notif-filter="orders">سفارش‌ها</button>
+          <div class="notif-panel__tabs" data-notif-tabs role="tablist">
+            <button class="notif-tab is-active" type="button" data-notif-filter="all" role="tab">
+              <span data-i18n="ui.notifAll">همه</span>
+              <b class="notif-tab__count" data-notif-tab-count="all">۰</b>
+            </button>
+            <button class="notif-tab" type="button" data-notif-filter="unread" role="tab">
+              <span data-i18n="ui.notifUnread">خوانده‌نشده</span>
+              <b class="notif-tab__count" data-notif-tab-count="unread">۰</b>
+            </button>
+            <button class="notif-tab" type="button" data-notif-filter="system" role="tab">
+              <span data-i18n="ui.notifSystem">سیستم</span>
+              <b class="notif-tab__count" data-notif-tab-count="system">۰</b>
+            </button>
+            <button class="notif-tab" type="button" data-notif-filter="orders" role="tab">
+              <span data-i18n="ui.notifOrders">سفارش‌ها</span>
+              <b class="notif-tab__count" data-notif-tab-count="orders">۰</b>
+            </button>
           </div>
         </div>
         <div class="notification-list" data-notification-list role="list"></div>
         <div class="notif-panel__foot">
-          <a class="btn btn-light btn-sm w-100 fw-semibold" href="{{ROOT}}apps/notifications.html">
-            <i class="bi bi-archive me-1"></i>مشاهده تمام اعلان‌ها و آرشیو
+          <a class="notif-panel__viewall" href="{{ROOT}}apps/notifications.html">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <span data-i18n="ui.notifViewAll">مشاهده تمام اعلان‌ها</span>
+            <i class="bi bi-arrow-left-short notif-panel__viewall-arrow" aria-hidden="true"></i>
           </a>
         </div>
       </div>

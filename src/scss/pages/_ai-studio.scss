@@ -27,6 +27,15 @@ $ais-tones: (
   gap: var(--nv-card-gap, 1.25rem);
 
   > * { grid-column: span 12; min-width: 0; }
+
+  /* The generation form must not stretch to the height of the results
+     column; keep it in view while the history scrolls. */
+  > .ais-studio-form {
+    align-self: start;
+    position: sticky;
+    inset-block-start: 6rem;
+  }
+
   > [data-col='3'] { grid-column: span 3; }
   > [data-col='4'] { grid-column: span 4; }
   > [data-col='5'] { grid-column: span 5; }
@@ -41,6 +50,7 @@ $ais-tones: (
   @media (max-width: 1199.98px) {
     > [data-col='4'], > [data-col='5'], > [data-col='7'], > [data-col='8'] { grid-column: span 12; }
     > [data-col='6'] { grid-column: span 12; }
+    > .ais-studio-form { position: static; }
   }
   @media (max-width: 767.98px) {
     > * { grid-column: span 12 !important; }
