@@ -291,40 +291,61 @@ export function openShortcuts() {
 /* ============================================================ notifications */
 
 let _currentNotifFilter = 'all';
+let _lastNotifItems = [];
+
+function notifMatches(item, filter, read) {
+  const isUnread = !item.read && !read.includes(item.id);
+  if (filter === 'unread') return isUnread;
+  if (filter === 'system') return item.type === 'danger' || item.type === 'warning' || item.title.includes('پشتیبان') || item.title.includes('نسخه') || item.title.includes('درگاه');
+  if (filter === 'orders') return item.title.includes('پرداخت') || item.title.includes('موجودی') || item.title.includes('فروش');
+  return true;
+}
+
+/** Bell badge, head status line and the "unread" tab count. */
+function updateNotifChrome(unreadCount) {
+  const badge = $('[data-notif-count]');
+  if (badge) {
+    badge.textContent = toDigits(unreadCount);
+    badge.hidden = unreadCount === 0;
+  }
+  const subtitle = $('[data-notif-badge]');
+  if (subtitle) {
+    subtitle.textContent = unreadCount > 0
+      ? t('ui.notifNewCount', '{n} اعلان جدید', { n: toDigits(unreadCount) })
+      : t('ui.notifAllRead', 'همه اعلان‌ها خوانده شد');
+    subtitle.classList.toggle('has-unread', unreadCount > 0);
+  }
+  const unreadTab = $('[data-notif-tab-count="unread"]');
+  if (unreadTab) {
+    unreadTab.textContent = toDigits(unreadCount);
+    unreadTab.classList.toggle('is-alert', unreadCount > 0);
+  }
+}
 
 async function renderNotifications(filter = _currentNotifFilter) {
   _currentNotifFilter = filter;
   const host = $('[data-notification-list]');
   if (!host) return;
   const items = await notificationService.list();
+  _lastNotifItems = items;
   const read = storage.get(KEYS.notificationsRead, []) ?? [];
 
-  const unreadCount = items.filter((item) => !item.read && !read.includes(item.id)).length;
-  const badge = $('[data-notif-count]');
-  if (badge) {
-    badge.textContent = toDigits(unreadCount);
-    badge.hidden = unreadCount === 0;
-  }
-  const headBadge = $('[data-notif-badge]');
-  if (headBadge) {
-    headBadge.textContent = unreadCount > 0 ? `${toDigits(unreadCount)} جدید` : 'خوانده‌شده';
-    headBadge.className = unreadCount > 0 ? 'badge badge--soft-primary rounded-pill' : 'badge badge--soft-secondary rounded-pill';
+  updateNotifChrome(items.filter((item) => !item.read && !read.includes(item.id)).length);
+
+  for (const tab of ['all', 'unread', 'system', 'orders']) {
+    const el = $(`[data-notif-tab-count="${tab}"]`);
+    if (el) el.textContent = toDigits(items.filter((item) => notifMatches(item, tab, read)).length);
   }
 
-  const filtered = items.filter((item) => {
-    const isUnread = !item.read && !read.includes(item.id);
-    if (filter === 'unread') return isUnread;
-    if (filter === 'system') return item.type === 'danger' || item.type === 'warning' || item.title.includes('پشتیبان') || item.title.includes('نسخه') || item.title.includes('درگاه');
-    if (filter === 'orders') return item.title.includes('پرداخت') || item.title.includes('موجودی') || item.title.includes('فروش');
-    return true;
-  });
+  const filtered = items.filter((item) => notifMatches(item, filter, read));
 
   if (filtered.length === 0) {
     render(
       host,
-      `<div class="p-4 text-center text-muted" style="font-size:12px;">
-        <i class="bi bi-bell-slash fs-2 d-block mb-2 text-secondary opacity-50"></i>
-        <span>هیچ اعلانی در این دسته وجود ندارد.</span>
+      `<div class="notification-list__empty">
+        <span class="notification-list__empty-icon"><i class="bi bi-bell-slash" aria-hidden="true"></i></span>
+        <span class="notification-list__empty-title">${escapeHtml(t('ui.notifEmpty', 'حالا اعلانی اینجا نیست'))}</span>
+        <span class="notification-list__empty-hint">${escapeHtml(t('ui.notifEmptyHint', 'وقتی خبری پیش بیاید، همین‌جا می‌بینی‌اش.'))}</span>
       </div>`
     );
     return;
@@ -333,42 +354,62 @@ async function renderNotifications(filter = _currentNotifFilter) {
   render(
     host,
     filtered
-      .map(
-        (item) => {
-          const isUnread = !item.read && !read.includes(item.id);
-          const icon = item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle';
-          return `<div class="notification-item ${isUnread ? 'is-unread' : ''}" role="listitem" data-notification="${item.id}" style="cursor:pointer;">
+      .map((item) => {
+        const isUnread = !item.read && !read.includes(item.id);
+        const icon = item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle';
+        return `<div class="notification-item ${isUnread ? 'is-unread' : ''}" role="listitem" data-notification="${escapeHtml(item.id)}">
             <span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-${icon}" aria-hidden="true"></i></span>
             <span class="notification-item__body">
               <span class="notification-item__title">${escapeHtml(item.title)}</span>
               <span class="notification-item__text">${escapeHtml(item.text)}</span>
-              ${item.at ? `<span class="notification-item__time"><i class="bi bi-clock me-1"></i>${escapeHtml(relativeTime(item.at))}</span>` : ''}
+              ${item.at ? `<span class="notification-item__time"><i class="bi bi-clock" aria-hidden="true"></i>${escapeHtml(relativeTime(item.at))}</span>` : ''}
             </span>
-            ${isUnread ? `<button type="button" class="btn btn-sm btn-link p-0 text-muted ms-auto" data-mark-single-read="${item.id}" title="علامت خوانده شد"><i class="bi bi-check2"></i></button>` : ''}
+            ${isUnread ? `<button type="button" class="notification-item__read" data-mark-single-read="${escapeHtml(item.id)}" aria-label="${escapeHtml(t('ui.notifMarkRead', 'علامت خوانده‌شد'))}"><i class="bi bi-check2" aria-hidden="true"></i></button>` : ''}
           </div>`;
-        }
-      )
+      })
       .join(''),
   );
 }
 
+/**
+ * Mark one notification read WITHOUT re-rendering the list — a full re-render
+ * would reset the scroll position and kill the hover state under the cursor.
+ */
+function markNotificationReadInPlace(id) {
+  const read = storage.get(KEYS.notificationsRead, []) ?? [];
+  if (!read.includes(id)) {
+    storage.set(KEYS.notificationsRead, [...new Set([...read, id])]);
+  }
+  const item = $$('[data-notification]', document).find((el) => el.dataset.notification === id);
+  if (item) {
+    item.classList.remove('is-unread');
+    item.querySelector('[data-mark-single-read]')?.remove();
+  }
+  updateNotifChrome(_lastNotifItems.filter((entry) => !entry.read && !read.includes(entry.id)).length);
+  bus.emit(EVENTS.notifications, { id });
+}
+
 function initNotifications() {
-  on(document, 'click', async (event) => {
+  on(document, 'click', (event) => {
     const filterBtn = event.target.closest('[data-notif-filter]');
     if (filterBtn) {
       event.preventDefault();
       const filter = filterBtn.dataset.notifFilter;
       $$('[data-notif-filter]').forEach((b) => b.classList.toggle('is-active', b === filterBtn));
-      await renderNotifications(filter);
+      renderNotifications(filter);
       return;
     }
 
     if (event.target.closest('[data-notif-read-all]')) {
       event.preventDefault();
-      const items = await notificationService.list();
+      const items = _lastNotifItems.length ? _lastNotifItems : [];
       storage.set(KEYS.notificationsRead, items.map((item) => item.id));
-      await renderNotifications();
-      toast.success('همه اعلان‌ها خوانده شد', 'فهرست اعلان‌ها به‌روزرسانی شد.');
+      $$('[data-notification].is-unread').forEach((el) => {
+        el.classList.remove('is-unread');
+        el.querySelector('[data-mark-single-read]')?.remove();
+      });
+      updateNotifChrome(0);
+      toast.success(t('ui.notifReadAllToast', 'همه اعلان‌ها خوانده شد'), t('ui.notifReadAllToastHint', 'فهرست اعلان‌ها به‌روزرسانی شد.'));
       bus.emit(EVENTS.notifications, { readAll: true });
       return;
     }
@@ -377,37 +418,13 @@ function initNotifications() {
     if (singleBtn) {
       event.preventDefault();
       event.stopPropagation();
-      const id = singleBtn.dataset.markSingleRead;
-      const read = storage.get(KEYS.notificationsRead, []) ?? [];
-      if (!read.includes(id)) {
-        storage.set(KEYS.notificationsRead, [...new Set([...read, id])]);
-      }
-      await renderNotifications();
-      bus.emit(EVENTS.notifications, { id });
+      markNotificationReadInPlace(singleBtn.dataset.markSingleRead);
       return;
     }
 
     const item = event.target.closest('[data-notification]');
     if (!item) return;
-    const read = storage.get(KEYS.notificationsRead, []) ?? [];
-    if (!read.includes(item.dataset.notification)) {
-      storage.set(KEYS.notificationsRead, [...new Set([...read, item.dataset.notification])]);
-    }
-    item.classList.remove('is-unread');
-    item.querySelector('[data-mark-single-read]')?.remove();
-    const badge = $('[data-notif-count]');
-    if (badge) {
-      const next = Math.max(0, Number(toLatinDigits(badge.textContent)) - 1);
-      badge.textContent = toDigits(next);
-      badge.hidden = next === 0;
-    }
-    const headBadge = $('[data-notif-badge]');
-    if (headBadge) {
-      const count = Number(toLatinDigits(headBadge.textContent.replace(/\D/g, '')) || 0) - 1;
-      headBadge.textContent = count > 0 ? `${toDigits(count)} جدید` : 'خوانده‌شده';
-      if (count <= 0) headBadge.className = 'badge badge--soft-secondary rounded-pill';
-    }
-    bus.emit(EVENTS.notifications, { id: item.dataset.notification });
+    markNotificationReadInPlace(item.dataset.notification);
   });
   renderNotifications();
   bus.on(EVENTS.dataChanged, () => renderNotifications());

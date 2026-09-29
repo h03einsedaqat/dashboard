@@ -175,6 +175,14 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
+}
+.app-secondary__title-text {
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-secondary__title-icon {
@@ -247,6 +255,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.app-secondary__count {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .app-secondary__link {

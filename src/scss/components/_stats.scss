@@ -27,6 +27,14 @@
   gap: var(--nv-space-3);
 }
 
+/* Four-up stat strip used by page controllers before the KPI row exists. */
+.stat-grid {
+  display: grid;
+  gap: var(--nv-card-gap);
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
 .stat-card__label {
   font-size: var(--nv-text-caption);
   font-weight: var(--nv-fw-medium);
@@ -70,6 +78,37 @@
   color: #6d28d9;
 }
 [data-theme='dark'] .stat-card__icon--violet {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+
+/* Card-level tone: some controllers put the tone on the card itself
+   (`stat-card--success`) instead of the icon element; tint the icon. */
+.stat-card--primary .stat-card__icon {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.stat-card--success .stat-card__icon {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.stat-card--warning .stat-card__icon {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.stat-card--danger .stat-card__icon {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.stat-card--info .stat-card__icon {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.stat-card--violet .stat-card__icon {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme='dark'] .stat-card--violet .stat-card__icon {
   background: rgba(167, 139, 250, 0.16);
   color: #c4b5fd;
 }

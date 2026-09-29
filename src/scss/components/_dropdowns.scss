@@ -119,52 +119,169 @@
   border-block-start: 1px solid var(--nv-divider);
 }
 
-.dropdown-menu--wide {
-  min-width: 20rem;
-}
-.dropdown-menu--notifications {
-  min-width: 23rem;
-  max-width: 25rem;
+/* ==================================================================
+   Notifications centre — redesigned panel
+   ------------------------------------------------------------------
+   A layered "card": gradient head with brand mark + live status,
+   segmented tabs with per-category counts, a hairline-separated list
+   with tonal icon tiles, and a soft call-to-action footer.
+   ================================================================== */
+.notif-panel {
+  width: min(26rem, calc(100vw - 1.5rem));
+  min-width: min(22rem, calc(100vw - 1.5rem));
+  max-width: calc(100vw - 1.5rem);
   padding: 0;
-  border-radius: var(--nv-radius-lg);
-  box-shadow: var(--nv-shadow-xl);
+  border-radius: 20px;
   border: 1px solid var(--nv-border);
+  background: var(--nv-surface);
+  box-shadow:
+    0 12px 28px -10px rgba(15, 23, 42, 0.18),
+    0 32px 64px -18px rgba(15, 23, 42, 0.25);
   overflow: hidden;
 }
 
 .notif-panel__head {
-  padding: var(--nv-space-3) var(--nv-space-4) var(--nv-space-2);
-  background: var(--nv-surface);
-  border-bottom: 1px solid var(--nv-divider);
+  padding: 16px 16px 12px;
+  background:
+    radial-gradient(140% 130% at 100% 0%, rgba(var(--nv-primary-rgb), 0.09), transparent 55%),
+    var(--nv-surface);
+  border-block-end: 1px solid var(--nv-divider);
+}
+
+.notif-panel__head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nv-space-2);
+}
+
+.notif-panel__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.notif-panel__brand-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--nv-primary), color-mix(in srgb, var(--nv-primary) 50%, #7c3aed));
+  box-shadow: 0 6px 14px -4px rgba(var(--nv-primary-rgb), 0.55);
+}
+
+.notif-panel__brand-text {
+  min-width: 0;
 }
 
 .notif-panel__title {
+  margin: 0;
   font-size: 0.95rem;
   font-weight: var(--nv-fw-bold);
   color: var(--nv-heading);
+  line-height: 1.3;
 }
 
-.notif-panel__tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--nv-surface-2);
-  padding: 3px;
-  border-radius: var(--nv-radius-md);
-  margin-top: var(--nv-space-2);
+.notif-panel__subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 1px;
+  font-size: 0.72rem;
+  font-weight: var(--nv-fw-medium);
+  color: var(--nv-text-muted);
 }
 
-.notif-tab {
-  flex: 1 1 auto;
+.notif-panel__subtitle::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nv-success, #10b981);
+}
+
+.notif-panel__subtitle.has-unread {
+  color: var(--nv-primary);
+  font-weight: var(--nv-fw-semibold);
+}
+
+.notif-panel__subtitle.has-unread::before {
+  background: var(--nv-primary);
+  animation: nv-notif-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes nv-notif-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--nv-primary-rgb), 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(var(--nv-primary-rgb), 0);
+  }
+}
+
+.notif-panel__read-all {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: transparent;
   color: var(--nv-text-muted);
   font-size: 0.75rem;
-  font-weight: var(--nv-fw-medium);
-  padding: 4px 6px;
-  border-radius: 6px;
-  text-align: center;
+  font-weight: var(--nv-fw-semibold);
+  padding: 7px 10px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all var(--nv-dur-fast) var(--nv-ease);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+
+  i {
+    font-size: 0.95rem;
+  }
+
+  &:hover {
+    background: var(--nv-primary-soft);
+    color: var(--nv-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nv-primary);
+    outline-offset: 1px;
+  }
+}
+
+.notif-panel__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  border: 1px solid var(--nv-divider);
+  border-radius: 12px;
+  background: var(--nv-surface-2);
+}
+
+.notif-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--nv-text-muted);
+  font-size: 0.74rem;
+  font-weight: var(--nv-fw-medium);
+  padding: 6px 4px;
+  border-radius: 9px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
 
   &:hover {
     color: var(--nv-heading);
@@ -178,10 +295,70 @@
   }
 }
 
+.notif-tab__count {
+  font-size: 0.62rem;
+  font-weight: var(--nv-fw-bold);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.35rem;
+  padding: 1px 5px;
+  border-radius: 999px;
+  text-align: center;
+  background: var(--nv-surface-hover);
+  color: var(--nv-text-muted);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+
+.notif-tab.is-active .notif-tab__count {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary);
+}
+
+.notif-tab__count.is-alert {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--nv-danger, #ef4444);
+}
+
 .notif-panel__foot {
-  padding: var(--nv-space-2) var(--nv-space-3);
+  padding: 10px 14px 14px;
   background: var(--nv-surface);
-  border-top: 1px solid var(--nv-divider);
+  border-block-start: 1px solid var(--nv-divider);
+}
+
+.notif-panel__viewall-arrow {
+  margin-inline-start: 2px;
+  font-size: 0.85rem;
+  transition: transform var(--nv-dur-fast) var(--nv-ease);
+}
+
+[dir="ltr"] .notif-panel__viewall:hover .notif-panel__viewall-arrow {
+  transform: translateX(3px);
+}
+[dir="rtl"] .notif-panel__viewall:hover .notif-panel__viewall-arrow {
+  transform: translateX(-3px);
+}
+
+.notif-panel__viewall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-primary);
+  background: var(--nv-primary-soft);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease), box-shadow var(--nv-dur-fast) var(--nv-ease);
+
+  i {
+    font-size: 0.95rem;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, var(--nv-primary), color-mix(in srgb, var(--nv-primary) 60%, #7c3aed));
+    color: #fff;
+    box-shadow: 0 8px 18px -6px rgba(var(--nv-primary-rgb), 0.5);
+  }
 }
 
 .dropdown-menu--demos {
@@ -232,99 +409,212 @@
 
 /* ------------------------------------------------------------------ list */
 .notification-list {
-  max-height: 22rem;
+  max-height: 24.5rem;
   overflow-y: auto;
-  padding: var(--nv-space-1) var(--nv-space-2) var(--nv-space-2);
+  padding: 6px;
   /* The panel is a fixed surface: scroll it without dragging the page. */
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: var(--nv-border) transparent;
 }
-.notification-list:empty::after {
-  content: 'اعلان تازه‌ای وجود ندارد';
-  display: block;
-  padding: var(--nv-space-6) var(--nv-space-4);
+
+.notification-list__empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 44px 24px;
   text-align: center;
-  font-size: var(--nv-text-caption);
-  color: var(--nv-text-muted);
 }
-.notification-item {
-  display: flex;
-  gap: var(--nv-space-3);
-  padding: var(--nv-space-3);
-  border-radius: var(--nv-radius-md);
-  margin-bottom: 2px;
-  border-left: 3px solid transparent;
-  transition: all var(--nv-dur-fast) var(--nv-ease);
-  position: relative;
-}
-.notification-item:hover {
-  background: var(--nv-surface-hover);
-}
-.notification-item.is-unread {
-  background: var(--nv-primary-soft);
-  border-left-color: var(--nv-primary);
-}
-.notification-item.is-unread .notification-item__title::after {
-  content: '';
-  display: inline-block;
-  inline-size: 0.45rem;
-  block-size: 0.45rem;
-  margin-inline-start: var(--nv-space-2);
-  border-radius: 50%;
-  background: var(--nv-primary);
-  box-shadow: 0 0 6px var(--nv-primary);
-  vertical-align: middle;
-}
-.notification-item__icon {
-  flex: 0 0 auto;
+
+.notification-list__empty-icon {
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--nv-radius-md);
-  font-size: 1rem;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  color: var(--nv-text-muted);
+  background: var(--nv-surface-2);
+  border: 1px dashed var(--nv-border);
+  margin-bottom: 6px;
 }
-.notification-item__icon--primary {
-  background: rgba(var(--nv-primary-rgb), 0.12);
-  color: var(--nv-primary);
+
+.notification-list__empty-title {
+  font-size: 0.85rem;
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
 }
-.notification-item__icon--success {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+
+.notification-list__empty-hint {
+  font-size: 0.72rem;
+  color: var(--nv-text-muted);
 }
-.notification-item__icon--warning {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+
+.notification-item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), box-shadow var(--nv-dur-fast) var(--nv-ease);
+
+  & + .notification-item {
+    border-block-start: 1px solid var(--nv-divider);
+    margin-block-start: 2px;
+    padding-block-start: 14px;
+  }
+
+  &:hover {
+    background: var(--nv-surface-hover);
+  }
+
+  &.is-unread {
+    background: linear-gradient(135deg, rgba(var(--nv-primary-rgb), 0.09), rgba(var(--nv-primary-rgb), 0.02) 65%);
+  }
+
+  &.is-unread:hover {
+    background: linear-gradient(135deg, rgba(var(--nv-primary-rgb), 0.13), rgba(var(--nv-primary-rgb), 0.05) 65%);
+  }
+
+  &.is-unread::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 16px;
+    inset-block-end: 16px;
+    inset-inline-start: 0;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--nv-primary);
+    box-shadow: 0 0 8px rgba(var(--nv-primary-rgb), 0.6);
+  }
 }
-.notification-item__icon--danger {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+
+/* Two-class selectors: the tone loop in _composition.scss (loaded later)
+   sets flat colors, so these gradient tiles need the extra specificity. */
+.notification-item .notification-item__icon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  border: 1px solid transparent;
 }
-.notification-item__icon--info {
-  background: rgba(6, 182, 212, 0.12);
-  color: #06b6d4;
+
+.notification-item .notification-item__icon--primary {
+  background: linear-gradient(135deg, rgba(var(--nv-primary-rgb), 0.2), rgba(var(--nv-primary-rgb), 0.06));
+  border-color: rgba(var(--nv-primary-rgb), 0.25);
 }
+
+.notification-item .notification-item__icon--success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.06));
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.notification-item .notification-item__icon--warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.06));
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.notification-item .notification-item__icon--danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.06));
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.notification-item .notification-item__icon--info {
+  background: linear-gradient(135deg, rgba(6, 182, 214, 0.2), rgba(6, 182, 214, 0.06));
+  border-color: rgba(6, 182, 214, 0.25);
+}
+
 .notification-item__body {
   min-width: 0;
   flex: 1 1 auto;
 }
+
 .notification-item__title {
   display: block;
   font-size: var(--nv-text-body-sm);
   font-weight: var(--nv-fw-semibold);
   color: var(--nv-heading);
-  margin-block-end: 0.15rem;
+  line-height: 1.45;
+  margin-block-end: 2px;
 }
+
+.notification-item.is-unread .notification-item__title::after {
+  content: '';
+  display: inline-block;
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  margin-inline-start: 6px;
+  border-radius: 50%;
+  background: var(--nv-primary);
+  box-shadow: 0 0 6px rgba(var(--nv-primary-rgb), 0.8);
+  vertical-align: middle;
+}
+
 .notification-item__text {
   margin: 0;
   font-size: var(--nv-text-caption);
   color: var(--nv-text-2);
   line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+
 .notification-item__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
   font-size: var(--nv-text-micro);
   color: var(--nv-text-muted);
   white-space: nowrap;
+
+  i {
+    font-size: 0.62rem;
+    opacity: 0.8;
+  }
+}
+
+/* Mark-as-read affordance: appears on hover/focus so the list stays calm. */
+.notification-item__read {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--nv-border);
+  border-radius: 50%;
+  background: var(--nv-surface);
+  color: var(--nv-text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease), border-color var(--nv-dur-fast) var(--nv-ease);
+
+  &:hover {
+    background: var(--nv-primary-soft);
+    border-color: rgba(var(--nv-primary-rgb), 0.4);
+    color: var(--nv-primary);
+  }
+}
+
+.notification-item:hover .notification-item__read,
+.notification-item:focus-within .notification-item__read,
+.notification-item__read:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* Touch has no hover: keep the affordance visible on unread items. */
+  .notification-item.is-unread .notification-item__read {
+    opacity: 0.55;
+  }
 }
 
 /* --------------------------------------------------------- context menu */

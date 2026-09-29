@@ -256,6 +256,24 @@ export function reset({ silent = false } = {}) {
   if (!silent) bus.emit(EVENTS.theme, { key: 'reset', state: { ...state } });
 }
 
+/**
+ * Binds the global theme/direction toggles. Guarded per element so it can be
+ * called again after page controllers render late chrome (e.g. the auth top
+ * bars) without stacking duplicate listeners.
+ */
+export function bindThemeToggles(rootNode = document) {
+  $$('[data-theme-toggle]', rootNode).forEach((button) => {
+    if (button.dataset.themeToggleBound === '1') return;
+    button.dataset.themeToggleBound = '1';
+    on(button, 'click', () => toggleTheme());
+  });
+  $$('[data-direction-toggle]', rootNode).forEach((button) => {
+    if (button.dataset.directionToggleBound === '1') return;
+    button.dataset.directionToggleBound = '1';
+    on(button, 'click', () => toggleDirection());
+  });
+}
+
 /** Wires every declarative appearance control on the page. */
 export function initThemeControls(rootNode = document) {
   on(rootNode, 'click', (event) => {
@@ -285,8 +303,7 @@ export function initThemeControls(rootNode = document) {
     else if (target.dataset.radiusOption) set('radius', target.dataset.radiusOption);
   });
 
-  $$('[data-theme-toggle]', rootNode).forEach((button) => on(button, 'click', () => toggleTheme()));
-  $$('[data-direction-toggle]', rootNode).forEach((button) => on(button, 'click', () => toggleDirection()));
+  bindThemeToggles(rootNode);
 
   const radius = $('[data-radius-range]', rootNode);
   if (radius) {
@@ -331,6 +348,7 @@ export const theme = {
   cycleTheme,
   toggleDirection,
   initThemeControls,
+  bindThemeToggles,
   onChange(key, handler) {
     if (!listeners.has(key)) listeners.set(key, new Set());
     listeners.get(key).add(handler);

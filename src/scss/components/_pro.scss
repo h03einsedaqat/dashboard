@@ -1539,6 +1539,122 @@
   background: var(--nv-surface-2) !important;
 }
 
+/* Tracking layout: map card + fleet column side by side on wide screens,
+   stacked on smaller ones (a fixed 320px second track would overflow phones). */
+.logi-pro__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+
+  @media (max-width: 1199.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Map host: responsive height so it never forces a horizontal scrollbar on
+   small screens; a little shorter on phones. */
+.logi-pro__map {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 560px;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(var(--nv-primary-rgb), 0.08), transparent 60%),
+    var(--nv-surface-2);
+
+  /* Loading shimmer until the first tile lands, so the map never sits as a
+     dead gray rectangle while the provider chain resolves. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(var(--nv-primary-rgb), 0.12) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: nv-map-shimmer 1.6s linear infinite;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+
+  &.map-tiles-ready::before {
+    opacity: 0;
+  }
+
+  /* Every provider blocked: a calm "offline" board that still shows the
+     live data layer (hubs, trucks, routes are vector overlays). */
+  &.map--offline {
+    background-image:
+      linear-gradient(rgba(var(--nv-primary-rgb), 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--nv-primary-rgb), 0.07) 1px, transparent 1px),
+      radial-gradient(120% 90% at 50% 0%, rgba(var(--nv-primary-rgb), 0.1), transparent 60%);
+    background-size: 44px 44px, 44px 44px, cover;
+  }
+
+  &.map--offline::before {
+    animation: none;
+    opacity: 0;
+  }
+
+  &.map--offline::after {
+    content: 'حالت آفلاین — داده‌های زنده ناوگان همچنان فعال است';
+    position: absolute;
+    inset-block-end: 12px;
+    inset-inline-start: 12px;
+    z-index: 500;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--nv-text-2);
+    background: var(--nv-surface);
+    border: 1px solid var(--nv-border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    box-shadow: var(--nv-shadow-sm);
+    white-space: nowrap;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 767.98px) {
+    height: 420px;
+  }
+  @media (max-width: 414px) {
+    height: 360px;
+  }
+}
+
+@keyframes nv-map-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+/* Free tile providers: the "dark" variant is a pure CSS filter so we never
+   need a key-gated tile endpoint. Toggling the app theme re-themes the map
+   live without re-initialising Leaflet. Vector (OSM/streets) gets the full
+   inversion; satellite imagery only gets a light de-saturation. */
+[data-theme="dark"] .map--vector .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.55);
+}
+[data-theme="dark"] .map--satellite .leaflet-tile {
+  filter: brightness(0.88) saturate(0.82) contrast(1.03);
+}
+[data-theme="dark"] .leaflet-control-attribution {
+  background: rgba(17, 24, 39, 0.75);
+  color: #cbd5e1;
+}
+[data-theme="dark"] .leaflet-control-attribution a {
+  color: #93c5fd;
+}
+
+
+
 .leaf-city-node {
   background: transparent !important;
   border: 0 !important;
@@ -1576,6 +1692,10 @@
   font-weight: 800;
   white-space: nowrap;
   box-shadow: var(--nv-shadow-xs);
+
+  @media (max-width: 414px) {
+    font-size: 9px;
+  }
 }
 
 .leaf-truck-marker {

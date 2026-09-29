@@ -388,6 +388,22 @@
   font-weight: var(--nv-fw-semibold);
 }
 
+/* ------------------------------------------------------ border shortcuts */
+/* Border styles/side-widths missing from Bootstrap's utility map. */
+.border-dashed {
+  border-style: dashed !important;
+}
+.border-top-2 {
+  border-top-width: 2px !important;
+}
+
+/* Nav items are flex containers around their (button) links. */
+.nav-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 /* -------------------------------------------------------- datatable states */
 [data-datatable].is-empty [data-datatable-body],
 [data-datatable].is-error [data-datatable-body] {

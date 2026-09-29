@@ -159,7 +159,17 @@ export function initI18n() {
   const stored = storage.get(KEYS.language, config.defaultLanguage);
   const storedDirection = storage.get(KEYS.direction, null);
   const htmlLang = document.documentElement.getAttribute('lang');
-  const initial = stored || htmlLang || config.defaultLanguage;
+  /**
+   * A `?lang=` URL parameter wins over storage: the language reload keeps the
+   * choice in the URL, so switching still works in embedded webviews/iframes
+   * where localStorage is blocked (the page would otherwise reload back to
+   * the default language).
+   */
+  let urlLang = null;
+  try {
+    urlLang = new URLSearchParams(window.location.search).get('lang');
+  } catch {}
+  const initial = urlLang || stored || htmlLang || config.defaultLanguage;
   state.lang = availableLanguages().includes(initial) ? initial : config.defaultLanguage;
   state.dict = getLocale(state.lang);
   setNumberLanguage(state.lang);

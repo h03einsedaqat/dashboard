@@ -1318,7 +1318,7 @@ async function aiScheduler() {
     if (event.target.closest('[data-run-job]')) {
       const btn = event.target.closest('[data-run-job]');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> در حال اجرا';
+      btn.innerHTML = '<span class="spinner spinner--sm" aria-hidden="true"></span> در حال اجرا';
       const result = await services.schedulerActions.runNow(row.dataset.job);
       btn.disabled = false;
       btn.innerHTML = '<i class="bi bi-play-fill"></i> اجرا';
@@ -1445,7 +1445,7 @@ async function aiModels() {
     const test = event.target.closest('[data-model-test]');
     if (test) {
       test.disabled = true;
-      test.innerHTML = '<span class="spinner-border spinner-border-sm"></span> در حال تست';
+      test.innerHTML = '<span class="spinner spinner--sm" aria-hidden="true"></span> در حال تست';
       const started = performance.now();
       await services.aiChat.send({ message: 'تست اتصال', model: model?.name });
       test.disabled = false;
@@ -1786,7 +1786,7 @@ async function aiPrompts() {
           on($('[data-run-now]', panel), 'click', async (e) => {
             const btn = e.currentTarget;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> در حال اجرا';
+            btn.innerHTML = '<span class="spinner spinner--sm" aria-hidden="true"></span> در حال اجرا';
             const values = Object.fromEntries(new FormData($('[data-run-form]', panel)));
             const out = await services.promptActions.run(id, values);
             btn.disabled = false;

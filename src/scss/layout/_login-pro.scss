@@ -37,6 +37,14 @@
 .lx-top {
   position: absolute; inset-block-start: 1.25rem; inset-inline: clamp(1.25rem, 4vw, 3rem);
   display: flex; align-items: center; justify-content: space-between;
+  z-index: var(--nv-z-header, 1030);
+}
+.lx-top__tools { display: flex; align-items: center; gap: .5rem; }
+/* The language menu opens towards the page centre (the tools sit at the
+   column edge) so it is never clipped by the column on narrow screens. */
+.lx-top .dropdown-menu {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
 }
 .lx-back { display: inline-flex; align-items: center; gap: .4rem; font-size: .82rem; color: var(--nv-text-muted); text-decoration: none; padding: .4rem .8rem; border-radius: 999px; transition: background .2s, color .2s; }
 .lx-back:hover { background: var(--nv-primary-soft); color: var(--nv-primary); }
@@ -59,7 +67,8 @@
 .lx-logo__text b em { font-style: normal; background: linear-gradient(90deg, #6366f1, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .lx-logo__text small { font-size: .72rem; color: var(--nv-text-muted); }
 
-.lx-head h1 { font-size: clamp(1.6rem, 1.2vw + 1.2rem, 2.1rem); font-weight: 900; color: var(--nv-heading); margin: 0 0 .4rem; }
+.lx-head h1,
+.lx-head h2 { font-size: clamp(1.6rem, 1.2vw + 1.2rem, 2.1rem); font-weight: 900; color: var(--nv-heading); margin: 0 0 .4rem; }
 .lx-head p { color: var(--nv-text-muted); font-size: .9rem; margin: 0 0 1.5rem; line-height: 1.8; }
 .lx-wave { display: inline-block; transform-origin: 70% 70%; animation: lx-wave 2.4s ease-in-out 1s 2; }
 
@@ -135,7 +144,8 @@
 }
 .lx-submit:hover { background-position: 100% 0; transform: translateY(-2px); box-shadow: 0 22px 40px -16px #7c3aed; }
 .lx-submit:active { transform: translateY(0); }
-.lx-submit__icon { transition: transform .2s; }
+.lx-submit__label { position: relative; z-index: 1; }
+.lx-submit__icon { transition: transform .2s; position: relative; z-index: 1; }
 .lx-submit:hover .lx-submit__icon { transform: translateX(-4px); }
 .lx-submit__spinner { display: none; width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: lx-spin .7s linear infinite; }
 .lx-submit.is-loading { animation: lx-gradient 1.5s linear infinite; cursor: progress; }
@@ -238,9 +248,9 @@
 .lx-quote.is-fading { opacity: 0; }
 .lx-quote__stars { color: #fbbf24; letter-spacing: .15em; font-size: .85rem; }
 .lx-quote blockquote { margin: .4rem 0 .8rem; font-size: .92rem; line-height: 1.9; color: rgba(255, 255, 255, .9); }
-.lx-quote figcaption { display: flex; align-items: center; gap: .7rem; }
+.lx-quote figcaption { display: flex; align-items: center; gap: .7rem; color: #fff; }
 .lx-quote figcaption img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .1); }
-.lx-quote figcaption b { display: block; font-size: .85rem; }
+.lx-quote figcaption b { display: block; font-size: .85rem; font-weight: 800; color: #fff; }
 .lx-quote figcaption small { display: block; font-size: .72rem; color: rgba(255, 255, 255, .6); }
 .lx-quote__dots { margin-inline-start: auto; display: flex; gap: 5px; }
 .lx-quote__dots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, .3); transition: width .3s, background .3s; }

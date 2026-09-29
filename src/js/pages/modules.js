@@ -2564,7 +2564,7 @@ async function initLogistics() {
             ${statCard({ label: 'کل مرسوله‌های امروز', value: '۱,۴۲۰', hint: 'از سراسر ۱۳ هاب استانی کشور', tone: 'info', icon: 'box-seam', trend: '+۱۸٪' })}
           </div>
 
-          <div class="grid" style="grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 24px; align-items: start;">
+          <div class="logi-pro__cols">
             <div class="card logi-map-card overflow-hidden">
               <div class="card__head" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -2583,7 +2583,7 @@ async function initLogistics() {
               </div>
 
               <div class="card__body p-0 position-relative">
-                <div id="logistics-leaflet-map" style="height: 560px; width: 100%; position: relative; z-index: 1;"></div>
+                <div id="logistics-leaflet-map" class="logi-pro__map"></div>
                 
                 <div class="logi-map__ticker" style="z-index: 1000;">
                   <div class="logi-map__ticker-live"><i class="bi bi-record-circle text-danger"></i> رصد زنده:</div>
@@ -2676,7 +2676,7 @@ async function initLogistics() {
                 { icon: 'speedometer2', tone: 'danger', title: 'هشدار سرعت لحظه‌ای NVX-106', sub: 'سرعت ۹۸ km/h در محدوده شیب‌دار جاده', time: '۴۰ دقیقه پیش' },
               ].map((item) => `
                 <li class="list-group__item" style="padding:10px 14px; display:flex; align-items:center; gap:10px;">
-                  <span class="tile tile--soft tile--icon tile--soft-${item.tone}" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
+                  <span class="tile tile--soft tile--icon tile--soft-${item.tone || 'primary'}" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
                     <i class="bi bi-${item.icon}"></i>
                   </span>
                   <div style="flex:1;">
@@ -2694,7 +2694,70 @@ async function initLogistics() {
       // Initialize Leaflet Map
       let map = null;
       const truckMarkersMap = new Map();
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      // Keyless tile providers with a fallback chain. The first (Esri
+      // satellite) matches the page's "satellite" promise and looks best;
+      // if a provider's CDN blocks the request (403 hotlink policy, no
+      // internet, …) we fall through to the next, so the map degrades
+      // gracefully instead of showing a broken gray box.
+      const TILE_PROVIDERS = [
+        {
+          id: 'esri-satellite',
+          kind: 'satellite',
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          maxZoom: 17,
+          attribution: 'Tiles &copy; Esri &mdash; Sources: Esri, Maxar, Earthstar Geographics',
+        },
+        {
+          id: 'esri-streets',
+          kind: 'vector',
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+          maxZoom: 19,
+          attribution: 'Tiles &copy; Esri &mdash; Sources: Esri, DeLorme, NAVTEQ',
+        },
+        {
+          id: 'osm-de',
+          kind: 'vector',
+          url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors',
+        },
+        {
+          id: 'osm',
+          kind: 'vector',
+          url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        },
+      ];
+
+      function mountTiles(L, map, mapEl, index, onExhausted) {
+        const provider = TILE_PROVIDERS[index];
+        if (!provider) {
+          mapEl?.classList.add('map--offline');
+          onExhausted?.();
+          return;
+        }
+        mapEl?.classList.remove('map--satellite', 'map--vector');
+        mapEl?.classList.add(provider.kind === 'satellite' ? 'map--satellite' : 'map--vector');
+        const layer = L.tileLayer(provider.url, { maxZoom: provider.maxZoom, attribution: provider.attribution });
+        let failures = 0;
+        let successes = 0;
+        layer.on('tileload', () => {
+          successes += 1;
+          if (successes === 1) mapEl?.classList.add('map-tiles-ready');
+        });
+        layer.on('tileerror', () => {
+          failures += 1;
+          // A blocked provider 403s every tile; once four failed with zero
+          // successes, move to the next provider.
+          if (failures >= 4 && successes === 0) {
+            map.removeLayer(layer);
+            mountTiles(L, map, mapEl, index + 1, onExhausted);
+          }
+        });
+        layer.addTo(map);
+      }
 
       try {
         const L = (await import('leaflet')).default;
@@ -2708,15 +2771,9 @@ async function initLogistics() {
             minZoom: 5,
             maxZoom: 14,
             zoomControl: false,
-            attributionControl: false,
           });
 
-          // Add modern Map Tiles
-          const tileUrl = isDark
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-          L.tileLayer(tileUrl, { maxZoom: 18, subdomains: 'abcd' }).addTo(map);
+          mountTiles(L, map, mapContainer, 0);
 
           // Add City Hub Markers
           Object.entries(IRAN_HUBS).forEach(([cityName, data]) => {
@@ -3655,7 +3712,7 @@ async function initUsers() {
               <div class="card" style="border-radius:18px; border:1px solid var(--nv-border); background:var(--nv-surface); display:flex; flex-direction:column;">
                 <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:flex-start;">
                   <div style="display:flex; align-items:center; gap:12px;">
-                    <span class="tile tile--soft tile--icon tile--soft-${r.tone}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
+                    <span class="tile tile--soft tile--icon tile--soft-${r.tone || 'primary'}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
                       <i class="bi bi-${r.icon}" style="font-size:1.25rem;"></i>
                     </span>
                     <div>

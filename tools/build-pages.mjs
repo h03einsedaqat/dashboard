@@ -450,7 +450,11 @@ function loginProShell(page) {
       <div class="lx-top">
         <a class="lx-back" href="${href('index.html')}"><i class="bi bi-arrow-right" aria-hidden="true"></i> صفحه اصلی</a>
         <div class="lx-top__tools">
-          <button class="lx-icon-btn" type="button" data-lx-theme aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
+          <div class="dropdown">
+            <button class="lx-icon-btn" type="button" data-dropdown-toggle="true" aria-expanded="false" aria-label="تغییر زبان"><i class="bi bi-translate" aria-hidden="true"></i></button>
+            <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
+          </div>
+          <button class="lx-icon-btn" type="button" data-theme-toggle aria-label="تغییر تم"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
         </div>
       </div>
 
@@ -460,7 +464,7 @@ function loginProShell(page) {
           <span class="lx-logo__text"><b>NOVA<em>ADMIN</em></b><small>پنل مدیریت هوشمند</small></span>
         </a>
         <header class="lx-head">
-          <h1>خوش برگشتید <span class="lx-wave" aria-hidden="true">👋</span></h1>
+          <h2>خوش برگشتید <span class="lx-wave" aria-hidden="true">👋</span></h2>
           <p>برای ورود به پنل مدیریت، اطلاعات حساب خود را وارد کنید.</p>
         </header>
 

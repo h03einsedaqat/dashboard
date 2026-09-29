@@ -1,7 +1,7 @@
 {
   "name": "novaadmin",
   "productName": "NOVAADMIN",
-  "version": "1.0.2",
+  "version": "1.0.6",
   "description": "NOVAADMIN — Premium Persian-First Multi-Purpose HTML Admin Dashboard Template (RTL/LTR, Jalali, Dark Mode, AI Workspace, 130+ pages).",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.txt",
@@ -31,7 +31,7 @@
     "qa:all": "npm run build && npm run qa:links && npm run qa:smoke && npm run qa:toggles && npm run qa:responsive",
     "qa:links": "node tools/qa-links.mjs",
     "qa:smoke": "node tools/gen-docs.mjs && node tools/build-pages.mjs --mode build && node tools/smoke.mjs",
-    "qa:responsive": "node tools/qa-responsive.mjs",
+    "qa:responsive": "node tools/qa-responsive.mjs && node tools/qa-responsive-deep.mjs",
     "qa:i18n": "node tools/qa-i18n.mjs",
     "package": "node tools/package.mjs",
     "gen:all": "npm run gen:docs && npm run gen:pages && npm run gen:assets && npm run gen:nav && npm run gen:previews",

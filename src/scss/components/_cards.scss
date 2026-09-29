@@ -243,6 +243,40 @@
   background: rgba(167, 139, 250, 0.16);
   color: #c4b5fd;
 }
+/* Soft-tone family used by runtime templates (`tile tile--soft tile--soft-{tone}`). */
+.tile--soft-primary {
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+}
+.tile--soft-secondary,
+.tile--soft-neutral {
+  background: var(--nv-neutral-soft);
+  color: var(--nv-neutral-soft-fg);
+}
+.tile--soft-success {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.tile--soft-warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.tile--soft-danger {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.tile--soft-info {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.tile--soft-violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme='dark'] .tile--soft-violet {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
 
 .tile__label {
   font-size: var(--nv-text-micro);
