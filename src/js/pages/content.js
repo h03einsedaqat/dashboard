@@ -938,106 +938,95 @@ function browseAllMarkup() {
 
 /* ==================================================================== docs */
 
+/** Chrome strings of the docs reader, per interface language. */
+const DOCS_UI = {
+  fa: { prev: 'بخش قبلی', next: 'بخش بعدی', none: 'نتیجه‌ای یافت نشد', results: 'نتایج جستجو' },
+  en: { prev: 'Previous', next: 'Next', none: 'No results found', results: 'Search results' },
+  ar: { prev: 'القسم السابق', next: 'القسم التالي', none: 'لا توجد نتائج', results: 'نتائج البحث' },
+};
+
 export async function initDocs() {
-  const node = $('[data-docs-content]') ?? host();
+  /* Docs pages are static partials (tools/gen-docs.mjs) inside `.docs-content`;
+     there is no `[data-app]` placeholder, so the reader chrome hooks in here. */
+  const node = $('[data-docs-content]') ?? $('.docs-content') ?? host();
   if (!node) return;
   node.dataset.appClaimed = '1';
+  const lang = ['fa', 'en', 'ar'].includes(document.documentElement.lang) ? document.documentElement.lang : 'fa';
+  const ui = DOCS_UI[lang];
   const page = kit.pageId();
-  const nav = await services.docsService.nav('fa');
-  const info = await services.docsService.page(page);
+  const [nav, info] = await Promise.all([services.docsService.nav(lang), services.docsService.page(page)]);
+  const titleOf = (target) => nav?.flatMap((group) => group.items).find((item) => item.url === target)?.title ?? target;
 
-  // Add reading progress indicator at top of docs
+  // reading progress indicator
   if (!$('#docs-reading-progress')) {
-    document.body.insertAdjacentHTML('afterbegin', '<div id="docs-reading-progress" style="position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--nv-primary),#8b5cf6);z-index:9999;width:0%;transition:width 0.1s;"></div>');
+    document.body.insertAdjacentHTML('afterbegin', '<div id="docs-reading-progress" aria-hidden="true" style="position:fixed;top:0;inset-inline-start:0;height:3px;background:linear-gradient(90deg,var(--nv-primary),#8b5cf6);z-index:9999;width:0%;transition:width 0.1s;"></div>');
     window.addEventListener('scroll', () => {
       const h = document.documentElement.scrollHeight - window.innerHeight;
-      if (h > 0) {
-        const p = Math.min(100, Math.max(0, (window.scrollY / h) * 100));
-        const bar = document.getElementById('docs-reading-progress');
-        if (bar) bar.style.width = `${p}%`;
-      }
+      const bar = document.getElementById('docs-reading-progress');
+      if (bar && h > 0) bar.style.width = `${Math.min(100, Math.max(0, (window.scrollY / h) * 100))}%`;
     }, { passive: true });
   }
 
+  /* The sidebar is rendered at build time (and translated by i18n); search
+     simply filters its topic links in place. */
   const navHost = $('[data-docs-nav]');
-  if (navHost && nav?.length) {
-    render(
-      navHost,
-      nav
-        .map(
-          (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
-            .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-            .join('')}</ul></div>`,
-        )
-        .join(''),
-    );
-  }
   const search = $('[data-docs-search]');
-  if (search) {
-    on(
-      search,
-      'input',
-      debounce(async (event) => {
-        const term = event.target.value.trim();
-        if (!term) {
-          if (navHost && nav?.length) {
-            render(
-              navHost,
-              nav
-                .map(
-                  (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
-                    .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-                    .join('')}</ul></div>`,
-                )
-                .join(''),
-            );
-          }
-          return;
-        }
-        const found = await searchService.search(term, { limit: 10 });
-        render(
-          navHost,
-          `<p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-primary); margin-bottom:8px;">نتایج جستجو (${toDigits(found.items.length)})</p><ul class="list-group" style="gap:4px;">${found.items
-            .map((item) => `<li><a class="files-nav__link" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 10px; font-size:12px;"><i class="bi bi-search text-primary"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-            .join('') || '<li class="list-item text-muted" style="font-size:12px; padding:8px;">نتیجه‌ای یافت نشد</li>'}</ul>`,
-        );
-      }, 220),
-    );
+  if (search && navHost) {
+    const empty = document.createElement('p');
+    empty.className = 'docs-nav__empty text-muted';
+    empty.style.cssText = 'font-size:12px; padding:8px;';
+    empty.hidden = true;
+    empty.setAttribute('data-no-i18n', '');
+    empty.textContent = ui.none;
+    navHost.append(empty);
+    on(search, 'input', debounce((event) => {
+      const term = event.target.value.trim().toLowerCase();
+      let shown = 0;
+      /* Filter the topic leaves; a group stays visible while any child matches. */
+      const items = $$('li', navHost).filter((item) => $(':scope > a[href]', item));
+      const leaves = items.filter((item) => !$('ul', item));
+      leaves.forEach((item) => {
+        const match = !term || $(':scope > a[href]', item).textContent.toLowerCase().includes(term);
+        item.hidden = !match;
+        if (match) shown += 1;
+      });
+      items.filter((item) => $('ul', item)).forEach((group) => {
+        group.hidden = Boolean(term) && !leaves.some((leaf) => !leaf.hidden && group.contains(leaf));
+      });
+      empty.hidden = !term || shown > 0;
+    }, 160));
   }
 
   const toc = $('[data-docs-toc]');
   if (toc) {
-    toc.innerHTML = '<div style="font-size:12px; font-weight:800; margin-bottom:10px; color:var(--nv-heading);"><i class="bi bi-list-nested me-1"></i> سرفصل‌های این صفحه</div>';
     /* Topics carry one article per language; only the visible one feeds the TOC. */
-    const docLang = document.documentElement.lang || 'fa';
-    const article = $(`[data-doc-lang="${docLang}"]`, node) ?? $('[data-doc-lang="fa"]', node) ?? node;
-    $$('h2, h3', article).forEach((heading) => {
-      heading.id = heading.id || heading.textContent.trim().replace(/\s+/g, '-').slice(0, 40);
-      toc.insertAdjacentHTML('beforeend', `<a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${heading.id}" style="display:block; font-size:12px; padding:${heading.tagName==='H3'?'3px 14px 3px 0':'4px 0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a>`);
+    const article = $(`[data-doc-lang="${lang}"]`, node) ?? $('[data-doc-lang="fa"]', node) ?? node;
+    const headings = $$('h2, h3', article);
+    toc.setAttribute('data-no-i18n', '');
+    toc.innerHTML = '';
+    headings.forEach((heading, index) => {
+      heading.id = heading.id || `${lang}-${index + 1}-${heading.textContent.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40)}`;
+      toc.insertAdjacentHTML(
+        'beforeend',
+        `<li style="list-style:none;"><a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${escapeHtml(heading.id)}" style="display:block; font-size:12px; padding-block:${heading.tagName === 'H3' ? '3px' : '4px'}; padding-inline-start:${heading.tagName === 'H3' ? '14px' : '0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a></li>`,
+      );
     });
   }
 
   const pager = $('[data-docs-pager]');
   if (pager) {
+    pager.setAttribute('data-no-i18n', '');
+    /* Arrows point along the reading direction. */
+    const back = lang === 'en' ? 'arrow-left' : 'arrow-right';
+    const forward = lang === 'en' ? 'arrow-right' : 'arrow-left';
     render(
       pager,
-      `<div class="docs-pager" style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; padding-top:20px; border-top:1px solid var(--nv-border);">
-        ${info?.prev ? `<a class="btn btn-light btn-sm" href="${escapeHtml(info.prev)}"><i class="bi bi-arrow-right"></i> بخش قبلی</a>` : '<span></span>'}
-        ${info?.next ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(info.next)}">بخش بعدی <i class="bi bi-arrow-left"></i></a>` : '<span></span>'}
+      `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:40px; padding-top:20px; border-top:1px solid var(--nv-border);">
+        ${info?.prev ? `<a class="btn btn-light btn-sm" href="${escapeHtml(url(info.prev))}" rel="prev"><i class="bi bi-${back}" aria-hidden="true"></i> <span>${escapeHtml(ui.prev)}: ${escapeHtml(titleOf(info.prev))}</span></a>` : '<span></span>'}
+        ${info?.next ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(url(info.next))}" rel="next"><span>${escapeHtml(ui.next)}: ${escapeHtml(titleOf(info.next))}</span> <i class="bi bi-${forward}" aria-hidden="true"></i></a>` : '<span></span>'}
       </div>`,
     );
   }
-
-  $$('[data-copy]').forEach((button) =>
-    on(button, 'click', async () => {
-      const pre = button.closest('.code-block')?.querySelector('code') || button.parentElement?.querySelector('code');
-      if (!pre) return;
-      await navigator.clipboard?.writeText(pre.textContent).catch(()=>null);
-      button.innerHTML = '<i class="bi bi-check2 text-success"></i> کپی شد';
-      setTimeout(() => { button.innerHTML = '<i class="bi bi-copy"></i> کپی'; }, 2000);
-      toast.success('کد کپی شد', 'نمونه کد در حافظه موقت قرار گرفت.');
-    }),
-  );
 }
 
 /* ================================================================ settings */

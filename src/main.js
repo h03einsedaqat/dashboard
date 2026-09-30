@@ -37,6 +37,8 @@ import { enhanceTables, observeTables } from './js/core/tables.js';
 import { humanize, observeHumanize } from './js/core/humanize.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
+import { monthNames, WEEK_DAYS_LONG_AR } from './js/core/jalali.js';
+import { words as numberWords } from './js/core/numbers.js';
 import * as services from './services/index.js';
 
 /* ------------------------------------------------------------- global errors */
@@ -351,6 +353,39 @@ function authGuard() {
   return false;
 }
 
+/**
+ * Arabic output that the formatters already produce (month and weekday names,
+ * relative times, number words). Composed copy such as `موعد: ٢٦ مِهر ١٤٠٥` or
+ * `آخرین فعالیت: قبل أسبوعين` mixes these with Persian; registering them as
+ * identity entries lets the composer accept the Arabic part as translated.
+ */
+function arabicTokens() {
+  const tokens = new Set();
+  const add = (text) => String(text).split(/[\s،,]+/).forEach((word) => {
+    const clean = word.replace(/[0-9٠-٩۰-۹.٫٬:]/g, '').trim();
+    if (clean && !/[یکپچژگ]/.test(clean)) tokens.add(clean);
+  });
+  const names = monthNames('ar');
+  [...names.jalali, ...names.gregorian, ...WEEK_DAYS_LONG_AR].forEach(add);
+  try {
+    const rtf = new Intl.RelativeTimeFormat('ar-AE', { numeric: 'auto' });
+    ['year', 'month', 'week', 'day', 'hour', 'minute', 'second'].forEach((unit) => {
+      for (let value = -12; value <= 12; value += 1) add(rtf.format(value, unit));
+    });
+  } catch {
+    /* Intl without RelativeTimeFormat — the static lists above still apply. */
+  }
+  const w = numberWords('ar');
+  [...w.compact, ...w.bytes, w.hour, w.minute, ...Object.values(w.currency).map((c) => c.suffix)].forEach(add);
+  /* The composer normalises ي/ك to ی/ک before lookup, so both spellings map to the Arabic token. */
+  const entries = {};
+  tokens.forEach((token) => {
+    entries[token] = token;
+    entries[token.replace(/ي/g, 'ی').replace(/ك/g, 'ک')] = token;
+  });
+  return entries;
+}
+
 async function boot() {
   if (!authGuard()) return;
   /**
@@ -376,6 +411,7 @@ async function boot() {
       registerPatterns(i18n.lang, contentPatterns);
       /* Shell phrases win over content entries for the same source text. */
       registerPhrases(i18n.lang, shellBooks[i18n.lang]);
+      if (i18n.lang === 'ar') registerPhrases('ar', arabicTokens());
     } catch (error) {
       console.warn('[i18n] content phrase book unavailable', error);
     }

@@ -83,6 +83,8 @@ function translateGroup(value = '') {
   if (!COMPOSING.has(composeLanguage)) return value ?? '';
   if (!value || !LETTERS.test(value)) return script(value ?? '');
   const hit = lookup(value.trim());
+  /* A group that is already Arabic (a label or date rendered in Arabic) is kept as is. */
+  if (hit === undefined && composeLanguage === 'ar' && !PERSIAN_ONLY.test(value) && ARABIC_ONLY.test(value)) return value;
   if (hit === undefined) groupMissed = true;
   return hit ?? value;
 }
@@ -120,6 +122,8 @@ const DELIMITERS = /(\s*(?:[—–·|•،؛:()«»[\]/+×!؟?…"]|\s-\s)\s*|[0
 const PUNCT = { '،': ',', '؛': ';', '؟': '?', '«': '“', '»': '”', '٪': '%', '٬': ',', '٫': '.' };
 /** Letters Arabic does not use: their presence means Persian copy survived. */
 const PERSIAN_ONLY = /[\u06CC\u06A9\u067E\u0686\u0698\u06AF]/;
+/** Arabic-only letters/diacritics (ة أ إ ى ؤ ئ ي ك, harakat, Arabic-Indic digits) — absent from Persian copy. */
+const ARABIC_ONLY = /[\u0629\u0623\u0625\u0649\u0624\u0626\u064A\u0643\u064B-\u0652\u0660-\u0669]/;
 /** Languages whose content book supports segment composition. */
 const COMPOSING = new Set(['en', 'ar']);
 let composeLanguage = null;

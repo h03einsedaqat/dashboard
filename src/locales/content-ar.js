@@ -5208,6 +5208,7 @@ export default {
 
 /** Rules for composed copy with numbers or names (captured groups are translated too). */
 export const patterns = [
+  [/^«(.+)»$/, '«$1»'],
   [/^انتقال «(.+)» به ستون دیگر$/, 'نقل «$1» إلى عمود آخر'],
   [/^(.+) — فاز (\S+) • موعد: (.+)$/, '$1 — المرحلة $2 • الموعد: $3'],
   [/^(.+) — فاز (\S+)$/, '$1 — المرحلة $2'],

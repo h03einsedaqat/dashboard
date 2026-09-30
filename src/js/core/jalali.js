@@ -129,13 +129,13 @@ export function formatDate(date, { system = calendarSystem, format = 'short', la
     const label = lang === 'en'
       ? `${names.gregorian[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
       : `${d.getDate()} ${names.gregorian[d.getMonth()]} ${d.getFullYear()}`;
-    return format === 'long' ? `${weekdays[weekDayIndex(d)]}، ${label}` : toDigits(label, lang);
+    return toDigits(format === 'long' ? `${weekdays[weekDayIndex(d)]}${lang === 'en' ? ', ' : '، '}${label}` : label, lang);
   }
 
   const { jy, jm, jd } = jalaali.toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
   if (format === 'month') return `${names.jalali[jm - 1]} ${toDigits(jy, lang)}`;
   const label = `${toDigits(jd, lang)} ${names.jalali[jm - 1]} ${toDigits(jy, lang)}`;
-  return format === 'long' ? `${weekdays[weekDayIndex(d)]}، ${label}` : label;
+  return format === 'long' ? `${weekdays[weekDayIndex(d)]}${lang === 'en' ? ', ' : '، '}${label}` : label;
 }
 
 /** Machine-usable ISO date that keeps the *current* calendar system's numbers. */
