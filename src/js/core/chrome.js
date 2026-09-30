@@ -157,10 +157,6 @@ async function runCommandAction(action) {
     case 'theme':
       toast.info('حالت نمایش تغییر کرد', theme.toggleTheme() === 'dark' ? 'تم تاریک فعال شد.' : 'تم روشن فعال شد.');
       break;
-    case 'direction':
-      theme.toggleDirection();
-      toast.info('جهت تغییر کرد', document.documentElement.dir === 'rtl' ? 'چیدمان راست‌به‌چپ' : 'چیدمان چپ‌به‌راست');
-      break;
     case 'language': {
       const order = ['fa', 'en', 'ar'];
       const next = order[(order.indexOf(dict().meta.code) + 1) % order.length];
@@ -179,7 +175,11 @@ async function runCommandAction(action) {
       break;
     case 'logout': {
       const ok = await modal.confirm({ title: 'خروج از حساب', text: 'از حساب کاربری خود خارج می‌شوید؟', tone: 'danger', confirmText: 'خروج' });
-      if (ok) goTo('auth/login.html');
+      if (ok) {
+        const { clearSession } = await import('./auth.js');
+        clearSession();
+        goTo('auth/login.html', { replace: true });
+      }
       break;
     }
     default:
@@ -477,7 +477,7 @@ function initCustomizer() {
     }
   });
 
-  ['theme', 'primary', 'layout', 'direction', 'density', 'fontSize', 'sidebarStyle', 'calendar', 'radius'].forEach((key) =>
+  ['theme', 'primary', 'fontSize', 'calendar', 'radius'].forEach((key) =>
     bus.on(EVENTS[key] ?? EVENTS.theme, syncCustomizer),
   );
   syncCustomizer();

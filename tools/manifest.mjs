@@ -83,7 +83,7 @@ export const sidebar = [
           { id: 'ec-grid', label: L('نمایش شبکه‌ای', 'Product Grid', 'شبكة المنتجات'), icon: 'grid-3x3-gap', url: 'ecommerce/product-grid.html', resource: 'products', kind: 'app' },
           { id: 'ec-details', label: L('جزئیات محصول', 'Product Details', 'تفاصيل المنتج'), icon: 'info-square', url: 'ecommerce/product-details.html', resource: 'products', kind: 'app' },
           { id: 'ec-create', label: L('افزودن محصول', 'Create Product', 'إضافة منتج'), icon: 'plus-square', url: 'ecommerce/product-create.html', resource: 'products', kind: 'app' },
-          { id: 'ec-categories', label: L('دسته‌بندی‌ها', 'Categories', 'الفئات'), icon: 'diagram-3', url: 'ecommerce/categories.html', resource: 'categories', kind: 'list' },
+          { id: 'ec-categories', label: L('دسته‌بندی‌ها', 'Categories', 'الفئات'), icon: 'diagram-3', url: 'ecommerce/categories.html', resource: 'categories', kind: 'app' },
           { id: 'ec-brands', label: L('برندها', 'Brands', 'العلامات'), icon: 'award', url: 'ecommerce/brands.html', resource: 'brands', kind: 'list' },
           { id: 'ec-tags', label: L('برچسب‌ها', 'Tags', 'الوسوم'), icon: 'tags', url: 'ecommerce/tags.html', resource: 'tags', kind: 'list' },
           { id: 'ec-inventory', label: L('موجودی انبار', 'Inventory', 'المخزون'), icon: 'boxes', url: 'ecommerce/inventory.html', resource: 'inventory', kind: 'list' },

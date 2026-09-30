@@ -41,7 +41,7 @@ export const statusLabel = (value) => {
 };
 
 /** Human labels for common field names (fallback when a column is not defined). */
-const FIELD_LABELS = {
+export const FIELD_LABELS = {
   id: 'شناسه', name: 'نام', title: 'عنوان', email: 'ایمیل', phone: 'تلفن', status: 'وضعیت', statusLabel: 'وضعیت', company: 'شرکت', customer: 'مشتری', contact: 'مخاطب',
   owner: 'مسئول', city: 'شهر', country: 'کشور', address: 'نشانی', amount: 'مبلغ', total: 'مبلغ کل', price: 'قیمت', value: 'مقدار', type: 'نوع', category: 'دسته‌بندی',
   createdAt: 'تاریخ ایجاد', updatedAt: 'آخرین به‌روزرسانی', at: 'تاریخ', date: 'تاریخ', description: 'توضیحات', notes: 'یادداشت', note: 'یادداشت', code: 'کد', role: 'نقش',

@@ -270,219 +270,312 @@ async function initEcommerce() {
 
     case 'ecommerce/categories.html': {
       const node = host();
-      const overview = await services.catalogService.overview();
-      const catList = await services.categoryService?.list?.({ perPage: 50 }).catch(() => null) ?? { items: [] };
-      let categories = catList.items?.length ? catList.items : [
-        { id: 'cat-1', name: 'لپ‌تاپ و اولترابوک', slug: 'laptops-ultrabooks', icon: 'laptop', products: 38, parent: 'کالای دیجیتال', status: 'active', revenue: 4200000000 },
-        { id: 'cat-2', name: 'گوشی موبایل و تبلت', slug: 'phones-tablets', icon: 'phone', products: 45, parent: 'کالای دیجیتال', status: 'active', revenue: 5800000000 },
-        { id: 'cat-3', name: 'هدفون و تجهیزات صوتی', slug: 'audio-headphones', icon: 'headphones', products: 29, parent: 'لوازم جانبی', status: 'active', revenue: 1950000000 },
-        { id: 'cat-4', name: 'ساعت و گجت‌های هوشمند', slug: 'smartwatches-gadgets', icon: 'smartwatch', products: 22, parent: 'پوشیدنی‌ها', status: 'active', revenue: 1420000000 },
-        { id: 'cat-5', name: 'لوازم جانبی کامپیوتر', slug: 'computer-accessories', icon: 'mouse', products: 64, parent: 'تجهیزات جانبی', status: 'active', revenue: 2310000000 },
-        { id: 'cat-6', name: 'تجهیزات ذخیره‌سازی داده', slug: 'storage-devices', icon: 'hdd', products: 19, parent: 'سخت‌افزار', status: 'inactive', revenue: 890000000 },
-        { id: 'cat-7', name: 'کنسول بازی و گیمینگ', slug: 'gaming-consoles', icon: 'controller', products: 31, parent: 'سرگرمی', status: 'active', revenue: 3750000000 },
-        { id: 'cat-8', name: 'پرینتر و تجهیزات اداری', slug: 'printers-office', icon: 'printer', products: 14, parent: 'ماشین‌های اداری', status: 'inactive', revenue: 640000000 },
-      ];
+      render(node, `<div class="dashboard-shell">${kit.skeleton(3)}</div>`);
+      const service = services.categoryService;
+      const ICONS = ['laptop', 'phone', 'headphones', 'mouse', 'router', 'printer', 'device-hdd', 'controller', 'house-gear', 'briefcase', 'camera', 'smartwatch', 'tv', 'bag', 'lightning-charge', 'gift'];
+      const COLORS = ['primary', 'info', 'success', 'warning', 'danger', 'violet'];
+      const state = { rows: [], q: '', filter: 'all', sort: 'tree' };
+      const load = async () => {
+        const { items } = await service.list({ perPage: 500 });
+        state.rows = items.map((row, i) => ({ order: i + 1, color: 'primary', description: '', featured: false, ...row }));
+      };
+      await load();
 
-      const renderCategories = (filterText = '') => {
-        const filtered = categories.filter((c) => !filterText || c.name.toLowerCase().includes(filterText.toLowerCase()) || c.slug.toLowerCase().includes(filterText.toLowerCase()));
-        const activeCount = categories.filter((c) => c.status === 'active').length;
-        const inactiveCount = categories.length - activeCount;
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'دسته‌بندی‌های فروشگاه',
+            subtitle: 'ساختار درختی ویترین، نمایش یا پنهان‌سازی آنی و سهم هر دسته از فروش',
+            icon: 'diagram-3',
+            actions: '<button class="btn btn-primary" type="button" data-cat-add><i class="bi bi-plus-lg"></i> دسته‌بندی جدید</button>',
+          })}
+          <div class="kpi-row" data-cat-kpis></div>
+          <section class="card cat-board">
+            <header class="card__head">
+              <div><h2 class="card__title">ساختار دسته‌بندی‌ها</h2><p class="card__subtitle">زیردسته‌ها زیر سرگروه خود نمایش داده می‌شوند</p></div>
+            </header>
+            <div class="cat-toolbar">
+              <label class="cat-toolbar__search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control" placeholder="جستجوی نام یا اسلاگ…" aria-label="جستجوی دسته‌بندی" data-cat-search></label>
+              <div class="cat-seg" role="tablist" aria-label="فیلتر وضعیت">
+                <button type="button" role="tab" class="is-active" aria-selected="true" data-cat-filter="all">همه <span data-count="all"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-cat-filter="active">در ویترین <span data-count="active"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-cat-filter="inactive">مخفی <span data-count="inactive"></span></button>
+              </div>
+              <select class="form-select cat-toolbar__sort" aria-label="مرتب‌سازی" data-cat-sort>
+                <option value="tree">ترتیب درختی</option>
+                <option value="products">بیشترین محصول</option>
+                <option value="revenue">بیشترین فروش</option>
+                <option value="name">الفبایی</option>
+              </select>
+            </div>
+            <div class="cat-list" role="table" aria-label="دسته‌بندی‌ها">
+              <div class="cat-row cat-row--head" role="row">
+                <span role="columnheader">دسته‌بندی</span>
+                <span role="columnheader">سرگروه</span>
+                <span role="columnheader">محصولات</span>
+                <span role="columnheader">فروش</span>
+                <span role="columnheader">نمایش در ویترین</span>
+                <span role="columnheader" class="visually-hidden">عملیات</span>
+              </div>
+              <div role="rowgroup" data-cat-body></div>
+            </div>
+          </section>
+        </div>`,
+      );
 
-        render(
-          node,
-          `<div class="dashboard-shell">
-            ${pageHeader({
-              title: 'دسته‌بندی‌های فروشگاه',
-              subtitle: 'مدیریت و پیکربندی ساختار دسته‌بندی‌ها با امکان فعال یا غیرفعال‌سازی آنی',
-              icon: 'tags',
-              actions: `<button class="btn btn-primary" type="button" data-add-cat><i class="bi bi-plus-lg me-1"></i>افزودن دسته‌بندی جدید</button>`
-            })}
-            <div class="stat-grid mb-4">
-              <article class="stat-card stat-card--primary">
-                <span class="stat-card__icon"><i class="bi bi-tags"></i></span>
-                <p class="stat-card__label">کل دسته‌بندی‌ها</p>
-                <p class="stat-card__value">${toDigits(categories.length)}</p>
-                <p class="stat-card__meta">سرگروه‌ها و زیرمجموعه‌ها</p>
-              </article>
-              <article class="stat-card stat-card--success">
-                <span class="stat-card__icon"><i class="bi bi-check-circle"></i></span>
-                <p class="stat-card__label">دسته‌های فعال</p>
-                <p class="stat-card__value text-success">${toDigits(activeCount)}</p>
-                <p class="stat-card__meta text-success"><i class="bi bi-eye"></i> قابل مشاهده در ویترین</p>
-              </article>
-              <article class="stat-card stat-card--warning">
-                <span class="stat-card__icon"><i class="bi bi-pause-circle"></i></span>
-                <p class="stat-card__label">دسته‌های غیرفعال</p>
-                <p class="stat-card__value text-warning">${toDigits(inactiveCount)}</p>
-                <p class="stat-card__meta text-muted"><i class="bi bi-eye-slash"></i> موقتاً مخفی در فروشگاه</p>
-              </article>
-              <article class="stat-card stat-card--info">
-                <span class="stat-card__icon"><i class="bi bi-box-seam"></i></span>
-                <p class="stat-card__label">محصولات تحت پوشش</p>
-                <p class="stat-card__value">${toDigits(categories.reduce((s, c) => s + (c.products || 0), 0))}</p>
-                <p class="stat-card__meta">تعداد کالاهای ثبت‌شده</p>
-              </article>
-            </div>
-            <div class="card">
-              <div class="card__head d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  <h2 class="card__title">فهرست و وضعیت دسته‌بندی‌ها</h2>
-                  <p class="card__subtitle">برای فعال یا غیرفعال کردن نمایش دسته، کلید سوییچ مربوطه را تغییر دهید</p>
-                </div>
-                <div class="d-flex gap-2">
-                  <div class="input-icon" style="min-width: 220px;">
-                    <i class="bi bi-search"></i>
-                    <input type="search" class="form-control form-control-sm" placeholder="جستجوی دسته‌بندی..." data-search-cat value="${escapeHtml(filterText)}">
-                  </div>
-                </div>
-              </div>
-              <div class="card__body p-0">
-                <div class="table-wrap">
-                  <table class="table table--hover mb-0">
-                    <thead>
-                      <tr>
-                        <th>نام و آیکون دسته</th>
-                        <th>پیوند یکتا (Slug)</th>
-                        <th>دسته والد</th>
-                        <th>تعداد محصولات</th>
-                        <th>وضعیت کنونی</th>
-                        <th>سوییچ فعال / غیرفعال</th>
-                        <th class="text-end">عملیات</th>
-                      </tr>
-                    </thead>
-                    <tbody data-cat-tbody>
-                      ${filtered.map((cat) => `
-                        <tr data-cat-id="${cat.id}">
-                          <td>
-                            <div class="d-flex align-items-center gap-2">
-                              <span class="tile tile--soft tile--icon tile--soft-primary" style="width:36px; height:36px; border-radius:10px; display:grid; place-items:center;">
-                                <i class="bi bi-${cat.icon || 'tag'}"></i>
-                              </span>
-                              <div>
-                                <span class="fw-bold">${escapeHtml(cat.name)}</span>
-                                <small class="text-muted d-block">${cat.id}</small>
-                              </div>
-                            </div>
-                          </td>
-                          <td><code>${escapeHtml(cat.slug || cat.id)}</code></td>
-                          <td>${escapeHtml(cat.parent || '— (دسته اصلی)')}</td>
-                          <td class="numeric fw-semibold">${toDigits(cat.products || 0)} کالا</td>
-                          <td>
-                            <span class="badge badge--soft-${cat.status === 'active' ? 'success' : 'secondary'}" data-status-badge="${cat.id}">
-                              ${cat.status === 'active' ? 'فعال' : 'غیرفعال'}
-                            </span>
-                          </td>
-                          <td>
-                            <div class="form-check form-switch m-0" style="min-height:auto;">
-                              <input class="form-check-input" type="checkbox" role="switch" data-toggle-cat="${cat.id}" ${cat.status === 'active' ? 'checked' : ''} style="cursor:pointer; width:2.5em; height:1.25em;">
-                            </div>
-                          </td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-light" type="button" data-edit-cat="${cat.id}" title="ویرایش"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-sm btn-light text-danger" type="button" data-del-cat="${cat.id}" title="حذف"><i class="bi bi-trash"></i></button>
-                          </td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>`
-        );
+      const body = $('[data-cat-body]', node);
+      const childrenOf = (name) => state.rows.filter((row) => row.parent === name);
+
+      const paintKpis = () => {
+        const active = state.rows.filter((row) => row.status === 'active').length;
+        const roots = state.rows.filter((row) => !row.parent).length;
+        const cells = [
+          ['کل دسته‌بندی‌ها', toDigits(state.rows.length), `${toDigits(roots)} سرگروه • ${toDigits(state.rows.length - roots)} زیردسته`, 'primary', 'diagram-3'],
+          ['در ویترین', toDigits(active), 'قابل مشاهده برای مشتریان', 'success', 'eye'],
+          ['مخفی', toDigits(state.rows.length - active), 'موقتاً از فروشگاه پنهان', 'warning', 'eye-slash'],
+          ['فروش دسته‌ها', formatCurrency(state.rows.reduce((sum, row) => sum + (row.revenue || 0), 0), 'IRR', { compact: true }), 'مجموع ۳۰ روز اخیر', 'info', 'graph-up-arrow'],
+        ];
+        $('[data-cat-kpis]', node).innerHTML = cells
+          .map(
+            ([label, value, meta, tone, icon]) => `<article class="stat-card">
+              <div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span><span class="stat-card__icon stat-card__icon--${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i></span></div>
+              <p class="stat-card__value">${escapeHtml(value)}</p>
+              <p class="stat-card__meta">${escapeHtml(meta)}</p>
+            </article>`,
+          )
+          .join('');
+        $$('[data-count]', node).forEach((el) => {
+          const key = el.dataset.count;
+          el.textContent = toDigits(key === 'all' ? state.rows.length : state.rows.filter((row) => row.status === key).length);
+        });
       };
 
-      renderCategories();
+      const rowHtml = (row, { child = false, maxProducts = 1, maxRevenue = 1 } = {}) => {
+        const on_ = row.status === 'active';
+        const kids = childrenOf(row.name).length;
+        return `<div class="cat-row${child ? ' cat-row--child' : ''}${on_ ? '' : ' is-off'}" role="row" data-cat-id="${escapeHtml(row.id)}">
+          <div class="cat-cell cat-cell--name" role="cell">
+            <span class="cat-icon cat-icon--${escapeHtml(row.color || 'primary')}"><i class="bi bi-${escapeHtml(row.icon || 'tag')}" aria-hidden="true"></i></span>
+            <div class="cat-name">
+              <strong>${escapeHtml(row.name)}${row.featured ? ' <i class="bi bi-star-fill cat-star" title="دسته ویژه" aria-label="دسته ویژه"></i>' : ''}</strong>
+              <code dir="ltr">/${escapeHtml(row.slug || row.id)}</code>
+              ${!child && kids ? `<span class="cat-kids">${toDigits(kids)} زیردسته</span>` : ''}
+            </div>
+          </div>
+          <div class="cat-cell cat-cell--parent" role="cell" data-label="سرگروه">${row.parent ? `<span class="cat-parent"><i class="bi bi-arrow-return-left" aria-hidden="true"></i>${escapeHtml(row.parent)}</span>` : '<span class="text-muted">دسته اصلی</span>'}</div>
+          <div class="cat-cell cat-cell--products" role="cell" data-label="محصولات">
+            <span class="numeric fw-semibold">${toDigits(row.products || 0)}</span>
+            <span class="cat-bar" aria-hidden="true"><i style="inline-size:${Math.max(4, Math.round(((row.products || 0) / maxProducts) * 100))}%"></i></span>
+          </div>
+          <div class="cat-cell cat-cell--revenue numeric" role="cell" data-label="فروش">${formatCurrency(row.revenue || 0, 'IRR', { compact: true })}<span class="cat-share">${toDigits(Math.round(((row.revenue || 0) / maxRevenue) * 100))}٪ از بیشترین</span></div>
+          <div class="cat-cell cat-cell--toggle" role="cell">
+            <button type="button" class="cat-switch" role="switch" aria-checked="${on_}" aria-label="نمایش ${escapeHtml(row.name)} در ویترین" data-cat-toggle>
+              <span class="cat-switch__track"><span class="cat-switch__knob"></span></span>
+              <span class="cat-switch__text">${on_ ? 'نمایش' : 'مخفی'}</span>
+            </button>
+          </div>
+          <div class="cat-cell cat-cell--actions" role="cell">
+            <button type="button" class="btn btn-icon btn-light btn-sm" data-cat-edit aria-label="ویرایش ${escapeHtml(row.name)}" title="ویرایش"><i class="bi bi-pencil"></i></button>
+            <button type="button" class="btn btn-icon btn-light btn-sm text-danger" data-cat-delete aria-label="حذف ${escapeHtml(row.name)}" title="حذف"><i class="bi bi-trash3"></i></button>
+          </div>
+        </div>`;
+      };
 
-      // Search event
-      on(node, 'input', (e) => {
-        const input = e.target.closest('[data-search-cat]');
-        if (input) {
-          renderCategories(input.value);
-        }
-      });
-
-      // Switch toggle event listener
-      on(node, 'change', (e) => {
-        const toggle = e.target.closest('[data-toggle-cat]');
-        if (!toggle) return;
-        const catId = toggle.dataset.toggleCat;
-        const cat = categories.find((c) => c.id === catId);
-        if (!cat) return;
-        const isChecked = toggle.checked;
-        cat.status = isChecked ? 'active' : 'inactive';
-        
-        const badge = $(`[data-status-badge="${catId}"]`, node);
-        if (badge) {
-          badge.className = `badge badge--soft-${isChecked ? 'success' : 'secondary'}`;
-          badge.textContent = isChecked ? 'فعال' : 'غیرفعال';
-        }
-        toast.success(
-          isChecked ? 'دسته‌بندی فعال شد' : 'دسته‌بندی غیرفعال شد',
-          `وضعیت «${cat.name}» به ${isChecked ? 'فعال (منتشرشده در ویترین)' : 'غیرفعال (مخفی)'} تغییر یافت.`
-        );
-      });
-
-      // Add category modal
-      on(node, 'click', (e) => {
-        if (e.target.closest('[data-add-cat]')) {
-          modal.open({
-            title: 'افزودن دسته‌بندی جدید',
-            content: `
-              <form id="new-cat-form" class="stack gap-3">
-                <div>
-                  <label class="form-label">نام دسته‌بندی</label>
-                  <input type="text" name="name" class="form-control" required placeholder="مثلاً لوازم خانگی هوشمند">
-                </div>
-                <div>
-                  <label class="form-label">پیوند یکتا (Slug)</label>
-                  <input type="text" name="slug" class="form-control" placeholder="smart-home">
-                </div>
-                <div>
-                  <label class="form-label">دسته والد (سرگروه)</label>
-                  <select name="parent" class="form-select">
-                    <option value="">— دسته اصلی (بدون والد) —</option>
-                    ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="form-check form-switch pt-2">
-                  <input class="form-check-input" type="checkbox" name="active" id="new-cat-active" checked>
-                  <label class="form-check-label" for="new-cat-active">دسته‌بندی بلافاصله فعال و منتشر شود</label>
-                </div>
-              </form>
-            `,
-            footer: `
-              <button class="btn btn-light" type="button" data-modal-close>انصراف</button>
-              <button class="btn btn-primary" type="button" data-save-new-cat>ثبت دسته‌بندی</button>
-            `
+      const paintList = () => {
+        const q = state.q.trim().toLowerCase();
+        const match = (row) =>
+          (state.filter === 'all' || row.status === state.filter) &&
+          (!q || [row.name, row.slug, row.parent, row.description].some((v) => String(v ?? '').toLowerCase().includes(q)));
+        const maxProducts = Math.max(1, ...state.rows.map((row) => row.products || 0));
+        const maxRevenue = Math.max(1, ...state.rows.map((row) => row.revenue || 0));
+        const opts = { maxProducts, maxRevenue };
+        let html = '';
+        if (state.sort === 'tree' && !q) {
+          const names = new Set(state.rows.map((row) => row.name));
+          const roots = state.rows.filter((row) => !row.parent || !names.has(row.parent)).sort((a, b) => a.order - b.order);
+          roots.forEach((root) => {
+            const kids = childrenOf(root.name).filter(match).sort((a, b) => a.order - b.order);
+            if (!match(root) && !kids.length) return;
+            html += `<div class="cat-group" role="presentation">${rowHtml(root, opts)}${kids.map((kid) => rowHtml(kid, { ...opts, child: true })).join('')}</div>`;
           });
+        } else {
+          const key = state.sort === 'tree' ? 'order' : state.sort;
+          const rows = state.rows.filter(match).sort((a, b) => (key === 'name' ? a.name.localeCompare(b.name, 'fa') : key === 'order' ? a.order - b.order : (b[key] || 0) - (a[key] || 0)));
+          html = rows.map((row) => rowHtml(row, opts)).join('');
         }
-        if (e.target.closest('[data-save-new-cat]')) {
-          const form = $('#new-cat-form');
-          if (form) {
-            const name = form.name.value.trim();
-            if (!name) {
-              toast.warning('خطای ورودی', 'لطفاً نام دسته‌بندی را وارد کنید.');
-              return;
-            }
-            const newCat = {
-              id: `cat-${categories.length + 1}`,
-              name,
-              slug: form.slug.value.trim() || name.replace(/\s+/g, '-'),
-              icon: 'tag',
-              products: 0,
-              parent: form.parent.value || null,
-              status: form.active.checked ? 'active' : 'inactive',
-              revenue: 0
+        body.innerHTML = html || emptyState({ title: 'دسته‌ای پیدا نشد', text: 'عبارت جستجو یا فیلتر را تغییر دهید.', icon: 'search' });
+      };
+
+      const repaint = () => {
+        paintKpis();
+        paintList();
+      };
+
+      const openForm = (record = null) => {
+        const isNew = !record;
+        const data = record ?? { name: '', slug: '', parent: null, icon: 'tag', color: 'primary', description: '', status: 'active', featured: false };
+        const hasKids = !isNew && childrenOf(data.name).length > 0;
+        const parents = state.rows.filter((row) => !row.parent && row.id !== data.id);
+        const slugify = (text) =>
+          String(text)
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+        modal.open({
+          title: isNew ? 'دسته‌بندی جدید' : `ویرایش «${data.name}»`,
+          subtitle: 'نام، مسیر، سرگروه و ظاهر دسته در ویترین',
+          size: 'lg',
+          content: `<form class="cat-form" novalidate data-cat-form>
+              <div class="form-grid">
+                <div class="form-field"><label class="form-label" for="cat-f-name">نام دسته <span class="text-danger">*</span></label><input id="cat-f-name" name="name" class="form-control" required maxlength="60" value="${escapeHtml(data.name)}" placeholder="مثلاً: لوازم خانگی هوشمند"><p class="form-feedback" data-err="name"></p></div>
+                <div class="form-field"><label class="form-label" for="cat-f-slug">اسلاگ (نشانی) <span class="text-danger">*</span></label><input id="cat-f-slug" name="slug" class="form-control" dir="ltr" required maxlength="60" value="${escapeHtml(data.slug ?? '')}" placeholder="smart-home"><p class="form-hint">فقط حروف انگلیسی کوچک، عدد و خط تیره</p><p class="form-feedback" data-err="slug"></p></div>
+                <div class="form-field"><label class="form-label" for="cat-f-parent">سرگروه</label><select id="cat-f-parent" name="parent" class="form-select" ${hasKids ? 'disabled' : ''}><option value="">— دسته اصلی —</option>${parents.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name === data.parent ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select>${hasKids ? '<p class="form-hint">این دسته زیردسته دارد و خودش سرگروه باقی می‌ماند.</p>' : ''}</div>
+                <div class="form-field"><span class="form-label">رنگ</span><div class="cat-colors">${COLORS.map((c) => `<label class="cat-color cat-color--${c}"><input type="radio" name="color" value="${c}" ${c === (data.color || 'primary') ? 'checked' : ''}><span class="visually-hidden">${c}</span></label>`).join('')}</div></div>
+                <div class="form-field" style="grid-column:1/-1"><span class="form-label">آیکون</span><div class="cat-icons">${[...new Set([data.icon || 'tag', ...ICONS])].map((ic) => `<label class="cat-icon-opt"><input type="radio" name="icon" value="${ic}" ${ic === (data.icon || 'tag') ? 'checked' : ''}><span><i class="bi bi-${ic}" aria-hidden="true"></i></span><span class="visually-hidden">${ic}</span></label>`).join('')}</div></div>
+                <div class="form-field" style="grid-column:1/-1"><label class="form-label" for="cat-f-desc">توضیح کوتاه</label><textarea id="cat-f-desc" name="description" class="form-control" rows="2" maxlength="160">${escapeHtml(data.description ?? '')}</textarea></div>
+                <div class="form-field"><label class="form-switch"><input type="checkbox" class="form-check-input" name="active" ${data.status === 'active' ? 'checked' : ''}><span class="form-check-label">نمایش در ویترین</span></label></div>
+                <div class="form-field"><label class="form-switch"><input type="checkbox" class="form-check-input" name="featured" ${data.featured ? 'checked' : ''}><span class="form-check-label">دسته ویژه (صفحه اصلی)</span></label></div>
+              </div>
+            </form>`,
+          footer: `<button type="button" class="btn btn-light" data-modal-close>انصراف</button><button type="button" class="btn btn-primary" data-cat-save><i class="bi bi-check2"></i> ${isNew ? 'ثبت دسته' : 'ذخیره تغییرات'}</button>`,
+          onMount: (panel, instance) => {
+            const form = $('[data-cat-form]', panel);
+            const slug = form.elements.slug;
+            let slugTouched = !isNew && Boolean(data.slug);
+            on(slug, 'input', () => (slugTouched = true));
+            on(form.elements.name, 'input', () => {
+              if (!slugTouched) slug.value = slugify(form.elements.name.value) || '';
+            });
+            const setErr = (name, message) => {
+              form.elements[name].classList.toggle('is-invalid', Boolean(message));
+              $(`[data-err="${name}"]`, form).textContent = message ?? '';
             };
-            categories.unshift(newCat);
-            modal.close();
-            renderCategories();
-            toast.success('دسته‌بندی جدید ثبت شد', `دسته‌بندی «${name}» با موفقیت اضافه شد.`);
+            const save = async () => {
+              const name = form.elements.name.value.trim();
+              const slugValue = slug.value.trim().toLowerCase();
+              let ok = true;
+              if (name.length < 2) { setErr('name', 'نام دسته حداقل ۲ نویسه است.'); ok = false; }
+              else if (state.rows.some((row) => row.name === name && row.id !== data.id)) { setErr('name', 'دسته‌ای با این نام وجود دارد.'); ok = false; }
+              else setErr('name', '');
+              if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugValue)) { setErr('slug', 'اسلاگ معتبر نیست.'); ok = false; }
+              else if (state.rows.some((row) => row.slug === slugValue && row.id !== data.id)) { setErr('slug', 'این اسلاگ قبلاً استفاده شده است.'); ok = false; }
+              else setErr('slug', '');
+              if (!ok) return;
+              const payload = {
+                name,
+                slug: slugValue,
+                parent: hasKids ? null : form.elements.parent.value || null,
+                icon: form.querySelector('[name="icon"]:checked')?.value ?? 'tag',
+                color: form.querySelector('[name="color"]:checked')?.value ?? 'primary',
+                description: form.elements.description.value.trim(),
+                status: form.elements.active.checked ? 'active' : 'inactive',
+                featured: form.elements.featured.checked,
+              };
+              const button = $('[data-cat-save]', panel);
+              button.classList.add('is-loading');
+              button.disabled = true;
+              try {
+                if (isNew) await service.create({ ...payload, products: 0, revenue: 0, order: state.rows.length + 1 });
+                else {
+                  await service.update(data.id, payload);
+                  if (data.name !== name) await Promise.all(childrenOf(data.name).map((kid) => service.update(kid.id, { parent: name })));
+                }
+                toast.success(isNew ? 'دسته‌بندی ثبت شد' : 'تغییرات ذخیره شد', name);
+                instance.close();
+                await load();
+                repaint();
+              } catch (error) {
+                toast.danger('ذخیره نشد', error?.message ?? 'خطای غیرمنتظره');
+              } finally {
+                button.classList.remove('is-loading');
+                button.disabled = false;
+              }
+            };
+            on($('[data-cat-save]', panel), 'click', save);
+            on(form, 'submit', (event) => {
+              event.preventDefault();
+              save();
+            });
+          },
+        });
+      };
+
+      let searchTimer;
+      on($('[data-cat-search]', node), 'input', (event) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = event.target.value;
+          paintList();
+        }, 150);
+      });
+      on($('[data-cat-sort]', node), 'change', (event) => {
+        state.sort = event.target.value;
+        paintList();
+      });
+      $$('[data-cat-filter]', node).forEach((button) =>
+        on(button, 'click', () => {
+          state.filter = button.dataset.catFilter;
+          $$('[data-cat-filter]', node).forEach((b) => {
+            b.classList.toggle('is-active', b === button);
+            b.setAttribute('aria-selected', String(b === button));
+          });
+          paintList();
+        }),
+      );
+      on($('[data-cat-add]', node), 'click', () => openForm());
+
+      on(body, 'click', async (event) => {
+        const rowNode = event.target.closest('[data-cat-id]');
+        if (!rowNode) return;
+        const row = state.rows.find((r) => r.id === rowNode.dataset.catId);
+        if (!row) return;
+        if (event.target.closest('[data-cat-toggle]')) {
+          const button = event.target.closest('[data-cat-toggle]');
+          const next = row.status === 'active' ? 'inactive' : 'active';
+          row.status = next;
+          button.setAttribute('aria-checked', String(next === 'active'));
+          $('.cat-switch__text', button).textContent = next === 'active' ? 'نمایش' : 'مخفی';
+          rowNode.classList.toggle('is-off', next !== 'active');
+          paintKpis();
+          try {
+            await service.update(row.id, { status: next });
+            toast.success(next === 'active' ? 'در ویترین نمایش داده می‌شود' : 'از ویترین پنهان شد', row.name);
+            if (state.filter !== 'all') paintList();
+          } catch {
+            row.status = next === 'active' ? 'inactive' : 'active';
+            repaint();
+            toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
           }
+          return;
+        }
+        if (event.target.closest('[data-cat-edit]')) {
+          openForm(row);
+          return;
+        }
+        if (event.target.closest('[data-cat-delete]')) {
+          const kids = childrenOf(row.name);
+          const ok = await modal.confirm({
+            title: 'حذف دسته‌بندی',
+            text: kids.length
+              ? `«${row.name}» حذف می‌شود و ${toDigits(kids.length)} زیردسته آن به دسته اصلی منتقل می‌شوند. محصولات حذف نمی‌شوند.`
+              : `«${row.name}» حذف می‌شود. محصولات این دسته حذف نمی‌شوند و بدون دسته باقی می‌مانند.`,
+            tone: 'danger',
+            confirmText: 'حذف دسته',
+          });
+          if (!ok) return;
+          await Promise.all(kids.map((kid) => service.update(kid.id, { parent: null })));
+          await service.remove(row.id);
+          toast.success('دسته‌بندی حذف شد', row.name);
+          await load();
+          repaint();
         }
       });
 
+      repaint();
       return;
     }
 
@@ -568,13 +661,6 @@ async function ecommerceProductForm() {
   ];
   const values = id ? await loadRecord('products', id) : {};
 
-  // Gallery state
-  let productImages = values.images || [
-    { id: 'img-1', url: values.image || 'assets/img/products/product-01.svg', name: 'تصویر اصلی ۱', isCover: true },
-    { id: 'img-2', url: 'assets/img/products/product-02.svg', name: 'نمای زاویه‌دار ۲', isCover: false },
-  ];
-  let currentImageIndex = 0;
-
   render(
     node,
     `<div class="dashboard-shell">
@@ -585,17 +671,17 @@ async function ecommerceProductForm() {
         actions: '<a class="btn btn-light" href="ecommerce/products.html"><i class="bi bi-arrow-right"></i> بازگشت به فهرست</a>'
       })}
       <div class="row g-4">
-        <!-- Gallery & Carousel Column -->
         <div class="col-lg-5">
-          <div class="card h-100">
-            <div class="card__head d-flex justify-content-between align-items-center">
+          <section class="card pm-card" aria-label="تصاویر محصول">
+            <header class="card__head">
               <div>
-                <h3 class="card__title fs-6 fw-bold m-0"><i class="bi bi-images me-1 text-primary"></i> گالری و تصاویر محصول</h3>
-                <p class="card__subtitle m-0 small text-muted">آپلود چندین عکس با پیش‌نمایش Carousel متحرک</p>
+                <h2 class="card__title"><i class="bi bi-images text-primary"></i> استودیو تصاویر محصول</h2>
+                <p class="card__subtitle">تا ۱۰ تصویر — بکشید و رها کنید، ترتیب را تغییر دهید و کاور را انتخاب کنید</p>
               </div>
-            </div>
-            <div class="card__body" data-gallery-container></div>
-          </div>
+            </header>
+            <div class="card__body pm" data-gallery-container></div>
+            <div class="pm-dropveil" aria-hidden="true"><i class="bi bi-cloud-arrow-up"></i><span>رها کنید تا به گالری اضافه شود</span></div>
+          </section>
         </div>
 
         <!-- Product Form Column -->
@@ -615,169 +701,304 @@ async function ecommerceProductForm() {
     </div>`
   );
 
-  const galleryContainer = $('[data-gallery-container]', node);
+  /* ------------------------------------------------------------------
+   * Media studio (v1.1): stage with pointer-zoom + swipe, reorderable
+   * thumbnail rail, drag & drop upload on the whole card, per-image alt
+   * text and a readiness meter. Everything is class-based (see
+   * pages/_product-media.scss) — no inline layout styles.
+   * ------------------------------------------------------------------ */
+  const MAX_IMAGES = 10;
+  const MAX_BYTES = 5 * 1024 * 1024;
+  const SAMPLE_POOL = Array.from({ length: 24 }, (_, i) => `assets/img/products/product-${String(i + 1).padStart(2, '0')}.svg`);
+  let seq = 0;
+  const makeId = () => `img-${Date.now().toString(36)}-${(seq += 1)}`;
+  let productImages = (Array.isArray(values.images) && values.images.length
+    ? values.images
+    : [
+        { url: values.image || 'assets/img/products/product-01.svg', name: 'تصویر اصلی', alt: values.name ?? '' },
+        { url: 'assets/img/products/product-02.svg', name: 'نمای زاویه‌دار', alt: '' },
+      ]
+  ).map((img, index) => ({ id: img.id ?? makeId(), url: img.url, name: img.name ?? `تصویر ${index + 1}`, alt: img.alt ?? '', isCover: index === 0 ? img.isCover !== false : Boolean(img.isCover) }));
+  if (!productImages.some((img) => img.isCover) && productImages[0]) productImages[0].isCover = true;
+  let currentImageIndex = 0;
+  const blobUrls = new Set();
+
+  const galleryHost = $('[data-gallery-container]', node);
+  const galleryCard = galleryHost?.closest('.card');
+
+  const readiness = () => {
+    const checks = [
+      { ok: productImages.length >= 3, label: 'حداقل ۳ تصویر از زوایای مختلف' },
+      { ok: productImages.some((img) => img.isCover), label: 'تصویر کاور انتخاب شده' },
+      { ok: productImages.length > 0 && productImages.every((img) => img.alt.trim().length >= 3), label: 'متن جایگزین (alt) برای همه تصاویر' },
+    ];
+    return { checks, score: Math.round((checks.filter((c) => c.ok).length / checks.length) * 100) };
+  };
 
   const renderGalleryUi = () => {
-    if (!galleryContainer) return;
-    const currentImg = productImages[currentImageIndex] || productImages[0];
-    const isMulti = productImages.length >= 2;
-
+    if (!galleryHost) return;
+    currentImageIndex = Math.max(0, Math.min(currentImageIndex, productImages.length - 1));
+    const current = productImages[currentImageIndex];
+    const { checks, score } = readiness();
+    const multi = productImages.length > 1;
     render(
-      galleryContainer,
-      `<div class="d-flex flex-column gap-3">
-        <!-- Dropzone Area -->
-        <div class="p-3 text-center rounded-3 border border-2 border-dashed" data-dropzone style="background: var(--nv-surface-2); cursor: pointer; transition: all 0.2s ease;">
-          <input type="file" multiple accept="image/*" class="d-none" data-file-input>
-          <i class="bi bi-cloud-arrow-up fs-2 text-primary d-block mb-1"></i>
-          <span class="fw-bold d-block small">کلیک کنید یا فایل‌های عکس را به اینجا بکشید</span>
-          <span class="text-muted" style="font-size: 11px;">امکان انتخاب همزمان چندین عکس (PNG, JPG, WebP)</span>
-          <div class="mt-2 d-flex justify-content-center gap-2">
-            <button type="button" class="btn btn-xs btn-outline-primary" data-btn-browse><i class="bi bi-folder-plus me-1"></i>انتخاب فایل‌ها</button>
-            <button type="button" class="btn btn-xs btn-light" data-add-sample-photos><i class="bi bi-magic me-1"></i>افزودن تصاویر نمونه</button>
-          </div>
-        </div>
-
-        ${productImages.length > 0 ? `
-          <!-- Main Carousel Display -->
-          <div class="position-relative rounded-3 border overflow-hidden d-flex align-items-center justify-content-center" style="background: var(--nv-surface); min-height: 270px; height: 270px;">
-            <img src="${escapeHtml(currentImg.url)}" alt="${escapeHtml(currentImg.name)}" style="max-height: 240px; max-width: 90%; object-fit: contain; transition: transform 0.3s ease;">
-            
-            ${isMulti ? `
-              <button type="button" class="btn btn-sm btn-dark rounded-circle position-absolute start-0 top-50 translate-middle-y ms-2 shadow-sm" data-carousel-prev title="تصویر قبلی" style="width:34px; height:34px; display:grid; place-items:center; z-index:2;">
-                <i class="bi bi-chevron-right"></i>
-              </button>
-              <button type="button" class="btn btn-sm btn-dark rounded-circle position-absolute end-0 top-50 translate-middle-y me-2 shadow-sm" data-carousel-next title="تصویر بعدی" style="width:34px; height:34px; display:grid; place-items:center; z-index:2;">
-                <i class="bi bi-chevron-left"></i>
-              </button>
-              <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2 badge bg-dark bg-opacity-75 rounded-pill px-3 py-1" style="font-size:11px; z-index:2;">
-                تصویر ${toDigits(currentImageIndex + 1)} از ${toDigits(productImages.length)}
+      galleryHost,
+      `<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/svg+xml" class="visually-hidden" tabindex="-1" data-file-input aria-hidden="true">
+      ${
+        current
+          ? `<figure class="pm-stage" data-stage tabindex="0" aria-roledescription="اسلایدر" aria-label="تصویر ${toDigits(currentImageIndex + 1)} از ${toDigits(productImages.length)}">
+              <div class="pm-stage__frame" data-zoom-frame><img class="pm-stage__img" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.alt || current.name)}" draggable="false" data-zoom-img></div>
+              <div class="pm-stage__top">
+                ${current.isCover ? '<span class="pm-chip pm-chip--cover"><i class="bi bi-star-fill"></i> کاور</span>' : `<button type="button" class="pm-chip" data-set-cover="${current.id}"><i class="bi bi-star"></i> کاور شود</button>`}
+                <button type="button" class="pm-chip pm-chip--danger" data-delete-img="${current.id}" aria-label="حذف این تصویر"><i class="bi bi-trash3"></i></button>
               </div>
-            ` : ''}
-
-            <!-- Image Actions Overlay -->
-            <div class="position-absolute top-0 end-0 m-2 d-flex gap-1" style="z-index:2;">
-              ${currentImg.isCover ? `
-                <span class="badge bg-primary shadow-sm"><i class="bi bi-star-fill me-1"></i>کاور اصلی</span>
-              ` : `
-                <button type="button" class="btn btn-xs btn-light shadow-sm" data-set-cover="${currentImg.id}" title="انتخاب به عنوان کاور">
-                  <i class="bi bi-star me-1"></i>کاور اصلی شود
-                </button>
-              `}
-              <button type="button" class="btn btn-xs btn-danger shadow-sm" data-delete-img="${currentImg.id}" title="حذف این تصویر">
-                <i class="bi bi-trash"></i>
+              ${
+                multi
+                  ? `<button type="button" class="pm-nav pm-nav--prev" data-carousel-prev aria-label="تصویر قبلی"><i class="bi bi-chevron-right"></i></button>
+                     <button type="button" class="pm-nav pm-nav--next" data-carousel-next aria-label="تصویر بعدی"><i class="bi bi-chevron-left"></i></button>
+                     <div class="pm-dots" aria-hidden="true">${productImages.map((_, i) => `<span class="${i === currentImageIndex ? 'is-active' : ''}"></span>`).join('')}</div>`
+                  : ''
+              }
+              <span class="pm-stage__hint"><i class="bi bi-zoom-in"></i> برای بزرگ‌نمایی نشانگر را حرکت دهید</span>
+            </figure>
+            <div class="pm-alt">
+              <label class="form-label" for="pm-alt-input">متن جایگزین تصویر <span class="text-muted">(سئو و دسترس‌پذیری)</span></label>
+              <input id="pm-alt-input" class="form-control" maxlength="120" placeholder="مثلاً: نمای روبه‌روی لپ‌تاپ نقره‌ای" value="${escapeHtml(current.alt)}" data-alt-input>
+            </div>`
+          : `<button type="button" class="pm-empty" data-browse>
+              <span class="pm-empty__icon"><i class="bi bi-images"></i></span>
+              <strong>تصاویر محصول را اینجا رها کنید</strong>
+              <span>یا برای انتخاب کلیک کنید — PNG، JPG، WebP تا ۵ مگابایت</span>
+            </button>`
+      }
+      <div class="pm-rail-head">
+        <span class="fw-semibold">تصاویر <span class="numeric">${toDigits(productImages.length)}</span>/<span class="numeric">${toDigits(MAX_IMAGES)}</span></span>
+        <span class="text-muted fs-sm">${multi ? 'برای تغییر ترتیب، بکشید و رها کنید' : ''}</span>
+      </div>
+      <ol class="pm-rail" data-rail>
+        ${productImages
+          .map(
+            (img, idx) => `<li class="pm-thumb${idx === currentImageIndex ? ' is-active' : ''}" draggable="true" data-thumb-idx="${idx}">
+              <button type="button" class="pm-thumb__btn" data-thumb-select="${idx}" aria-label="نمایش ${escapeHtml(img.name)}" aria-current="${idx === currentImageIndex}">
+                <img src="${escapeHtml(img.url)}" alt="" draggable="false" loading="lazy">
               </button>
-            </div>
-          </div>
-
-          <!-- Thumbnails Row -->
-          <div>
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="small fw-bold">تصاویر آپلودشده (${toDigits(productImages.length)} عکس):</span>
-              <span class="text-muted" style="font-size: 11px;">برای مشاهده در اسلایدر کلیک کنید</span>
-            </div>
-            <div class="d-flex align-items-center gap-2 overflow-auto py-1">
-              ${productImages.map((img, idx) => `
-                <div class="position-relative rounded-2 border ${idx === currentImageIndex ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'}" data-thumb-idx="${idx}" style="width: 58px; height: 58px; flex-shrink: 0; cursor: pointer; padding: 2px; background: var(--nv-surface); transition: all 0.2s ease;">
-                  <img src="${escapeHtml(img.url)}" alt="" style="width: 100%; height: 100%; object-fit: contain;">
-                  ${img.isCover ? '<span class="position-absolute top-0 start-0 badge bg-primary p-0 d-flex align-items-center justify-content-center" style="width:16px; height:16px; font-size: 9px; border-radius: 4px;"><i class="bi bi-check"></i></span>' : ''}
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-      </div>`
+              ${img.isCover ? '<span class="pm-thumb__cover" title="کاور"><i class="bi bi-star-fill"></i></span>' : ''}
+              <span class="pm-thumb__order numeric">${toDigits(idx + 1)}</span>
+            </li>`,
+          )
+          .join('')}
+        ${
+          productImages.length < MAX_IMAGES
+            ? `<li class="pm-thumb pm-thumb--add"><button type="button" class="pm-thumb__btn" data-browse aria-label="افزودن تصویر"><i class="bi bi-plus-lg"></i><span>افزودن</span></button></li>`
+            : ''
+        }
+      </ol>
+      <div class="pm-foot">
+        <div class="pm-score" style="--score:${score}">
+          <span class="pm-score__ring" aria-hidden="true"></span>
+          <span class="pm-score__value numeric">${toDigits(score)}٪</span>
+        </div>
+        <ul class="pm-checks">${checks.map((c) => `<li class="${c.ok ? 'is-ok' : ''}"><i class="bi bi-${c.ok ? 'check-circle-fill' : 'circle'}"></i> ${escapeHtml(c.label)}</li>`).join('')}</ul>
+        <button type="button" class="btn btn-sm btn-light pm-foot__sample" data-add-sample-photos ${productImages.length >= MAX_IMAGES ? 'disabled' : ''}><i class="bi bi-magic"></i> تصاویر نمونه</button>
+      </div>`,
     );
+  };
+
+  const addFiles = (fileList) => {
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
+    const room = MAX_IMAGES - productImages.length;
+    const accepted = [];
+    let rejected = 0;
+    files.forEach((file) => {
+      if (accepted.length >= room || !/^image\//.test(file.type) || file.size > MAX_BYTES) {
+        rejected += 1;
+        return;
+      }
+      accepted.push(file);
+    });
+    accepted.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      blobUrls.add(url);
+      productImages.push({ id: makeId(), url, name: file.name, alt: '', isCover: productImages.length === 0 });
+    });
+    if (accepted.length) {
+      currentImageIndex = productImages.length - accepted.length;
+      toast.success('تصاویر اضافه شد', `${toDigits(accepted.length)} تصویر به گالری افزوده شد.`);
+    }
+    if (rejected) toast.warning('برخی فایل‌ها پذیرفته نشد', `فقط تصویر تا ۵ مگابایت و حداکثر ${toDigits(MAX_IMAGES)} تصویر مجاز است.`);
+    renderGalleryUi();
+  };
+
+  const go = (step) => {
+    if (productImages.length < 2) return;
+    currentImageIndex = (currentImageIndex + step + productImages.length) % productImages.length;
+    renderGalleryUi();
+    $('[data-stage]', galleryHost)?.focus({ preventScroll: true });
   };
 
   renderGalleryUi();
 
-  // Gallery Events
-  on(galleryContainer, 'click', (e) => {
-    // Browse trigger
-    if (e.target.closest('[data-btn-browse]') || e.target.closest('[data-dropzone]')) {
-      const fileInput = $('[data-file-input]', galleryContainer);
-      if (fileInput && !e.target.closest('button')) fileInput.click();
-      else if (e.target.closest('[data-btn-browse]')) fileInput?.click();
+  on(galleryHost, 'click', (e) => {
+    if (e.target.closest('[data-browse]')) {
+      $('[data-file-input]', galleryHost)?.click();
+      return;
     }
-
-    // Add sample photos
     if (e.target.closest('[data-add-sample-photos]')) {
-      const samples = [
-        { id: `img-${Date.now()}-1`, url: 'assets/img/products/product-01.svg', name: 'تصویر نمونه ۱ (کاور)', isCover: productImages.length === 0 },
-        { id: `img-${Date.now()}-2`, url: 'assets/img/products/product-02.svg', name: 'تصویر نمونه ۲', isCover: false },
-        { id: `img-${Date.now()}-3`, url: 'assets/img/products/product-03.svg', name: 'تصویر نمونه ۳', isCover: false },
-        { id: `img-${Date.now()}-4`, url: 'assets/img/products/product-04.svg', name: 'تصویر نمونه ۴', isCover: false },
-      ];
-      productImages = [...productImages, ...samples];
-      toast.success('تصاویر نمونه افزوده شد', `${samples.length} تصویر با موفقیت به اسلایدر اضافه گردید.`);
+      const used = new Set(productImages.map((img) => img.url));
+      const samples = SAMPLE_POOL.filter((u) => !used.has(u)).slice(0, Math.min(3, MAX_IMAGES - productImages.length));
+      samples.forEach((u, i) => productImages.push({ id: makeId(), url: u, name: `تصویر نمونه ${toDigits(i + 1)}`, alt: '', isCover: productImages.length === 0 }));
+      if (samples.length) toast.success('تصاویر نمونه افزوده شد', `${toDigits(samples.length)} تصویر اضافه شد.`);
       renderGalleryUi();
       return;
     }
-
-    // Prev / Next carousel
-    if (e.target.closest('[data-carousel-prev]')) {
-      currentImageIndex = (currentImageIndex - 1 + productImages.length) % productImages.length;
+    // In RTL the «prev» control sits on the right and moves backwards.
+    if (e.target.closest('[data-carousel-prev]')) return go(-1);
+    if (e.target.closest('[data-carousel-next]')) return go(1);
+    const thumb = e.target.closest('[data-thumb-select]');
+    if (thumb) {
+      currentImageIndex = Number(thumb.dataset.thumbSelect);
       renderGalleryUi();
       return;
     }
-    if (e.target.closest('[data-carousel-next]')) {
-      currentImageIndex = (currentImageIndex + 1) % productImages.length;
+    const cover = e.target.closest('[data-set-cover]');
+    if (cover) {
+      productImages.forEach((img) => (img.isCover = img.id === cover.dataset.setCover));
+      toast.success('کاور تغییر کرد', 'این تصویر در فهرست و فروشگاه نمایش داده می‌شود.');
       renderGalleryUi();
       return;
     }
-
-    // Select thumbnail
-    const thumbEl = e.target.closest('[data-thumb-idx]');
-    if (thumbEl) {
-      currentImageIndex = Number(thumbEl.dataset.thumbIdx);
-      renderGalleryUi();
-      return;
-    }
-
-    // Set cover
-    const setCoverBtn = e.target.closest('[data-set-cover]');
-    if (setCoverBtn) {
-      const imgId = setCoverBtn.dataset.setCover;
-      productImages.forEach((img) => {
-        img.isCover = img.id === imgId;
-      });
-      toast.success('کاور اصلی انتخاب شد', 'این تصویر به عنوان کاور پیش‌فرض محصول تنظیم شد.');
-      renderGalleryUi();
-      return;
-    }
-
-    // Delete image
-    const delBtn = e.target.closest('[data-delete-img]');
-    if (delBtn) {
-      const imgId = delBtn.dataset.deleteImg;
-      productImages = productImages.filter((img) => img.id !== imgId);
-      if (productImages.length > 0 && !productImages.some((i) => i.isCover)) {
-        productImages[0].isCover = true;
+    const del = e.target.closest('[data-delete-img]');
+    if (del) {
+      const removed = productImages.find((img) => img.id === del.dataset.deleteImg);
+      productImages = productImages.filter((img) => img.id !== del.dataset.deleteImg);
+      if (removed && blobUrls.has(removed.url)) {
+        URL.revokeObjectURL(removed.url);
+        blobUrls.delete(removed.url);
       }
-      currentImageIndex = Math.max(0, Math.min(currentImageIndex, productImages.length - 1));
-      toast.info('تصویر حذف شد', 'تصویر از گالری محصول برداشته شد.');
+      if (productImages.length && !productImages.some((img) => img.isCover)) productImages[0].isCover = true;
+      toast.info('تصویر حذف شد', removed?.name ?? '');
       renderGalleryUi();
-      return;
     }
   });
 
-  // File upload change handler
-  on(galleryContainer, 'change', (e) => {
-    const fileInput = e.target.closest('[data-file-input]');
-    if (!fileInput || !fileInput.files.length) return;
-    const files = Array.from(fileInput.files);
-    files.forEach((file, index) => {
-      const url = URL.createObjectURL(file);
-      productImages.push({
-        id: `img-${Date.now()}-${index}`,
-        url,
-        name: file.name,
-        isCover: productImages.length === 0 && index === 0,
-      });
+  on(galleryHost, 'change', (e) => {
+    const input = e.target.closest('[data-file-input]');
+    if (!input) return;
+    addFiles(input.files);
+    input.value = '';
+  });
+
+  on(galleryHost, 'input', (e) => {
+    const alt = e.target.closest('[data-alt-input]');
+    if (!alt || !productImages[currentImageIndex]) return;
+    productImages[currentImageIndex].alt = alt.value;
+    const { checks, score } = readiness();
+    const scoreEl = $('.pm-score', galleryHost);
+    if (scoreEl) {
+      scoreEl.style.setProperty('--score', score);
+      $('.pm-score__value', scoreEl).textContent = `${toDigits(score)}٪`;
+    }
+    $$('.pm-checks li', galleryHost).forEach((li, i) => {
+      li.classList.toggle('is-ok', checks[i].ok);
+      li.querySelector('i').className = `bi bi-${checks[i].ok ? 'check-circle-fill' : 'circle'}`;
     });
-    toast.success('آپلود موفق', `${files.length} تصویر جدید بارگذاری شد.`);
-    currentImageIndex = productImages.length - 1;
+  });
+
+  on(galleryHost, 'keydown', (e) => {
+    if (!e.target.closest('[data-stage]')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(-1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(1); }
+  });
+
+  /* Pointer zoom (fine pointers) + horizontal swipe (touch). */
+  let swipe = null;
+  on(galleryHost, 'pointermove', (e) => {
+    const frame = e.target.closest('[data-zoom-frame]');
+    if (!frame || e.pointerType !== 'mouse') return;
+    const rect = frame.getBoundingClientRect();
+    frame.style.setProperty('--zx', `${((e.clientX - rect.left) / rect.width) * 100}%`);
+    frame.style.setProperty('--zy', `${((e.clientY - rect.top) / rect.height) * 100}%`);
+    frame.classList.add('is-zooming');
+  });
+  on(galleryHost, 'pointerout', (e) => {
+    const frame = e.target.closest('[data-zoom-frame]');
+    if (frame && !frame.contains(e.relatedTarget)) frame.classList.remove('is-zooming');
+  });
+  on(galleryHost, 'pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || !e.target.closest('[data-zoom-frame]')) return;
+    swipe = { x: e.clientX, y: e.clientY };
+  });
+  on(galleryHost, 'pointerup', (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x;
+    const dy = e.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx > 0 ? 1 : -1);
+  });
+
+  /* Drag files anywhere on the card. */
+  if (galleryCard) {
+    let depth = 0;
+    const hasFiles = (e) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    on(galleryCard, 'dragenter', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth += 1;
+      galleryCard.classList.add('is-dropping');
+    });
+    on(galleryCard, 'dragover', (e) => {
+      if (hasFiles(e)) e.preventDefault();
+    });
+    on(galleryCard, 'dragleave', (e) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) galleryCard.classList.remove('is-dropping');
+    });
+    on(galleryCard, 'drop', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      galleryCard.classList.remove('is-dropping');
+      addFiles(e.dataTransfer.files);
+    });
+  }
+
+  /* Reorder thumbnails (HTML5 drag on desktop). */
+  let dragFrom = null;
+  on(galleryHost, 'dragstart', (e) => {
+    const li = e.target.closest('[data-thumb-idx]');
+    if (!li) return;
+    dragFrom = Number(li.dataset.thumbIdx);
+    li.classList.add('is-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(dragFrom));
+  });
+  on(galleryHost, 'dragover', (e) => {
+    if (dragFrom === null) return;
+    const li = e.target.closest('[data-thumb-idx]');
+    if (!li) return;
+    e.preventDefault();
+    $$('.pm-thumb.is-over', galleryHost).forEach((n) => n.classList.remove('is-over'));
+    li.classList.add('is-over');
+  });
+  on(galleryHost, 'drop', (e) => {
+    if (dragFrom === null) return;
+    const li = e.target.closest('[data-thumb-idx]');
+    e.preventDefault();
+    if (li) {
+      const to = Number(li.dataset.thumbIdx);
+      const activeId = productImages[currentImageIndex]?.id;
+      const [moved] = productImages.splice(dragFrom, 1);
+      productImages.splice(to, 0, moved);
+      currentImageIndex = Math.max(0, productImages.findIndex((img) => img.id === activeId));
+    }
+    dragFrom = null;
     renderGalleryUi();
+  });
+  on(galleryHost, 'dragend', () => {
+    dragFrom = null;
+    $$('.pm-thumb.is-dragging, .pm-thumb.is-over', galleryHost).forEach((n) => n.classList.remove('is-dragging', 'is-over'));
   });
 
   // Form Submission
@@ -847,12 +1068,47 @@ async function initCrm() {
             })),
           }));
 
+      /* Moves survive reloads: the board is re-ordered from the saved layout. */
+      const layoutKey = `nova:kanban:${isCrm ? 'crm' : 'projects'}`;
+      const readLayout = () => {
+        try {
+          return JSON.parse(localStorage.getItem(layoutKey) ?? '{}') ?? {};
+        } catch {
+          return {};
+        }
+      };
+      const saved = readLayout();
+      if (Object.keys(saved).length) {
+        const all = columns.flatMap((column) => column.items.map((item) => ({ item, from: column.id })));
+        columns.forEach((column) => (column.items = []));
+        all.forEach(({ item, from }) => {
+          const target = columns.find((column) => column.id === saved[item.id]?.status) ?? columns.find((column) => column.id === from);
+          if (isCrm && target) {
+            item.tag = target.label;
+            item.tone = target.tone;
+          }
+          target?.items.push(item);
+        });
+        columns.forEach((column) => column.items.sort((a, b) => (saved[a.id]?.position ?? 999) - (saved[b.id]?.position ?? 999)));
+      }
+      const saveLayout = () => {
+        const layout = {};
+        $$('[data-kanban-column]', node).forEach((column) =>
+          $$('[data-kanban-card]', column).forEach((card, index) => (layout[card.dataset.id] = { status: column.dataset.kanbanColumn, position: index })),
+        );
+        try {
+          localStorage.setItem(layoutKey, JSON.stringify(layout));
+        } catch {
+          /* storage full — the move is still applied for this visit */
+        }
+      };
+
       render(
         node,
         `<div class="dashboard-shell">
           ${pageHeader({
             title: isCrm ? 'قیف فروش' : 'کانبان پروژه',
-            subtitle: isCrm ? 'کارت‌ها را بین مراحل جابجا کنید — تغییر مرحله واقعی است و در حافظه مرورگر نگه داشته می‌شود.' : 'جابجایی کارت‌ها وضعیت تسک را تغییر می‌دهد.',
+            subtitle: isCrm ? 'کارت را بگیرید و در مرحله دیگر رها کنید (یا از منوی ⋯ روی کارت) — مرحله ذخیره می‌شود و قابل بازگردانی است.' : 'کارت را بگیرید و در ستون دیگر رها کنید (یا از منوی ⋯ روی کارت) — وضعیت تسک ذخیره می‌شود.',
             icon: 'kanban',
             badges: [isCrm ? statusBadge(`مجموع: ${formatCurrency(columns.reduce((sum, c) => sum + c.items.reduce((s, i) => s + (i.value ?? 0), 0), 0), 'IRR', { compact: true })}`, 'primary') : statusBadge(`${toDigits(columns.reduce((sum, c) => sum + c.items.length, 0))} تسک در ${toDigits(columns.length)} ستون`, 'primary')],
             actions: toolButtons({ create: isCrm ? 'معامله جدید' : 'تسک جدید' }),
@@ -863,12 +1119,26 @@ async function initCrm() {
 
       initKanban($('[data-kanban]', node));
       if (window.__novaKanbanOff) window.__novaKanbanOff();
-      window.__novaKanbanOff = bus.on('kanban:move', async ({ id, status, previous }) => {
+      window.__novaKanbanOff = bus.on('kanban:move', async ({ id, status, position, statusLabel, previousLabel, undo, reverted }) => {
+        const card = $(`[data-kanban-card][data-id="${CSS.escape(id)}"]`, node);
+        const column = $(`[data-kanban-column="${CSS.escape(status)}"]`, node);
+        if (isCrm && card && column) {
+          /* The stage badge follows the card. */
+          const stage = columns.find((c) => c.id === status);
+          const badge = card.querySelector('.kanban-card__head .badge');
+          if (badge && stage) {
+            badge.className = `badge badge--soft-${stage.tone ?? 'primary'}`;
+            badge.textContent = stage.label;
+          }
+        }
+        saveLayout();
         try {
-          if (isCrm) await services.pipelineService.move(id, status, 0);
-          else await services.kanbanService.move(id, status, previous);
-          toast.success('مرحله به‌روزرسانی شد', 'تغییر با موفقیت ذخیره شد.');
+          if (isCrm) await services.pipelineService.move(id, status, position ?? 0);
+          else await services.kanbanService.move(id, status, position ?? 0);
           bus.emit(EVENTS.dataChanged, { resource: isCrm ? 'deals' : 'tasks', action: 'move', id });
+          if (reverted) toast.info('جابجایی برگردانده شد', '');
+          else if (previousLabel !== statusLabel)
+            toast.success(isCrm ? 'مرحله معامله تغییر کرد' : 'وضعیت تسک تغییر کرد', `از «${previousLabel}» به «${statusLabel}»`, { action: undo ? { label: 'بازگردانی', onClick: undo } : null, duration: 5000 });
         } catch (error) {
           toast.danger('جابجایی ذخیره نشد', error.message);
         }
@@ -2117,40 +2387,37 @@ async function initHr() {
             </div>`
           })}
 
-          <!-- Executive Employee Hero Card -->
-          <div class="card mb-4 overflow-hidden border-0 shadow-sm" style="background: linear-gradient(135deg, var(--nv-surface) 0%, var(--nv-surface-2) 100%);">
-            <div style="height: 90px; background: linear-gradient(90deg, rgba(var(--nv-primary-rgb), 0.75), #06b6d4, #6366f1); position: relative;">
-              <span class="badge bg-dark bg-opacity-50 text-white position-absolute top-0 end-0 m-3 px-3 py-1 rounded-pill" style="font-size:11px;">
-                <i class="bi bi-building me-1"></i>دفتر مرکزی نووا
-              </span>
+          <!-- Employee hero (v1.1): the cover is decoration only; identity sits
+               on the card body so the name can never overlap the gradient. -->
+          <section class="card emp-hero mb-4" aria-label="${escapeHtml(employee.name)}">
+            <div class="emp-hero__cover" aria-hidden="true">
+              <span class="emp-hero__office"><i class="bi bi-building"></i> دفتر مرکزی نووا</span>
             </div>
-            <div class="card__body p-4 pt-0">
-              <div class="d-flex flex-wrap align-items-end justify-content-between gap-3" style="margin-top: -45px;">
-                <div class="d-flex align-items-end gap-3 flex-wrap">
-                  <div class="position-relative">
-                    <img src="${escapeHtml(employee.avatar)}" alt="${escapeHtml(employee.name)}" class="rounded-circle border border-4 border-white shadow" style="width: 90px; height: 90px; object-fit: cover; background: var(--nv-surface);">
-                    <span class="position-absolute bottom-0 end-0 p-2 bg-success border border-2 border-white rounded-circle" title="حاضر در محل کار"></span>
-                  </div>
-                  <div class="pb-1">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <h2 class="h4 fw-bold m-0 text-heading">${escapeHtml(employee.name)}</h2>
-                      <span class="badge badge--soft-primary font-monospace">${escapeHtml(employee.code || 'EMP-1024')}</span>
-                      <span class="badge badge--soft-${employee.status === 'active' ? 'success' : 'warning'}">${employee.status === 'active' ? 'مشغول به کار' : 'در مرخصی'}</span>
-                    </div>
-                    <p class="text-muted m-0 mt-1 small">
-                      <i class="bi bi-briefcase me-1"></i>${escapeHtml(employee.position ?? 'متخصص توسعه نرم‌افزار')} • 
-                      <i class="bi bi-diagram-3 me-1"></i>${escapeHtml(employee.department ?? 'فناوری اطلاعات')} • 
-                      <i class="bi bi-geo-alt me-1"></i>${escapeHtml(employee.city ?? 'تهران')}
-                    </p>
-                  </div>
-                </div>
-                <div class="d-flex gap-2 pb-1">
-                  <button class="btn btn-sm btn-outline-primary" type="button" data-award-btn><i class="bi bi-award me-1"></i>ثبت تشویقی / ارتقا</button>
-                  <button class="btn btn-sm btn-light" type="button" data-export-profile><i class="bi bi-printer me-1"></i>حکم کارگزینی</button>
+            <div class="emp-hero__body">
+              <div class="emp-hero__avatar">
+                <img src="${escapeHtml(employee.avatar)}" alt="" width="112" height="112">
+                <span class="emp-hero__presence" title="حاضر در محل کار"><span class="visually-hidden">حاضر در محل کار</span></span>
+              </div>
+              <div class="emp-hero__identity">
+                <h2 class="emp-hero__name">${escapeHtml(employee.name)}</h2>
+                <p class="emp-hero__role">${escapeHtml(employee.position ?? 'متخصص توسعه نرم‌افزار')}</p>
+                <div class="emp-hero__badges">
+                  <span class="badge badge--soft-primary" dir="ltr">${escapeHtml(employee.code || 'EMP-1024')}</span>
+                  <span class="badge badge--soft-${employee.status === 'active' ? 'success' : 'warning'}">${employee.status === 'active' ? 'مشغول به کار' : 'در مرخصی'}</span>
                 </div>
               </div>
+              <div class="emp-hero__actions">
+                <button class="btn btn-sm btn-outline-primary" type="button" data-award-btn><i class="bi bi-award" aria-hidden="true"></i> ثبت تشویقی / ارتقا</button>
+                <button class="btn btn-sm btn-light" type="button" data-export-profile><i class="bi bi-printer" aria-hidden="true"></i> حکم کارگزینی</button>
+              </div>
             </div>
-          </div>
+            <ul class="emp-hero__facts">
+              <li><i class="bi bi-diagram-3" aria-hidden="true"></i><span><small>دپارتمان</small><b>${escapeHtml(employee.department ?? 'فناوری اطلاعات')}</b></span></li>
+              <li><i class="bi bi-geo-alt" aria-hidden="true"></i><span><small>محل کار</small><b>${escapeHtml(employee.city ?? 'تهران')}</b></span></li>
+              <li><i class="bi bi-envelope" aria-hidden="true"></i><span><small>ایمیل سازمانی</small><b dir="ltr">${escapeHtml(employee.email ?? 'staff@novaadmin.dev')}</b></span></li>
+              <li><i class="bi bi-calendar-check" aria-hidden="true"></i><span><small>تاریخ استخدام</small><b>${escapeHtml(employee.hiredAt || employee.joinedAt ? formatDate(employee.hiredAt || employee.joinedAt, { format: 'long' }) : '۱۲ مهر ۱۴۰۱')}</b></span></li>
+            </ul>
+          </section>
 
           <!-- KPI Metric Strip -->
           <div class="stat-grid mb-4">
@@ -2567,14 +2834,14 @@ async function initLogistics() {
           <div class="logi-pro__cols">
             <div class="card logi-map-card overflow-hidden">
               <div class="card__head" style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                  <span class="tile tile--soft tile--icon tile--soft-primary" style="width:40px;height:40px;"><i class="bi bi-broadcast-pin" style="color:var(--nv-primary);font-size:1.25rem;"></i></span>
+                <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+                  <span class="tile tile--soft tile--icon tile--soft-primary" style="width:40px;height:40px;flex:0 0 auto;"><i class="bi bi-broadcast-pin" style="color:var(--nv-primary);font-size:1.25rem;"></i></span>
                   <div>
                     <h3 class="card__title" style="margin:0; font-size:15px; font-weight:800;">نقشه ماهواره‌ای و زنده ناوبری ایران</h3>
                     <p style="margin:0; font-size:11px; color:var(--nv-text-muted);">پایش بلادرنگ هاب‌های ترانزیتی و خودروها • نقشه تعاملی با کنترل کامل</p>
                   </div>
                 </div>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; min-width:0; max-width:100%;">
                   <button class="btn btn-primary btn-sm" data-filter="all">همه (${toDigits(vehicles.length)})</button>
                   <button class="btn btn-light btn-sm" data-filter="active">در حرکت (${toDigits(vehicles.filter((v) => v.status === 'active').length)})</button>
                   <button class="btn btn-light btn-sm" data-filter="delayed">دارای هشدار (${toDigits(vehicles.filter((v) => v.status === 'delayed').length)})</button>
@@ -3505,6 +3772,140 @@ const PERMISSION_NOTES = {
 async function initUsers() {
   const page = kit.pageId();
   switch (page) {
+    case 'users/grid.html': {
+      const node = host();
+      render(node, `<div class="dashboard-shell">${kit.skeleton(4, 'card')}</div>`);
+      const [{ COLUMNS }, dialogs] = await Promise.all([import('../core/columns.js'), import('../core/record-dialogs.js')]);
+      const service = services.userService;
+      const PAGE = 12;
+      const TONES = { active: 'success', invited: 'info', suspended: 'danger', inactive: 'secondary', pending: 'warning' };
+      const state = { rows: [], q: '', status: '', role: '', shown: PAGE };
+      const load = async () => {
+        const { items } = await service.list({ perPage: 500 });
+        state.rows = items;
+      };
+      await load();
+      const roles = [...new Map(state.rows.map((u) => [u.role, u.roleLabel ?? u.role])).entries()];
+      const statuses = [...new Set(state.rows.map((u) => u.status))];
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({ title: 'نمایش شبکه‌ای کاربران', subtitle: 'کارت پروفایل هر عضو با نقش، تیم، وضعیت و عملکرد', icon: 'grid-3x3-gap', actions: toolButtons({ create: 'کاربر جدید', exportResource: 'users' }) })}
+          <section class="card user-grid__toolbar" data-reveal>
+            <div class="card__body">
+              <label class="user-grid__search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" placeholder="جستجوی نام، ایمیل یا تیم…" data-ug-search aria-label="جستجو"></label>
+              <select class="form-select" data-ug-status aria-label="وضعیت"><option value="">همه وضعیت‌ها</option>${statuses.map((st) => `<option value="${escapeHtml(st)}">${escapeHtml(dialogs.statusLabel(st))}</option>`).join('')}</select>
+              <select class="form-select" data-ug-role aria-label="نقش"><option value="">همه نقش‌ها</option>${roles.map(([id, label]) => `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`).join('')}</select>
+              <span class="badge badge--soft-primary rounded-pill user-grid__count" data-ug-count></span>
+            </div>
+          </section>
+          <div class="user-grid" data-ug-list aria-live="polite"></div>
+          <div class="user-grid__more"><button type="button" class="btn btn-light" data-ug-more><i class="bi bi-arrow-down-circle"></i> نمایش کاربران بیشتر</button></div>
+        </div>`,
+      );
+      const list = $('[data-ug-list]', node);
+      const more = $('[data-ug-more]', node);
+      const filtered = () => {
+        const q = state.q.trim().toLowerCase();
+        return state.rows.filter(
+          (u) =>
+            (!state.status || u.status === state.status) &&
+            (!state.role || u.role === state.role) &&
+            (!q || [u.name, u.email, u.team, u.roleLabel].some((v) => String(v ?? '').toLowerCase().includes(q))),
+        );
+      };
+      const cardHtml = (u) => `<article class="user-card" data-id="${escapeHtml(u.id)}">
+          <div class="user-card__cover" aria-hidden="true"></div>
+          <div class="user-card__head">
+            <span class="user-card__avatar"><img src="${escapeHtml(u.avatar)}" alt="" loading="lazy" width="64" height="64"><i class="user-card__dot user-card__dot--${escapeHtml(u.status)}"></i></span>
+            <div class="user-card__id">
+              <h3 class="user-card__name"><a href="${url(`users/details.html?id=${encodeURIComponent(u.id)}`)}">${escapeHtml(u.name)}</a></h3>
+              <p class="user-card__mail" dir="ltr">${escapeHtml(u.email)}</p>
+            </div>
+          </div>
+          <div class="user-card__tags">
+            <span class="badge badge--soft-primary">${escapeHtml(u.roleLabel ?? u.role)}</span>
+            ${statusBadge(dialogs.statusLabel(u.status), TONES[u.status] ?? 'secondary')}
+            ${u.twoFactor ? '<span class="badge badge--soft-success" title="ورود دو مرحله‌ای فعال"><i class="bi bi-shield-check"></i> 2FA</span>' : ''}
+          </div>
+          <dl class="user-card__stats">
+            <div><dt>تیم</dt><dd>${escapeHtml(u.team ?? '—')}</dd></div>
+            <div><dt>پروژه</dt><dd class="numeric">${toDigits(u.projects ?? 0)}</dd></div>
+            <div><dt>کار انجام‌شده</dt><dd class="numeric">${toDigits(u.tasksDone ?? 0)}</dd></div>
+          </dl>
+          <div class="user-card__progress" title="تکمیل پروفایل">
+            <div class="d-flex justify-content-between fs-sm"><span class="text-muted">تکمیل پروفایل</span><span class="numeric">${toDigits(u.progress ?? 0)}٪</span></div>
+            <div class="progress progress--sm"><div class="progress-bar" style="width:${Number(u.progress) || 0}%"></div></div>
+          </div>
+          <footer class="user-card__foot">
+            <span class="fs-sm text-muted"><i class="bi bi-clock-history"></i> ${escapeHtml(relativeTime(u.lastActive))}</span>
+            <div class="user-card__actions">
+              <a class="btn btn-icon btn-light btn-sm" href="${url(`users/details.html?id=${encodeURIComponent(u.id)}`)}" aria-label="مشاهده ${escapeHtml(u.name)}" title="مشاهده"><i class="bi bi-eye"></i></a>
+              <button type="button" class="btn btn-icon btn-light btn-sm" data-ug-edit aria-label="ویرایش ${escapeHtml(u.name)}" title="ویرایش"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-icon btn-light btn-sm text-danger" data-ug-delete aria-label="حذف ${escapeHtml(u.name)}" title="حذف"><i class="bi bi-trash3"></i></button>
+            </div>
+          </footer>
+        </article>`;
+      const paintGrid = () => {
+        const rows = filtered();
+        const visible = rows.slice(0, state.shown);
+        $('[data-ug-count]', node).textContent = `${toDigits(rows.length)} کاربر`;
+        list.innerHTML = visible.length
+          ? visible.map(cardHtml).join('')
+          : emptyState({ title: 'کاربری با این فیلتر پیدا نشد', text: 'عبارت جستجو یا فیلترها را تغییر دهید.', icon: 'people' });
+        more.parentElement.hidden = rows.length <= state.shown;
+      };
+      const reload = async () => {
+        await load();
+        paintGrid();
+      };
+      let timer;
+      on($('[data-ug-search]', node), 'input', (event) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          state.q = event.target.value;
+          state.shown = PAGE;
+          paintGrid();
+        }, 180);
+      });
+      on($('[data-ug-status]', node), 'change', (event) => {
+        state.status = event.target.value;
+        state.shown = PAGE;
+        paintGrid();
+      });
+      on($('[data-ug-role]', node), 'change', (event) => {
+        state.role = event.target.value;
+        state.shown = PAGE;
+        paintGrid();
+      });
+      on(more, 'click', () => {
+        state.shown += PAGE;
+        paintGrid();
+      });
+      on(list, 'click', async (event) => {
+        const cardNode = event.target.closest('.user-card');
+        if (!cardNode) return;
+        const record = state.rows.find((u) => String(u.id) === cardNode.dataset.id);
+        if (!record) return;
+        if (event.target.closest('[data-ug-edit]')) {
+          dialogs.openRecordEdit({ record, columns: COLUMNS.users, service, rows: state.rows, resource: 'users', onSaved: reload });
+        } else if (event.target.closest('[data-ug-delete]')) {
+          const ok = await modal.confirm({ title: 'حذف کاربر', text: `حساب «${record.name}» و نشست‌های فعال آن حذف می‌شود.`, tone: 'danger', confirmText: 'حذف کاربر' });
+          if (!ok) return;
+          await service.remove(record.id);
+          toast.success('کاربر حذف شد', record.name);
+          reload();
+        }
+      });
+      on($('[data-create]', node), 'click', () => {
+        const blank = { name: '', email: '', phone: '', role: roles[0]?.[0] ?? 'viewer', team: state.rows[0]?.team ?? '', status: 'invited', twoFactor: false };
+        dialogs.openRecordEdit({ record: blank, columns: COLUMNS.users, service, rows: state.rows, resource: 'users', isNew: true, onSaved: reload });
+      });
+      exportable(node, 'users');
+      paintGrid();
+      return;
+    }
+
     case 'users/create.html': {
       const node = host();
       render(

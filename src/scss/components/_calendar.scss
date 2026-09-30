@@ -474,3 +474,87 @@
     text-align: start;
   }
 }
+
+/* ==========================================================================
+   v1.1 — calendar on phones
+   --------------------------------------------------------------------------
+   Day cells show compact coloured dots instead of squeezed pills; a tap on a
+   day opens its agenda sheet (`openDayAgenda()` in core/calendar.js). The
+   toolbar wraps into two rows and the mini-calendar is hidden (the month grid
+   already is one).
+   ========================================================================== */
+@media (max-width: 575.98px) {
+  .calendar-shell { min-height: 0; border-radius: 16px; }
+  .calendar-main .calendar__toolbar { padding: 12px; gap: 10px; }
+  .calendar-main .calendar__toolbar > * { min-width: 0; }
+  .calendar-main .calendar__toolbar > div:first-child { flex: 1 1 100%; justify-content: space-between; display: flex; align-items: center; gap: 8px; }
+  .calendar-main .calendar__title { min-width: 0; font-size: 16px; flex: 1 1 auto; }
+  .calendar-main .calendar__filters { padding: 10px 12px !important; }
+  .calendar-main .calendar__weekday { padding: 10px 2px; font-size: 10px; }
+  .calendar-main .calendar__cell {
+    min-height: 3.6rem;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+  }
+  .calendar-main .calendar__date { width: 26px; height: 26px; font-size: 12px; border-radius: 8px; }
+  .calendar-main .calendar__events {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px !important;
+    margin-top: 4px !important;
+  }
+  .calendar-main .calendar-event {
+    inline-size: 7px;
+    block-size: 7px;
+    min-inline-size: 0;
+    padding: 0;
+    margin: 0;
+    border: 0 !important;
+    border-radius: 50%;
+    overflow: hidden;
+    background: currentColor !important;
+    pointer-events: none;
+  }
+  .calendar-main .calendar-event > * { display: none; }
+  .calendar-main .calendar__more {
+    padding: 0 !important;
+    background: none !important;
+    font-size: 9px !important;
+    margin: 0 !important;
+    pointer-events: none;
+  }
+  .calendar-side .calendar-mini { display: none; }
+  .calendar-side { padding: 12px; gap: 12px; }
+}
+
+/* Day agenda sheet */
+.cal-agenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cal-agenda__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  inline-size: 100%;
+  padding: 12px;
+  border: 1px solid var(--nv-border);
+  border-inline-start: 4px solid var(--tone, var(--nv-primary));
+  border-radius: 12px;
+  background: var(--nv-surface);
+  color: inherit;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.cal-agenda__item:active { background: var(--nv-surface-2); }
+.cal-agenda__time { flex: none; font-size: 12px; font-weight: 800; color: var(--tone, var(--nv-primary)); font-variant-numeric: tabular-nums; }
+.cal-agenda__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cal-agenda__body strong { font-size: 13px; color: var(--nv-heading); overflow-wrap: anywhere; }
+.cal-agenda__body small { font-size: 11px; color: var(--nv-text-muted); }
+.cal-agenda__go { color: var(--nv-text-muted); font-size: 12px; }
+[dir='ltr'] .cal-agenda__go { transform: scaleX(-1); }
+.cal-agenda__empty { text-align: center; padding: 24px 8px; color: var(--nv-text-muted); }
+.cal-agenda__empty i { font-size: 2rem; color: var(--nv-primary); display: block; margin-bottom: 8px; }
+.cal-agenda__empty p { margin: 0; font-size: 13px; }

@@ -59,28 +59,38 @@
   root.setAttribute('data-theme', resolved);
   root.setAttribute('data-theme-mode', theme);
   root.setAttribute('data-primary', read('primary'));
-  root.setAttribute('data-layout', read('layout'));
-  root.setAttribute('data-direction', read('direction'));
-  root.setAttribute('data-density', read('density'));
+  /* v1.1 — layout, direction, density and sidebar style are no longer user
+     preferences (they were removed from the customizer because non-default
+     combinations broke the shell). Stale values saved by older builds are
+     dropped here so every visitor gets the tested, stable layout. */
+  try {
+    ['layout', 'direction', 'density', 'sidebarStyle'].forEach(function (key) {
+      window.localStorage.removeItem(PREFIX + key);
+    });
+  } catch (e) { /* storage disabled — ignore */ }
+  root.setAttribute('data-layout', DEFAULTS.layout);
+  root.setAttribute('data-density', DEFAULTS.density);
   root.setAttribute('data-font-size', read('fontSize'));
-  root.setAttribute('data-sidebar-style', read('sidebarStyle'));
+  root.setAttribute('data-sidebar-style', DEFAULTS.sidebarStyle);
   root.setAttribute('data-calendar', read('calendar'));
 
   var lang = read('language');
+  try {
+    var urlLang = new URLSearchParams(window.location.search).get('lang');
+    if (urlLang) lang = urlLang;
+  } catch (e) {}
   if (LANGUAGES.indexOf(lang) === -1) lang = DEFAULTS.language;
-  /** The direction follows the language unless the user pinned one. */
-  var direction = read('direction');
-  if (lang !== 'fa' && lang !== 'ar' && direction === DEFAULTS.direction && !window.localStorage.getItem(PREFIX + 'direction')) {
-    direction = 'ltr';
-  }
+  /** The direction always follows the language. */
+  var direction = lang === 'en' ? 'ltr' : 'rtl';
+  root.setAttribute('data-direction', direction);
   root.setAttribute('lang', lang);
   root.setAttribute('dir', direction);
   root.setAttribute('data-lang', lang);
 
   // Collapsed / mini state (affects layout before CSS paints)
   try {
-    if (window.localStorage.getItem(PREFIX + 'sidebar:collapsed') === '1') root.classList.add('sidebar-collapsed');
-    if (window.localStorage.getItem(PREFIX + 'sidebar:hidden') === '1') root.classList.add('sidebar-hidden');
+    if (/^(1|true)$/.test(window.localStorage.getItem(PREFIX + 'sidebar:collapsed') || '')) root.classList.add('sidebar-collapsed');
+    if (/^(1|true)$/.test(window.localStorage.getItem(PREFIX + 'sidebar:hidden') || '')) root.classList.add('sidebar-hidden');
   } catch (e) { /* storage disabled — ignore */ }
 
   window.NOVA_BOOT = { theme: theme, resolved: resolved, language: lang, defaults: DEFAULTS, prefix: PREFIX };

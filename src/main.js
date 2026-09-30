@@ -29,9 +29,11 @@ import { initKanban } from './js/core/kanban.js';
 import { exportable } from './js/pages/kit.js';
 import { initCalendar } from './js/core/calendar.js';
 import { storage } from './js/core/storage.js';
+import { isAuthenticated, touchSession, clearSession, tabWasInPanel, lastRoute } from './js/core/auth.js';
 import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './js/core/load.js';
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
+import { enhanceTables, observeTables } from './js/core/tables.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
 import * as services from './services/index.js';
@@ -81,11 +83,6 @@ function initShortcuts() {
       toast.info('حالت نمایش تغییر کرد', theme.toggleTheme() === 'dark' ? 'تم تاریک فعال شد.' : 'تم روشن فعال شد.');
       return;
     }
-    if (meta && event.shiftKey && event.key.toLowerCase() === 'r') {
-      event.preventDefault();
-      theme.toggleDirection();
-      return;
-    }
     if (meta && event.shiftKey && event.key.toLowerCase() === 'l') {
       event.preventDefault();
       const order = ['fa', 'en', 'ar'];
@@ -132,8 +129,9 @@ function initMisc() {
     on(button, 'click', async () => {
       const ok = await modal.confirm({ title: 'خروج از حساب', text: 'از حساب کاربری خود خارج می‌شوید؟', tone: 'danger', confirmText: 'خروج' });
       if (!ok) return;
+      clearSession();
       toast.info('خروج انجام شد', 'در حال انتقال به صفحه ورود…');
-      setTimeout(() => goTo('auth/login.html'), 700);
+      setTimeout(() => goTo('auth/login.html', { replace: true }), 500);
     }),
   );
 
@@ -294,6 +292,32 @@ function exposeApi() {
 
 /* ---------------------------------------------------------------- start up */
 
+/**
+ * A tab that was working inside the panel and suddenly lands on the marketing
+ * page — a dev-server restart, a preview reload or a proxy hiccup reloads the
+ * site root — used to look exactly like being logged out. When the session is
+ * still valid, the same tab was in the panel, the last panel view is recent and
+ * the visitor did not deliberately navigate here from inside the site, return
+ * them to where they were. `?landing=1` always shows the landing page.
+ */
+function resumePanel() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('landing')) return false;
+    let fromSite = false;
+    try {
+      fromSite = Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin;
+    } catch {}
+    if (fromSite || !tabWasInPanel() || !isAuthenticated()) return false;
+    const target = lastRoute();
+    if (!target) return false;
+    goTo(target, { replace: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Login-first demo flow: panel pages require a (mock) session. */
 function authGuard() {
   const body = document.body;
@@ -301,17 +325,24 @@ function authGuard() {
   const kind = body?.dataset.kind ?? '';
   const isPublic =
     !page || page === 'index.html' || page === 'preview.html' || kind === 'auth' || kind === 'landing' || /^(auth|system|docs)\//.test(page) || body?.dataset.section === 'landing';
+  const isLanding = page === 'index.html' || kind === 'landing' || body?.dataset.section === 'landing';
+  if (isLanding && resumePanel()) return false;
   if (isPublic || config.authGuard === false) {
+    /* Panel-side public pages (system/, docs/) keep the session warm too. */
+    if (!isLanding && kind !== 'auth' && !page.startsWith('auth/') && isAuthenticated()) touchSession(page);
     document.documentElement.classList.remove('is-guarded');
     return true;
   }
-  let session = null;
+  /* Storage fully blocked (sandboxed webviews): nothing can persist a session,
+     so the demo stays open instead of looping back to the login page. */
+  let storageBlocked = false;
   try {
-    session = window.localStorage.getItem('nova:session') || window.sessionStorage.getItem('nova:session');
+    void window.localStorage.length;
   } catch {
-    session = '1';
+    storageBlocked = true;
   }
-  if (session) {
+  if (storageBlocked || isAuthenticated()) {
+    touchSession(page);
     document.documentElement.classList.remove('is-guarded');
     return true;
   }
@@ -394,6 +425,13 @@ async function boot() {
   // (table reloads, kanban, chat, toasts) working as well.
   fixLinks(document);
   observeLinks(document.body);
+  /* Responsive tables: scroll-safe wrapper + stacked record cards on phones. */
+  try {
+    enhanceTables(document);
+    observeTables(document.body);
+  } catch (error) {
+    console.warn('[tables] enhancement skipped', error);
+  }
   /**
    * Controller-owned chart placeholders (`data-chart-key` without series) are
    * drawn by their page controller; everything declarative is drawn here. Any

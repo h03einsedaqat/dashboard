@@ -687,10 +687,10 @@ function buildTypography() {
         <div style="display:flex; flex-direction:column; gap:16px;">
           ${scale.map(s => `
             <div style="padding:16px 20px; border-radius:14px; background:var(--nv-surface-2); border:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
-              <div style="flex:1; min-width:280px;">
+              <div style="flex:1 1 16rem; min-width:0;">
                 <div style="font-size:var(${s.token}); font-weight:${s.weight}; color:var(--nv-heading); line-height:1.6;">${escapeHtml(s.sample)}</div>
               </div>
-              <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; min-width:0;">
                 <span class="badge badge--soft-primary" style="font-size:11px;">${s.size}</span>
                 <span class="badge badge--soft-neutral" style="font-size:11px;">وزن: ${s.weight}</span>
                 <code style="font-size:11px; direction:ltr; background:var(--nv-surface); padding:4px 8px; border-radius:6px; border:1px solid var(--nv-border);">${s.token}</code>

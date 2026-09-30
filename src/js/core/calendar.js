@@ -12,7 +12,13 @@ import { toDigits, formatNumber } from './numbers.js';
 const state = new WeakMap();
 
 export async function initCalendar(root) {
-  if (!root || state.has(root)) return state.get(root);
+  /* Guard on the node itself (not only the module-level WeakMap): the page
+     controller and the boot sequence both call this, and when two copies of
+     the module are alive (dev-server HMR) a WeakMap guard lets both bind —
+     one tap then opened two stacked dialogs and the page felt frozen. */
+  if (!root) return null;
+  if (root.__novaCalendar) return root.__novaCalendar;
+  if (state.has(root)) return state.get(root);
   const instance = {
     root,
     view: 'month',
@@ -23,6 +29,7 @@ export async function initCalendar(root) {
     resource: root.dataset.calendarResource ?? 'calendar',
   };
   state.set(root, instance);
+  root.__novaCalendar = instance;
 
   const { calendarService } = await import('../../services/app.service.js');
   const [events, categories] = await Promise.all([
@@ -74,6 +81,12 @@ function bindControls(instance) {
       return;
     }
     const slot = event.target.closest('[data-calendar-slot]');
+    /* Phones: day cells are too small to aim at a single event, so a tap on a
+       day (or on anything inside it) opens that day's agenda sheet. */
+    if (slot && isCompact()) {
+      openDayAgenda(instance, slot.dataset.calendarDay, slot.dataset.calendarSlot);
+      return;
+    }
     if (slot && !event.target.closest('[data-calendar-event]')) {
       openEventModal(instance, { startAt: slot.dataset.calendarSlot });
       return;
@@ -164,12 +177,57 @@ function paintMini(instance) {
   });
 }
 
+const isCompact = () => window.matchMedia?.('(max-width: 575.98px)')?.matches ?? false;
+
+const toneOf = (event) => event.tone || (event.category === 'meeting' ? 'info' : event.category === 'deadline' ? 'danger' : event.category === 'personal' ? 'success' : 'primary');
+
+/** Bottom-sheet agenda for one day (mobile). */
+function openDayAgenda(instance, dayKey, slotIso) {
+  const date = new Date(slotIso);
+  const items = eventsOn(instance, date).sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+  const list = items.length
+    ? `<ul class="cal-agenda">${items
+        .map((event) => {
+          const time = new Date(event.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const tone = toneOf(event);
+          return `<li><button type="button" class="cal-agenda__item" data-agenda-event="${escapeHtml(event.id)}" style="--tone: var(--nv-${tone})">
+            <span class="cal-agenda__time">${toDigits(time)}</span>
+            <span class="cal-agenda__body"><strong>${escapeHtml(event.title)}</strong>${event.location ? `<small><i class="bi bi-geo-alt"></i> ${escapeHtml(event.location)}</small>` : ''}</span>
+            <i class="bi bi-chevron-left cal-agenda__go" aria-hidden="true"></i>
+          </button></li>`;
+        })
+        .join('')}</ul>`
+    : `<div class="cal-agenda__empty"><i class="bi bi-calendar2-check"></i><p>برای این روز رویدادی ثبت نشده است.</p></div>`;
+  const sheet = modal.open({
+    title: jdate.formatDate ? jdate.formatDate(date, { format: 'long' }) : dayKey,
+    subtitle: `${toDigits(items.length)} رویداد`,
+    size: 'sm',
+    content: list,
+    footer: '<button type="button" class="btn btn-light" data-modal-close>بستن</button><button type="button" class="btn btn-primary" data-agenda-add><i class="bi bi-plus-lg"></i> رویداد جدید</button>',
+    onMount: (panel) => {
+      on(panel, 'click', (clickEvent) => {
+        const item = clickEvent.target.closest('[data-agenda-event]');
+        if (item) {
+          const found = instance.events.find((entry) => String(entry.id) === item.dataset.agendaEvent);
+          sheet.close();
+          if (found) setTimeout(() => openEventModal(instance, found), 230);
+          return;
+        }
+        if (clickEvent.target.closest('[data-agenda-add]')) {
+          sheet.close();
+          setTimeout(() => openEventModal(instance, { startAt: slotIso }), 230);
+        }
+      });
+    },
+  });
+}
+
 async function openEventModal(instance, eventOrSlot = {}) {
   const isNew = !eventOrSlot.id;
   const event = isNew ? { id: null, title: '', category: 'meeting', startAt: eventOrSlot.startAt ?? new Date().toISOString(), duration: 60, location: '', reminder: '۱۵ دقیقه قبل', description: '' } : eventOrSlot;
   const start = new Date(event.startAt);
   const html = `
-    <form class="form-grid" data-calendar-form novalidate style="gap:16px;">
+    <form class="form-grid" id="calendar-event-form" data-calendar-form novalidate style="gap:16px;">
       <div class="form-field"><label class="form-label">عنوان رویداد *</label><input class="form-control" name="title" required value="${escapeHtml(event.title ?? '')}" placeholder="مثلاً جلسه بازبینی اسپرینت" style="height:48px; border-radius:12px; font-weight:700;" /></div>
       <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:12px;">
         <div class="form-field"><label class="form-label">دسته</label><select class="form-select" name="category" style="border-radius:12px;">${instance.categories.map((c) => `<option value="${c.id}" ${c.id === event.category ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}</select></div>
@@ -184,17 +242,15 @@ async function openEventModal(instance, eventOrSlot = {}) {
         <div class="form-field"><label class="form-label">مکان</label><input class="form-control" name="location" value="${escapeHtml(event.location ?? '')}" placeholder="اتاق جلسات ۱" style="border-radius:12px;" /></div>
       </div>
       <div class="form-field"><label class="form-label">توضیحات</label><textarea class="form-control" name="description" rows="3" placeholder="یادداشت..." style="border-radius:12px;">${escapeHtml(event.description ?? '')}</textarea></div>
-      <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:8px; border-top:1px solid var(--nv-divider); margin-top:8px;">
-        ${isNew ? '' : '<button type="button" class="btn btn-soft-danger" data-calendar-delete style="margin-inline-end:auto; border-radius:12px;">حذف</button>'}
-        <button type="button" class="btn btn-light" data-modal-close style="border-radius:12px;">انصراف</button>
-        <button type="submit" class="btn btn-primary" style="border-radius:12px; font-weight:800;">${isNew ? 'افزودن رویداد' : 'ذخیره'}</button>
-      </div>
     </form>`;
 
   const instanceModal = modal.open({
     title: isNew ? 'افزودن رویداد جدید' : 'ویرایش رویداد',
     content: html,
     size: 'md',
+    footer: `${isNew ? '' : '<button type="button" class="btn btn-soft-danger me-auto" data-calendar-delete><i class="bi bi-trash3"></i> حذف</button>'}
+      <button type="button" class="btn btn-light" data-modal-close>انصراف</button>
+      <button type="submit" form="calendar-event-form" class="btn btn-primary" data-calendar-submit>${isNew ? 'افزودن رویداد' : 'ذخیره'}</button>`,
     onMount: (panel) => {
       const form = $('[data-calendar-form]', panel);
       on(form, 'submit', async (submitEvent) => {
@@ -213,7 +269,7 @@ async function openEventModal(instance, eventOrSlot = {}) {
         };
         if (!payload.title) { form.querySelector('[name="title"]').classList.add('is-invalid'); return; }
         const { calendarService } = await import('../../services/app.service.js');
-        const button = form.querySelector('[type="submit"]');
+        const button = panel.querySelector('[data-calendar-submit]');
         button.classList.add('is-loading');
         try {
           if (isNew) {
@@ -246,4 +302,12 @@ async function openEventModal(instance, eventOrSlot = {}) {
       });
     },
   });
+}
+
+/** Opens the «new event» dialog for a mounted calendar (header button). */
+export function newCalendarEvent(root, startAt = new Date().toISOString()) {
+  const instance = root?.__novaCalendar ?? state.get(root);
+  if (!instance) return false;
+  openEventModal(instance, { startAt });
+  return true;
 }

@@ -11,7 +11,7 @@ import { formatNumber, toDigits, formatCurrency } from '../core/numbers.js';
 import { formatDate, relativeTime } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
-import { initCalendar } from '../core/calendar.js';
+import { initCalendar, newCalendarEvent } from '../core/calendar.js';
 import { goTo, url } from '../core/links.js';
 import * as kit from './kit.js';
 
@@ -41,7 +41,7 @@ async function mailClient() {
     node,
     `<div class="dashboard-shell">
       ${pageHeader({ title: 'ایمیل حرفه‌ای', subtitle: 'صندوق هوشمند با دسته‌بندی، جستجو و پیش‌نمایش سریع', icon: 'envelope', actions: toolButtons({ exportResource: 'mail' }) })}
-      <div class="mail-layout">
+      <div class="mail-layout${id ? ' is-reading' : ''}">
         <aside class="mail-nav">
           <button class="btn btn-primary w-100" type="button" data-compose style="height:48px; border-radius:14px; font-weight:800;"><i class="bi bi-pencil-square"></i> نامه جدید</button>
           <ul class="mail-nav__list" data-mail-folders>${folders
@@ -49,15 +49,15 @@ async function mailClient() {
               (folder) => `<li><a class="mail-nav__link ${folder.id === query ? 'is-active' : ''}" href="apps/email.html?folder=${escapeHtml(folder.id)}"><i class="bi bi-${escapeHtml(folder.icon ?? 'folder')}"></i><span>${escapeHtml(folder.label)}</span><span class="mail-nav__count">${toDigits(folder.count ?? 0)}</span></a></li>`,
             )
             .join('')}</ul>
-          <div style="height:1px; background:var(--nv-divider); margin:4px 0;"></div>
+          <div class="mail-nav__divider" style="height:1px; background:var(--nv-divider); margin:4px 0;"></div>
           <p class="mail-nav__labels" style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:var(--nv-text-muted); margin:0 0 8px;">برچسب‌ها</p>
-          <ul class="mail-nav__list">${[
+          <ul class="mail-nav__list mail-nav__list--labels">${[
             ['کاری', 'primary'],
             ['شخصی', 'success'],
             ['فاکتور', 'warning'],
             ['پشتیبانی', 'info'],
           ].map(([label, tone]) => `<li><a class="mail-nav__link" href="#"><span class="status-dot status-dot--${tone}"></span><span>${label}</span></a></li>`).join('')}</ul>
-          <div class="card" style="margin-top:auto; background:var(--nv-surface); border-radius:14px; padding:14px;">
+          <div class="card mail-nav__storage" style="margin-top:auto; background:var(--nv-surface); border-radius:14px; padding:14px;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;"><span class="tile tile--soft tile--icon tile--soft-primary"><i class="bi bi-hdd-stack"></i></span><div><div style="font-size:12px; font-weight:800;">فضای ذخیره</div><div style="font-size:11px; color:var(--nv-text-muted);">۷۸٪ پر شده</div></div></div>
             <div class="progress progress--sm" style="height:6px;"><div class="progress-bar" style="width:78%"></div></div>
           </div>
@@ -192,10 +192,10 @@ async function renderMailView(node, id) {
         </div>
       </div>
       <div class="mail-view__body">
-        <p>${escapeHtml(mail.body || mail.preview || 'محتوای نامه در نسخه نمایشی خلاصه نمایش داده می‌شود.')}</p>
-        <p>سلام وقت بخیر،</p>
-        <p>این یک ایمیل نمونه با طراحی حرفه‌ای است. تمام اطلاعات حساب شما امن و محفوظ است. لطفاً در صورت داشتن سوال با پشتیبانی تماس بگیرید.</p>
-        <p>با تشکر<br>تیم نواادمین</p>
+        ${(() => {
+          const paragraphs = (Array.isArray(mail.body) ? mail.body : String(mail.body || mail.preview || '').split(/\n+/)).map((line) => String(line).trim()).filter(Boolean);
+          return (paragraphs.length ? paragraphs : ['محتوای این نامه خالی است.']).map((line) => `<p>${escapeHtml(line)}</p>`).join('');
+        })()}
       </div>
       ${mail.attachments?.length ? `<div class="mail-view__attachments">${mail.attachments.map(att => `<div class="mail-attachment"><span class="tile tile--soft tile--icon tile--soft-primary"><i class="bi bi-file-earmark"></i></span><div style="flex:1; min-width:0;"><div style="font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(att.name||'فایل.pdf')}</div><div style="font-size:11px; color:var(--nv-text-muted);">${escapeHtml(att.size||'1.2 MB')}</div></div><button class="btn btn-light btn-sm"><i class="bi bi-download"></i></button></div>`).join('')}</div>` : `<div class="mail-view__attachments"><div class="mail-attachment"><span class="tile tile--soft tile--icon tile--soft-primary"><i class="bi bi-file-earmark-pdf"></i></span><div style="flex:1;"><div style="font-size:12px; font-weight:700;">گزارش-مالی.pdf</div><div style="font-size:11px; color:var(--nv-text-muted);">2.4 MB</div></div><button class="btn btn-light btn-sm"><i class="bi bi-download"></i></button></div></div>`}
       <div class="mail-reply">
@@ -254,7 +254,7 @@ async function chatApp() {
     node,
     `<div class="dashboard-shell">
       ${pageHeader({ title: 'گفتگوهای تیمی', subtitle: 'چت امن، سریع و حرفه‌ای با قابلیت ارسال فایل و تماس', icon: 'chat-dots', actions: '<button class="btn btn-light" data-chat-new><i class="bi bi-plus-lg"></i> گفتگوی جدید</button>' })}
-      <div class="chat-layout">
+      <div class="chat-layout is-list" data-chat-layout>
         <aside class="chat-sidebar">
           <div class="chat-sidebar__head">
             <div class="chat-search"><i class="bi bi-search"></i><input type="search" placeholder="جستجوی مخاطب یا پیام..." data-chat-filter></div>
@@ -277,8 +277,8 @@ async function chatApp() {
               (conversation, index) => `<button type="button" class="chat-contact ${index === 0 ? 'is-active' : ''}" data-chat="${escapeHtml(conversation.id)}">
                 <img class="avatar" src="${url(conversation.avatar ?? safeAvatar(2))}" alt="" style="width:44px; height:44px; border-radius:14px; object-fit:cover; flex-shrink:0;">
                 <div class="chat-contact__body">
-                  <div class="chat-contact__top"><span class="chat-contact__name">${escapeHtml(conversation.name)}</span><span class="chat-contact__time">${relativeTime(conversation.updatedAt)}</span></div>
-                  <div class="chat-contact__preview"><i class="bi bi-check2-all" style="color:var(--nv-success);"></i> ${escapeHtml(conversation.preview ?? '')}</div>
+                  <div class="chat-contact__top"><span class="chat-contact__name">${escapeHtml(conversation.name)}</span><span class="chat-contact__time">${conversation.updatedAt ? relativeTime(conversation.updatedAt) : toDigits(conversation.messages?.at(-1)?.time ?? '')}</span></div>
+                  <div class="chat-contact__preview"><i class="bi bi-check2-all" style="color:var(--nv-success);"></i> ${escapeHtml(conversation.preview ?? conversation.messages?.at(-1)?.text ?? '')}</div>
                 </div>
                 ${conversation.unread ? `<span class="chat-contact__unread">${toDigits(conversation.unread)}</span>` : ''}
               </button>`,
@@ -288,9 +288,10 @@ async function chatApp() {
 
         <section class="chat-panel" style="display:flex; flex-direction:column;">
           <header class="chat-panel__head">
+            <button class="icon-btn chat-back" type="button" data-chat-back aria-label="بازگشت به فهرست گفتگوها"><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
             <div class="chat-user">
               <div class="chat-user__avatar"><img src="${url(convList[0]?.avatar)}" alt="" style="width:44px;height:44px;border-radius:14px;object-fit:cover;"><span class="chat-user__avatar__status"></span></div>
-              <div><div class="chat-user__name" data-chat-name>${escapeHtml(convList[0]?.name)}</div><div class="chat-user__sub"><span class="status-dot status-dot--online"></span> آنلاین • در حال تایپ...</div></div>
+              <div><div class="chat-user__name" data-chat-name>${escapeHtml(convList[0]?.name)}</div><div class="chat-user__sub"><span class="status-dot status-dot--online"></span> آنلاین</div></div>
             </div>
             <div class="chat-panel__actions" style="display:flex; gap:6px;">
               <button class="icon-btn" type="button" data-chat-call><i class="bi bi-telephone"></i></button>
@@ -332,8 +333,14 @@ async function chatApp() {
         const avatarImg = $('.chat-user__avatar img', node);
         if (avatarImg) avatarImg.src = url(conv.avatar);
       }
+      contact.querySelector('.chat-contact__unread')?.remove();
       render(stream, await chatStreamMarkup(active, convList));
+      $('[data-chat-layout]', node)?.classList.remove('is-list');
       scroll();
+      return;
+    }
+    if (event.target.closest('[data-chat-back]')) {
+      $('[data-chat-layout]', node)?.classList.add('is-list');
       return;
     }
     if (event.target.closest('[data-chat-emoji]')) {
@@ -396,24 +403,30 @@ async function chatStreamMarkup(conversationId, fallbackList = []) {
   if (!conversationId) return emptyState({ title: 'گفتگویی انتخاب نشده', icon: 'chat-square' });
   let detail = null;
   try { detail = await services.chatAppService.get(conversationId); } catch {}
-  const messages = detail?.messages ?? [
+  const raw = detail?.messages ?? [
     { from: 'them', text: 'سلام! جلسه فردا ساعت ۱۰ تایید شد؟', at: new Date(Date.now()-3600000*3).toISOString() },
     { from: 'me', text: 'سلام، بله تایید شد. اسلایدها آماده‌ست.', at: new Date(Date.now()-3600000*2.5).toISOString() },
     { from: 'them', text: 'عالیه، فایل طراحی جدید رو دیدی؟', at: new Date(Date.now()-3600000*2).toISOString() },
     { from: 'me', text: 'آره دیدم، خیلی حرفه‌ای شده. فقط رنگ دکمه‌ها رو باید با برند جدید هماهنگ کنیم.', at: new Date(Date.now()-3600000*1).toISOString() },
     { from: 'them', text: 'دقیقا، منم همینو می‌خواستم بگم. تا عصر اصلاح می‌کنم.', at: new Date(Date.now()-1800000).toISOString() },
   ];
+  /* Service messages use `side` + `time`; the fallback uses `from` + `at`. */
+  const messages = raw.map((m) => ({
+    ...m,
+    mine: m.side ? m.side === 'out' : m.from === 'me',
+    stamp: m.time ? toDigits(m.time) : m.at ? relativeTime(m.at) : '',
+  }));
   const fallback = fallbackList.find(c=>c.id===conversationId);
   const name = detail?.name ?? fallback?.name ?? 'همکار';
   const avatar = detail?.avatar ?? fallback?.avatar ?? safeAvatar(2);
   if (!messages.length) return emptyState({ title: 'اینجا ساکت است', text: 'اولین پیام را بفرستید.', icon: 'chat-square-dots' });
   return `<div class="chat-day-divider" style="text-align:center; margin:8px 0;"><span style="background:var(--nv-surface-2); padding:4px 12px; border-radius:999px; font-size:11px; color:var(--nv-text-muted);">امروز • ${formatDate(new Date(), { format: 'medium' })}</span></div>
     ${messages.map((message) => `
-      <article class="msg ${message.from === 'me' ? 'msg--out' : 'msg--in'}">
-        ${message.from !== 'me' ? `<span class="msg__avatar"><img src="${url(avatar)}" alt="" style="width:36px; height:36px; border-radius:12px; object-fit:cover; display:block;"></span>` : ''}
+      <article class="msg ${message.mine ? 'msg--out' : 'msg--in'}">
+        ${!message.mine ? `<span class="msg__avatar"><img src="${url(avatar)}" alt="" style="width:36px; height:36px; border-radius:12px; object-fit:cover; display:block;"></span>` : ''}
         <div class="msg__body">
-          <div class="msg__bubble">${escapeHtml(message.text)}</div>
-          <div class="msg__meta"><time>${relativeTime(message.at)} ${message.from==='me'?'• ✓✓':''}</time></div>
+          <div class="msg__bubble">${escapeHtml(message.text)}${(message.attachments ?? []).map((file) => `<span class="msg__file"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span dir="ltr">${escapeHtml(file.name)}</span><small>${escapeHtml(file.size ?? '')}</small></span>`).join('')}</div>
+          <div class="msg__meta">${message.reactions?.length ? `<span class="msg__reactions">${message.reactions.join(' ')}</span>` : ''}<time>${message.stamp}${message.mine ? ' • ✓✓' : ''}</time></div>
         </div>
       </article>`).join('')}`;
 }
@@ -491,10 +504,7 @@ async function calendarApp() {
 
   on(node, 'click', (event) => {
     if (event.target.closest('[data-calendar-new]')) {
-      const grid = $('[data-calendar-grid]', node);
-      const slot = $('[data-calendar-slot]', grid);
-      if (slot) slot.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      else toast.info('رویداد جدید', 'برای افزودن، روی یک روز کلیک کنید');
+      if (!newCalendarEvent($('[data-calendar]', node))) toast.info('رویداد جدید', 'تقویم هنوز در حال بارگذاری است؛ لحظه‌ای بعد دوباره امتحان کنید.');
     }
     if (event.target.closest('[data-calendar-today]')) {
       bus.emit(EVENTS.calendarToday || 'calendar:today');
@@ -640,7 +650,7 @@ async function notificationsPage() {
     { id: 'notif-6', category: 'orders', priority: 'high', type: 'primary', icon: 'truck', title: 'محموله NVX-101 وارد محدوده تحویل شد', text: 'کامیون حامل تجهیزات سرور به انبار مرکزی اصفهان رسید و در صف تخلیه قرار گرفت.', time: '۵ ساعت پیش', read: false, action: { label: 'ردیابی زنده', url: 'logistics/tracking.html' } },
     { id: 'notif-7', category: 'finance', priority: 'normal', type: 'success', icon: 'cash-stack', title: 'واریز پورسانت همکاران فروش', text: 'تسویه حساب ماهانه برای ۱۲ نماینده فروش با موفقیت پردازش و حواله شد.', time: 'دیروز', read: true, action: { label: 'گزارش مالی', url: 'finance/overview.html' } },
     { id: 'notif-8', category: 'security', priority: 'normal', type: 'info', icon: 'key-fill', title: 'ایجاد کلید جدید API با دسترسی نوشتن', text: 'کلید Production-Mobile توسط کاربر «سارا محمدی» با موفقیت صادر شد.', time: 'دیروز', read: true, action: { label: 'کلیدهای API', url: 'profile/api-keys.html' } },
-    { id: 'notif-9', category: 'system', priority: 'normal', type: 'info', icon: 'patch-check-fill', title: 'انتشار نسخه جدید NOVAADMIN ۱٫۰٫۲', text: 'بهینه‌سازی کارایی هسته، تقویم جلالی بهبودیافته و نقشه‌های ناوگان افزوده شد.', time: '۲ روز پیش', read: true, action: { label: 'تغییرات نسخه', url: 'system/changelog.html' } },
+    { id: 'notif-9', category: 'system', priority: 'normal', type: 'info', icon: 'patch-check-fill', title: 'انتشار نسخه جدید NOVAADMIN ۱٫۱٫۰', text: 'ورود و نشست پایدار، مودال‌ها و جدول‌های کاملاً ریسپانسیو، کانبان روان و استودیو تصاویر محصول.', time: '۲ روز پیش', read: true, action: { label: 'تغییرات نسخه', url: 'system/changelog.html' } },
     { id: 'notif-10', category: 'orders', priority: 'normal', type: 'success', icon: 'chat-left-heart-fill', title: 'ثبت دیدگاه ۵ ستاره جدید برای محصول', text: 'کاربر رضا نوری برای «قالب داشبورد نواادمین» امتیاز کامل ثبت کرد.', time: '۳ روز پیش', read: true, action: { label: 'دیدگاه‌ها', url: 'cms/comments.html' } },
   ];
 
@@ -799,72 +809,181 @@ export async function initCms() {
       `<div class="cms-pro">
         ${pageHeader({
           title: 'صفحه‌ساز حرفه‌ای',
-          subtitle: 'بلوک‌ها را بکشید و رها کنید — طراحی زنده با پیش‌نمایش آنی',
+          subtitle: 'بلوک‌ها را بکشید یا لمس کنید — ترتیب را با دکمه‌های هر بخش تغییر دهید',
           icon: 'layout-text-window-reverse',
           actions: '<button class="btn btn-light" type="button" data-preview-page><i class="bi bi-eye"></i> پیش‌نمایش</button><button class="btn btn-primary" type="button" data-publish-page><i class="bi bi-cloud-upload"></i> انتشار</button>',
         })}
         <div class="cms-builder">
-          <aside class="cms-builder__blocks">
-            <h3>بلوک‌ها</h3>
-            <div class="builder-wire" data-block-source style="display:flex; flex-direction:column; gap:8px;">${[
-              ['هیرو', 'layout-text-window', 'hero'],
-              ['ویژگی‌ها', 'grid-3x3-gap', 'features'],
-              ['تصویر و متن', 'card-image', 'media'],
-              ['جدول قیمت', 'tags', 'pricing'],
-              ['نظرات مشتریان', 'chat-quote', 'testimonials'],
-              ['پرسش‌های متداول', 'patch-question', 'faq'],
-              ['فراخوان عمل', 'megaphone', 'cta'],
-              ['آمار', 'graph-up', 'stats'],
-              ['تیم', 'people', 'team'],
-            ].map(([label, icon, type]) => `<div class="cms-block" draggable="true" data-block="${type}"><i class="bi bi-${icon}"></i><span>${label}</span></div>`).join('')}</div>
-            <div style="margin-top:auto; padding:14px; background:var(--nv-surface); border-radius:12px; border:1px dashed var(--nv-border); font-size:11px; color:var(--nv-text-muted);">بلوک‌ها را به ناحیه میانی بکشید و ترتیب را با دکمه‌ها تغییر دهید.</div>
+          <aside class="cms-builder__blocks" aria-label="بلوک‌ها">
+            <div class="cms-builder__blocks-head"><h3>بلوک‌ها</h3><small>برای افزودن، بکشید یا لمس کنید</small></div>
+            <div class="cms-builder__palette" data-block-source role="list">${Object.entries(BUILDER_BLOCKS)
+              .map(([type, block]) => `<button type="button" class="cms-block" draggable="true" data-block="${type}" role="listitem" aria-label="افزودن بلوک ${escapeHtml(block.label)}"><i class="bi bi-${block.icon}" aria-hidden="true"></i><span>${escapeHtml(block.label)}</span><i class="bi bi-plus-lg cms-block__add" aria-hidden="true"></i></button>`)
+              .join('')}</div>
           </aside>
-          <section class="cms-builder__canvas" data-builder-canvas>
-            <div class="cms-builder__section is-selected" data-section="hero"><span class="cms-builder__section__label">هیرو</span><div class="cms-builder__section__tools"><button class="icon-btn icon-btn--sm" data-move-up><i class="bi bi-arrow-up"></i></button><button class="icon-btn icon-btn--sm" data-move-down><i class="bi bi-arrow-down"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" data-remove-section><i class="bi bi-trash3"></i></button></div>
-              <div style="text-align:center; padding:24px;"><span class="badge badge--soft-primary">جدید</span><h2 style="font-size:24px; font-weight:900; margin:12px 0;">سریع‌تر، هوشمندتر، حرفه‌ای‌تر</h2><p style="color:var(--nv-text-muted); max-width:36rem; margin:0 auto 16px;">صفحه‌ساز نواادمین با رابط کاربری کشیدن و رها کردن، به شما اجازه می‌دهد بدون کدنویسی صفحات خیره‌کننده بسازید.</p><button class="btn btn-primary">شروع کنید</button></div></div>
-            <div class="cms-builder__section" data-section="features"><span class="cms-builder__section__label">ویژگی‌ها</span><div class="cms-builder__section__tools"><button class="icon-btn icon-btn--sm" data-move-up><i class="bi bi-arrow-up"></i></button><button class="icon-btn icon-btn--sm" data-move-down><i class="bi bi-arrow-down"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" data-remove-section><i class="bi bi-trash3"></i></button></div>
-              <div class="grid grid--3">${['⚡ سریع', '🔒 امن', '📈 مقیاس‌پذیر'].map((item) => `<div class="card"><div class="card__body" style="text-align:center;"><strong>${item}</strong><p class="text-muted mb-0" style="font-size:12px; margin-top:6px;">توضیح کوتاه ویژگی با طراحی حرفه‌ای</p></div></div>`).join('')}</div></div>
-            <div class="cms-builder__section" data-section="stats"><span class="cms-builder__section__label">آمار</span><div class="cms-builder__section__tools"><button class="icon-btn icon-btn--sm" data-move-up><i class="bi bi-arrow-up"></i></button><button class="icon-btn icon-btn--sm" data-move-down><i class="bi bi-arrow-down"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" data-remove-section><i class="bi bi-trash3"></i></button></div>
-              <div class="cms-stat-row">${[
-                { label:'کاربران فعال', value:'۱۲.۴k', icon:'people', tone:'primary' },
-                { label:'نرخ تبدیل', value:'۳.۲٪', icon:'graph-up', tone:'success' },
-                { label:'رضایت', value:'۴.۹/۵', icon:'star', tone:'warning' },
-              ].map(s=>`<div class="cms-stat"><div class="cms-stat__icon cms-stat__icon--${s.tone}"><i class="bi bi-${s.icon}"></i></div><div><div class="cms-stat__value">${s.value}</div><div class="cms-stat__label">${s.label}</div></div></div>`).join('')}</div>
-            </div>
+          <section class="cms-builder__canvas" data-builder-canvas aria-label="بوم صفحه">
+            ${['hero', 'features', 'stats'].map((type, i) => sectionMarkup(type, i === 0)).join('')}
+            <div class="cms-builder__empty" data-builder-empty hidden><i class="bi bi-plus-square-dotted" aria-hidden="true"></i><strong>صفحه خالی است</strong><span>یک بلوک از فهرست بلوک‌ها انتخاب کنید.</span></div>
           </section>
-          <aside class="cms-builder__inspector">
-            <h3 style="font-size:13px; font-weight:800; margin:0;">تنظیمات بخش</h3>
-            <div data-inspector-body style="font-size:12px; color:var(--nv-text-muted);">یک بخش را انتخاب کنید تا تنظیمات آن را ویرایش کنید.</div>
-            <div style="margin-top:auto; display:flex; flex-direction:column; gap:8px;">
-              <div class="form-field"><label class="form-label">فاصله عمودی</label><input type="range" class="form-range" min="0" max="100" value="32"></div>
-              <div class="form-field"><label class="form-label">پس‌زمینه</label><div style="display:flex; gap:6px;"><span style="width:28px; height:28px; border-radius:8px; background:var(--nv-surface); border:2px solid var(--nv-primary);"></span><span style="width:28px; height:28px; border-radius:8px; background:var(--nv-surface-2); border:1px solid var(--nv-border);"></span><span style="width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--nv-primary), #8b5cf6);"></span></div></div>
+          <aside class="cms-builder__inspector" aria-label="تنظیمات بخش">
+            <h3>تنظیمات بخش</h3>
+            <div data-inspector-body class="cms-builder__inspector-body"></div>
+            <div class="form-field"><label class="form-label" for="pb-spacing">فاصله عمودی <b class="numeric" data-spacing-value></b></label><input id="pb-spacing" type="range" class="form-range" min="8" max="64" step="4" value="20" data-spacing></div>
+            <div class="form-field"><span class="form-label">پس‌زمینه</span>
+              <div class="cms-builder__bgs" role="group" aria-label="پس‌زمینه بخش">
+                <button type="button" class="cms-bg is-active" data-bg="surface" aria-label="سفید" style="--bg:var(--nv-surface)"></button>
+                <button type="button" class="cms-bg" data-bg="muted" aria-label="خاکستری" style="--bg:var(--nv-surface-2)"></button>
+                <button type="button" class="cms-bg" data-bg="brand" aria-label="رنگ برند" style="--bg:linear-gradient(135deg, var(--nv-primary), #8b5cf6)"></button>
+              </div>
             </div>
           </aside>
         </div>
       </div>`,
     );
     const canvas = $('[data-builder-canvas]', node);
-    on($('[data-block-source]', node), 'dragstart', (event) => {
+    const inspector = $('[data-inspector-body]', node);
+    const spacing = $('[data-spacing]', node);
+    const sections = () => $$('[data-pb-section]', canvas);
+    const selected = () => $('[data-pb-section].is-selected', canvas);
+
+    const refresh = () => {
+      const list = sections();
+      list.forEach((section, index) => {
+        $('[data-move-up]', section).disabled = index === 0;
+        $('[data-move-down]', section).disabled = index === list.length - 1;
+      });
+      $('[data-builder-empty]', canvas).hidden = list.length > 0;
+      const current = selected();
+      if (!current) {
+        render(inspector, '<p class="cms-builder__hint">یک بخش را انتخاب کنید تا تنظیمات آن را ویرایش کنید.</p>');
+        return;
+      }
+      const block = BUILDER_BLOCKS[current.dataset.pbSection] ?? { label: current.dataset.pbSection };
+      render(inspector, infoRows([['بخش', escapeHtml(block.label)], ['ترتیب', `${toDigits(list.indexOf(current) + 1)} از ${toDigits(list.length)}`]]));
+      const pad = parseInt(current.style.getPropertyValue('--pb-pad') || '20', 10);
+      spacing.value = String(pad);
+      $('[data-spacing-value]', node).textContent = toDigits(pad);
+      $$('[data-bg]', node).forEach((b) => b.classList.toggle('is-active', b.dataset.bg === (current.dataset.bg || 'surface')));
+    };
+    const select = (section) => {
+      sections().forEach((item) => item.classList.toggle('is-selected', item === section));
+      refresh();
+    };
+    /* Smooth reorder: measure → move → animate from the old position (FLIP). */
+    const animateMove = (mutate) => {
+      const before = new Map(sections().map((el) => [el, el.getBoundingClientRect().top]));
+      mutate();
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+      sections().forEach((el) => {
+        const delta = (before.get(el) ?? 0) - el.getBoundingClientRect().top;
+        if (!delta) return;
+        el.animate([{ transform: `translateY(${delta}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+    };
+    const addBlock = (type, before = null) => {
+      if (!BUILDER_BLOCKS[type]) return;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = sectionMarkup(type);
+      const section = wrap.firstElementChild;
+      canvas.insertBefore(section, before ?? $('[data-builder-empty]', canvas));
+      select(section);
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      section.classList.add('is-new');
+      setTimeout(() => section.classList.remove('is-new'), 700);
+      toast.success('بلوک افزوده شد', `بخش «${BUILDER_BLOCKS[type].label}» اضافه شد.`);
+    };
+
+    const palette = $('[data-block-source]', node);
+    on(palette, 'click', (event) => {
       const block = event.target.closest('[data-block]');
-      if (block) event.dataTransfer.setData('text/plain', block.dataset.block);
+      if (block) addBlock(block.dataset.block);
     });
-    on(canvas, 'dragover', (event) => event.preventDefault());
+    on(palette, 'dragstart', (event) => {
+      const block = event.target.closest('[data-block]');
+      if (!block) return;
+      event.dataTransfer.setData('text/plain', block.dataset.block);
+      event.dataTransfer.effectAllowed = 'copy';
+      canvas.classList.add('is-drop-target');
+    });
+    on(palette, 'dragend', () => {
+      canvas.classList.remove('is-drop-target');
+      $$('.is-drop-before', canvas).forEach((el) => el.classList.remove('is-drop-before'));
+    });
+    const dropBefore = (y) => sections().find((el) => {
+      const r = el.getBoundingClientRect();
+      return y < r.top + r.height / 2;
+    }) ?? null;
+    on(canvas, 'dragover', (event) => {
+      event.preventDefault();
+      const target = dropBefore(event.clientY);
+      sections().forEach((el) => el.classList.toggle('is-drop-before', el === target));
+    });
     on(canvas, 'drop', (event) => {
       event.preventDefault();
-      const type = event.dataTransfer.getData('text/plain') || 'section';
-      canvas.insertAdjacentHTML('beforeend', sectionMarkup(type));
-      toast.success('بلوک افزوده شد', `بخش «${type}» اضافه شد.`);
+      const type = event.dataTransfer.getData('text/plain');
+      const target = dropBefore(event.clientY);
+      canvas.classList.remove('is-drop-target');
+      sections().forEach((el) => el.classList.remove('is-drop-before'));
+      addBlock(type, target);
     });
-    on(canvas, 'click', (event) => {
-      const section = event.target.closest('[data-section]');
+
+    on(canvas, 'click', async (event) => {
+      const section = event.target.closest('[data-pb-section]');
       if (!section) return;
-      if (event.target.closest('[data-remove-section]')) { section.remove(); toast.info('بخش حذف شد'); return; }
-      if (event.target.closest('[data-move-up]')) { const prev = section.previousElementSibling; if (prev) canvas.insertBefore(section, prev); return; }
-      if (event.target.closest('[data-move-down]')) { const next = section.nextElementSibling; if (next) canvas.insertBefore(next, section); return; }
-      $$('[data-section]', canvas).forEach((item) => item.classList.toggle('is-selected', item === section));
-      render($('[data-inspector-body]', node), infoRows([['شناسه', escapeHtml(section.dataset.section)], ['ترتیب', toDigits([...canvas.children].indexOf(section)+1)]]));
+      if (event.target.closest('[data-remove-section]')) {
+        const label = BUILDER_BLOCKS[section.dataset.pbSection]?.label ?? '';
+        const ok = await modal.confirm({ title: 'حذف بخش', text: `بخش «${label}» از صفحه حذف شود؟`, tone: 'danger', confirmText: 'حذف' });
+        if (!ok) return;
+        const wasSelected = section.classList.contains('is-selected');
+        section.remove();
+        if (wasSelected) select(sections()[0] ?? null);
+        else refresh();
+        toast.info('بخش حذف شد');
+        return;
+      }
+      if (event.target.closest('[data-move-up]')) {
+        const prev = section.previousElementSibling;
+        if (prev?.matches('[data-pb-section]')) animateMove(() => canvas.insertBefore(section, prev));
+        select(section);
+        event.target.closest('button').focus();
+        return;
+      }
+      if (event.target.closest('[data-move-down]')) {
+        const next = section.nextElementSibling;
+        if (next?.matches('[data-pb-section]')) animateMove(() => canvas.insertBefore(next, section));
+        select(section);
+        event.target.closest('button').focus();
+        return;
+      }
+      if (event.target.closest('[data-duplicate-section]')) {
+        const copy = section.cloneNode(true);
+        copy.classList.remove('is-selected');
+        section.after(copy);
+        select(copy);
+        toast.success('بخش تکثیر شد');
+        return;
+      }
+      select(section);
     });
-    on($('[data-preview-page]', node), 'click', () => modal.open({ title: 'پیش‌نمایش', size: 'lg', content: `<div class="card"><div class="card__body">${canvas.innerHTML.replace(/<span class="cms-builder__section__label">.*?<\/span>/g,'').replace(/<div class="cms-builder__section__tools">.*?<\/div>/g,'')}</div></div>`, footer: '<button class="btn btn-light" data-modal-close>بستن</button>' }));
+    on(spacing, 'input', () => {
+      const current = selected();
+      $('[data-spacing-value]', node).textContent = toDigits(spacing.value);
+      if (current) current.style.setProperty('--pb-pad', `${spacing.value}px`);
+    });
+    on(node, 'click', (event) => {
+      const bg = event.target.closest('[data-bg]');
+      if (!bg) return;
+      const current = selected();
+      if (!current) return;
+      current.dataset.bg = bg.dataset.bg;
+      $$('[data-bg]', node).forEach((b) => b.classList.toggle('is-active', b === bg));
+    });
+    refresh();
+
+    on($('[data-preview-page]', node), 'click', () => {
+      const clone = canvas.cloneNode(true);
+      $$('.cms-builder__section-bar, [data-builder-empty]', clone).forEach((el) => el.remove());
+      modal.open({ title: 'پیش‌نمایش صفحه', size: 'lg', content: `<div class="cms-preview">${clone.innerHTML}</div>`, footer: '<button class="btn btn-light" data-modal-close>بستن</button>' });
+    });
     on($('[data-publish-page]', node), 'click', async () => { const ok = await modal.confirm({ title: 'انتشار صفحه', text: 'نسخه فعلی منتشر می‌شود.', tone: 'primary', confirmText: 'انتشار' }); if (!ok) return; toast.success('صفحه منتشر شد', 'نسخه جدید روی سایت قرار گرفت.'); });
     return;
   }
@@ -1420,10 +1539,33 @@ export async function initApp() {
   }
 }
 
-const sectionMarkup = (type) => `<div class="cms-builder__section" data-section="${escapeHtml(type)}">
-  <span class="cms-builder__section__label">${escapeHtml(type)}</span>
-  <div class="cms-builder__section__tools"><button class="icon-btn icon-btn--sm" type="button" data-move-up><i class="bi bi-arrow-up"></i></button><button class="icon-btn icon-btn--sm" type="button" data-move-down><i class="bi bi-arrow-down"></i></button><button class="icon-btn icon-btn--sm icon-btn--danger" type="button" data-remove-section><i class="bi bi-trash3"></i></button></div>
-  <div class="card"><div class="card__body"><p class="text-muted mb-0" style="font-size:12px;">بلوک ${escapeHtml(type)} — محتوای نمونه قابل ویرایش</p></div></div>
+/* Page-builder blocks: label, icon and realistic sample content. */
+const BUILDER_BLOCKS = {
+  hero: { label: 'هیرو', icon: 'layout-text-window', body: () => `<div class="cms-sample cms-sample--hero"><span class="badge badge--soft-primary">جدید</span><h2>سریع‌تر، هوشمندتر، حرفه‌ای‌تر</h2><p>صفحه‌ساز نواادمین با رابط کشیدن و رها کردن، به شما اجازه می‌دهد بدون کدنویسی صفحات خیره‌کننده بسازید.</p><span class="btn btn-primary btn-sm">شروع کنید</span></div>` },
+  features: { label: 'ویژگی‌ها', icon: 'grid-3x3-gap', body: () => `<div class="cms-sample cms-sample--grid">${[['lightning-charge', 'سریع', 'بارگذاری زیر یک ثانیه'], ['shield-lock', 'امن', 'رمزنگاری و نقش‌های دسترسی'], ['graph-up-arrow', 'مقیاس‌پذیر', 'از ۱۰ تا ۱۰ هزار کاربر']].map(([i, t, d]) => `<div class="cms-sample__tile"><i class="bi bi-${i}" aria-hidden="true"></i><strong>${t}</strong><small>${d}</small></div>`).join('')}</div>` },
+  media: { label: 'تصویر و متن', icon: 'card-image', body: () => `<div class="cms-sample cms-sample--media"><div class="cms-sample__img" aria-hidden="true"><i class="bi bi-image"></i></div><div><strong>داستان محصول شما</strong><p>یک تصویر شاخص در کنار متن توضیحی؛ در موبایل زیر هم قرار می‌گیرند.</p></div></div>` },
+  pricing: { label: 'جدول قیمت', icon: 'tags', body: () => `<div class="cms-sample cms-sample--grid">${[['پایه', '۴۹۰ هزار'], ['حرفه‌ای', '۹۹۰ هزار'], ['سازمانی', 'تماس']].map(([t, p], i) => `<div class="cms-sample__tile${i === 1 ? ' is-featured' : ''}"><strong>${t}</strong><b>${p}</b><small>تومان / ماه</small></div>`).join('')}</div>` },
+  testimonials: { label: 'نظرات مشتریان', icon: 'chat-quote', body: () => `<div class="cms-sample cms-sample--quote"><p>«راه‌اندازی پنل ما از دو هفته به دو روز رسید.»</p><small>— مهدی رضایی، مدیر فنی</small></div>` },
+  faq: { label: 'پرسش‌های متداول', icon: 'patch-question', body: () => `<div class="cms-sample cms-sample--faq">${['آیا نسخه آزمایشی دارید؟', 'پشتیبانی چگونه است؟'].map((q) => `<div><strong>${q}</strong><i class="bi bi-chevron-down" aria-hidden="true"></i></div>`).join('')}</div>` },
+  cta: { label: 'فراخوان عمل', icon: 'megaphone', body: () => `<div class="cms-sample cms-sample--cta"><strong>همین امروز شروع کنید</strong><span class="btn btn-light btn-sm">ثبت‌نام رایگان</span></div>` },
+  stats: { label: 'آمار', icon: 'graph-up', body: () => `<div class="cms-stat-row">${[{ label: 'کاربران فعال', value: '۱۲٫۴ هزار', icon: 'people', tone: 'primary' }, { label: 'نرخ تبدیل', value: '۳٫۲٪', icon: 'graph-up', tone: 'success' }, { label: 'رضایت', value: '۴٫۹ از ۵', icon: 'star', tone: 'warning' }].map((st) => `<div class="cms-stat"><div class="cms-stat__icon cms-stat__icon--${st.tone}"><i class="bi bi-${st.icon}"></i></div><div><div class="cms-stat__value">${st.value}</div><div class="cms-stat__label">${st.label}</div></div></div>`).join('')}</div>` },
+  team: { label: 'تیم', icon: 'people', body: () => `<div class="cms-sample cms-sample--grid">${[['سارا محمدی', 'مدیرعامل', '01'], ['علی رضایی', 'مدیر فنی', '04'], ['نگین شریفی', 'طراح محصول', '06']].map(([n, r, a]) => `<div class="cms-sample__tile"><img src="assets/img/avatars/avatar-${a}.svg" alt="" width="44" height="44"><strong>${n}</strong><small>${r}</small></div>`).join('')}</div>` },
+};
+
+const sectionMarkup = (type, selected = false) => {
+  const block = BUILDER_BLOCKS[type] ?? { label: type, icon: 'square', body: () => '' };
+  return `<div class="cms-builder__section${selected ? ' is-selected' : ''}" data-pb-section="${escapeHtml(type)}">
+  <div class="cms-builder__section-bar">
+    <span class="cms-builder__section-label"><i class="bi bi-${block.icon}" aria-hidden="true"></i>${escapeHtml(block.label)}</span>
+    <div class="cms-builder__section-tools" role="toolbar" aria-label="ابزار بخش ${escapeHtml(block.label)}">
+      <button class="icon-btn icon-btn--sm" type="button" data-move-up aria-label="انتقال به بالا" title="انتقال به بالا"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+      <button class="icon-btn icon-btn--sm" type="button" data-move-down aria-label="انتقال به پایین" title="انتقال به پایین"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+      <button class="icon-btn icon-btn--sm" type="button" data-duplicate-section aria-label="تکثیر" title="تکثیر"><i class="bi bi-copy" aria-hidden="true"></i></button>
+      <button class="icon-btn icon-btn--sm icon-btn--danger" type="button" data-remove-section aria-label="حذف" title="حذف"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+    </div>
+  </div>
+  <div class="cms-builder__section-body">${block.body()}</div>
 </div>`;
+};
 
 export default { initApp, initCms };

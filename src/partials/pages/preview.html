@@ -33,8 +33,8 @@
           </button>
           <ul class="dropdown-menu" data-dropdown-menu data-language-switch data-language-list></ul>
         </div>
-        <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span data-i18n="ui.customizer">شخصی‌سازی</span></button>
-        <a class="btn btn-primary btn-sm" href="dashboards/analytics.html"><i class="bi bi-play-fill" aria-hidden="true"></i> <span>ورود به دمو</span></a>
+        <button class="btn btn-sm btn-light" type="button" data-customizer-open><i class="bi bi-sliders" aria-hidden="true"></i> <span class="d-none d-sm-inline" data-i18n="ui.customizer">شخصی‌سازی</span></button>
+        <a class="btn btn-primary btn-sm" href="dashboards/analytics.html" aria-label="ورود به دمو"><i class="bi bi-play-fill" aria-hidden="true"></i> <span class="d-none d-sm-inline">ورود به دمو</span></a>
       </div>
     </div>
   </header>
@@ -49,7 +49,7 @@
             <span class="eyebrow"><span class="status-dot status-dot--success"></span> نسخه {{VERSION}} — پیش‌نمایش زنده</span>
             <h1 class="landing-hero__title">همه‌چیز را <span class="text-gradient">قبل از خرید</span> لمس کنید</h1>
             <p class="landing-hero__lead">
-              این صفحه یک پیش‌نمایش زنده است: تم، رنگ، چیدمان، جهت، تراکم و تقویم را همین‌جا تغییر دهید و نتیجه را بلافاصله روی همان صفحه ببینید — بدون نصب و بدون بک‌اند.
+              این صفحه یک پیش‌نمایش زنده است: تم، رنگ، زبان و تقویم را همین‌جا تغییر دهید و نتیجه را بلافاصله روی همان صفحه ببینید — بدون نصب و بدون بک‌اند.
               انتخاب‌ها در مرورگر شما ذخیره می‌شوند و در همه صفحه‌ها اعمال می‌مانند.
             </p>
             <div class="landing-hero__actions">
@@ -60,7 +60,7 @@
               <div class="row g-4 row-cols-2 row-cols-lg-4">
                 <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="206">۲۰۶</span><span class="landing-stat__label">صفحه</span><span class="landing-stat__note">فارسی و RTL</span></div></div>
                 <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="10">۱۰</span><span class="landing-stat__label">داشبورد</span><span class="landing-stat__note">با داده اختصاصی</span></div></div>
-                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="6">۶</span><span class="landing-stat__label">چیدمان</span><span class="landing-stat__note">همه ریسپانسیو</span></div></div>
+                <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="6">۶</span><span class="landing-stat__label">رنگ اصلی</span><span class="landing-stat__note">روشن و تاریک</span></div></div>
                 <div class="col"><div class="landing-stat"><span class="landing-stat__value" data-band-number="3">۳</span><span class="landing-stat__label">زبان</span><span class="landing-stat__note">fa / en / ar</span></div></div>
               </div>
             </div>
@@ -113,48 +113,25 @@
                     <button type="button" class="segmented__item" data-value="rose">Rose</button>
                   </div>
                 </div>
-
-                <div class="configurator__group">
-                  <h3 class="customizer__label">سبک سایدبار</h3>
-                  <div class="segmented segmented--wrap" data-customizer="sidebarStyle">
-                    <button type="button" class="segmented__item" data-value="fixed">ثابت</button>
-                    <button type="button" class="segmented__item" data-value="floating">شناور</button>
-                    <button type="button" class="segmented__item" data-value="compact">ریل</button>
-                  </div>
-                </div>
               </div>
 
               <div class="col-lg-6">
-                <div class="configurator__group">
-                  <h3 class="customizer__label" data-i18n="ui.layout">چیدمان</h3>
-                  <div class="layout-grid" data-customizer="layout">
-                    <button type="button" class="layout-option" data-value="default"><span class="layout-option__preview is-sidebar"></span><span data-i18n="ui.layoutSidebar">سایدبار</span></button>
-                    <button type="button" class="layout-option" data-value="mini"><span class="layout-option__preview is-mini"></span><span data-i18n="ui.layoutMini">مینی</span></button>
-                    <button type="button" class="layout-option" data-value="collapse"><span class="layout-option__preview is-collapse"></span><span data-i18n="ui.layoutCollapse">جمع‌شده</span></button>
-                    <button type="button" class="layout-option" data-value="horizontal"><span class="layout-option__preview is-horizontal"></span><span data-i18n="ui.layoutHorizontal">افقی</span></button>
-                    <button type="button" class="layout-option" data-value="twocol"><span class="layout-option__preview is-twocol"></span><span data-i18n="ui.layoutTwoCol">دو ستونی</span></button>
-                    <button type="button" class="layout-option" data-value="boxed"><span class="layout-option__preview is-boxed"></span><span data-i18n="ui.layoutBoxed">باکس‌دار</span></button>
-                  </div>
-                </div>
 
                 <div class="configurator__group">
-                  <h3 class="customizer__label" data-i18n="ui.direction">جهت</h3>
-                  <div class="segmented" data-customizer="direction">
-                    <button type="button" class="segmented__item" data-value="rtl"><span data-i18n="ui.rtl">راست‌به‌چپ</span></button>
-                    <button type="button" class="segmented__item" data-value="ltr"><span data-i18n="ui.ltr">چپ‌به‌راست</span></button>
-                  </div>
-                </div>
-
-                <div class="configurator__group">
-                  <h3 class="customizer__label" data-i18n="ui.density">تراکم و اندازه فونت</h3>
-                  <div class="segmented" data-customizer="density">
-                    <button type="button" class="segmented__item" data-value="comfortable"><span data-i18n="ui.comfortable">راحت</span></button>
-                    <button type="button" class="segmented__item" data-value="compact"><span data-i18n="ui.compact">فشرده</span></button>
-                  </div>
-                  <div class="segmented mt-2" data-customizer="fontSize">
+                  <h3 class="customizer__label" data-i18n="ui.fontSize">اندازه فونت</h3>
+                  <div class="segmented" data-customizer="fontSize">
                     <button type="button" class="segmented__item" data-value="sm">کوچک</button>
-                    <button type="button" class="segmented__item" data-value="base">متوسط</button>
+                    <button type="button" class="segmented__item" data-value="md">متوسط</button>
                     <button type="button" class="segmented__item" data-value="lg">بزرگ</button>
+                  </div>
+                </div>
+
+                <div class="configurator__group">
+                  <h3 class="customizer__label" data-i18n="ui.language">زبان</h3>
+                  <div class="segmented" data-customizer="language">
+                    <button type="button" class="segmented__item" data-value="fa"><span data-i18n="ui.persian">فارسی</span></button>
+                    <button type="button" class="segmented__item" data-value="en"><span data-i18n="ui.english">English</span></button>
+                    <button type="button" class="segmented__item" data-value="ar"><span data-i18n="ui.arabic">العربية</span></button>
                   </div>
                 </div>
 
@@ -213,7 +190,7 @@
 
         <div class="callout callout--info mt-5" data-reveal>
           <i class="bi bi-info-circle" aria-hidden="true"></i>
-          <div>هر چیدمان زیر نقطه‌شکست خودش به حالت امن برمی‌گردد: دو ستونه به ریل جمع‌شوده، سایدبار به کشویی، و جدول‌ها به اسکرول افقی. شعار کنار لوگو هم در حالت باریک حذف می‌شود تا هیچ‌وقت روی آیکن نیفتد.</div>
+          <div>زیر ۹۹۲ پیکسل سایدبار کشویی می‌شود و زیر ۵۷۶ پیکسل ردیف‌های جدول به کارت‌های خوانا تبدیل می‌شوند. شعار کنار لوگو هم در حالت باریک حذف می‌شود تا هیچ‌وقت روی آیکن نیفتد.</div>
         </div>
       </div>
     </section>
@@ -234,20 +211,7 @@
     <section class="section">
       <div class="container-xxl">
         <div class="row g-4">
-          <div class="col-lg-6" data-reveal>
-            <div class="card h-100">
-              <div class="card__head">
-                <div>
-                  <h3 class="card__title">چیدمان‌ها</h3>
-                  <p class="card__subtitle">همین صفحه با انتخاب شما بازآرایی می‌شود.</p>
-                </div>
-              </div>
-              <div class="card__body">
-                <div class="layout-grid" data-preview-layouts></div>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-6" data-reveal>
+          <div class="col-12" data-reveal>
             <div class="card h-100">
               <div class="card__head">
                 <div>
@@ -290,7 +254,7 @@
             <img class="brand__mark" src="assets/logo-mark.svg" alt="" width="34" height="34" />
             <span class="brand__text"><span class="brand__name">{{APP_NAME}}</span><span class="brand__tag">{{TAGLINE}}</span></span>
           </a>
-          <p class="landing-footer__note mt-3 mb-0">پیش‌نمایش زندهٔ قالب — همان موتور تم، همان چیدمان‌ها، بدون بک‌اند.</p>
+          <p class="landing-footer__note mt-3 mb-0">پیش‌نمایش زندهٔ قالب — همان موتور تم، همان صفحه‌ها، بدون بک‌اند.</p>
         </div>
         <div class="col-6 col-lg-3">
           <h4 class="landing-footer__title">دموها</h4>

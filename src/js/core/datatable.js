@@ -33,7 +33,7 @@ import { formatCurrency, formatNumber, formatPercent, toDigits, parseNumber } fr
 import { formatDate, relativeTime } from './jalali.js';
 import * as services from '../../services/index.js';
 import { COLUMNS } from './columns.js';
-import { openRecordView, openRecordEdit, statusLabel } from './record-dialogs.js';
+import { openRecordView, openRecordEdit, statusLabel, FIELD_LABELS } from './record-dialogs.js';
 
 const tables = new WeakMap();
 
@@ -351,15 +351,17 @@ function renderFilters(instance) {
     const [field, rawOptions] = entry.split(':');
     return { field: field.trim(), options: (rawOptions ?? '').split('|').map((option) => option.trim()).filter(Boolean) };
   });
+  const labelFor = (field) => instance.columns.find((column) => column.key === field)?.label ?? FIELD_LABELS[field] ?? statusLabel(field);
   render(
     host,
     specs
-      .map(
-        (spec) => `<select class="form-select form-select-sm" data-datatable-filter="${spec.field}" aria-label="فیلتر ${spec.field}">
-          <option value="">همه ${escapeHtml(spec.field)}</option>
-          ${spec.options.map((option) => `<option value="${escapeHtml(option)}" ${instance.state.filters[spec.field] === option ? 'selected' : ''}>${escapeHtml(option)}</option>`).join('')}
-        </select>`,
-      )
+      .map((spec) => {
+        const label = labelFor(spec.field);
+        return `<select class="form-select form-select-sm" data-datatable-filter="${escapeHtml(spec.field)}" aria-label="فیلتر ${escapeHtml(label)}">
+          <option value="">همه ${escapeHtml(label)}</option>
+          ${spec.options.map((option) => `<option value="${escapeHtml(option)}" ${instance.state.filters[spec.field] === option ? 'selected' : ''}>${escapeHtml(statusLabel(option))}</option>`).join('')}
+        </select>`;
+      })
       .join(''),
   );
 }

@@ -42,11 +42,14 @@ const media = window.matchMedia?.('(prefers-color-scheme: dark)');
 const state = {
   theme: storage.pref('theme'),
   primary: storage.pref('primary'),
-  layout: normaliseLayout(storage.get(KEYS.layout, config.defaultLayout)),
-  direction: storage.get(KEYS.direction, config.defaultDirection),
-  density: storage.get(KEYS.density, config.defaultDensity ?? 'comfortable'),
+  /* v1.1 — the shell is fixed to the tested defaults: layout, density and
+     sidebar style are no longer user preferences, and the direction always
+     follows the active language (set before paint by theme-boot.js). */
+  layout: 'default',
+  direction: document.documentElement.getAttribute('dir') === 'ltr' ? 'ltr' : 'rtl',
+  density: 'comfortable',
   fontSize: storage.get(KEYS.fontSize, config.defaultFontSize ?? 'md'),
-  sidebarStyle: storage.get(KEYS.sidebarStyle, config.defaultSidebarStyle ?? 'fixed'),
+  sidebarStyle: 'fixed',
   calendar: storage.pref('calendar'),
   radius: Number(storage.get('radius', 1)),
   resolved: 'light',
@@ -78,11 +81,7 @@ function apply(persist = false) {
   if (persist) {
     storage.set(KEYS.theme, state.theme);
     storage.set(KEYS.primary, state.primary);
-    storage.set(KEYS.layout, state.layout);
-    storage.set(KEYS.direction, state.direction);
-    storage.set(KEYS.density, state.density);
     storage.set(KEYS.fontSize, state.fontSize);
-    storage.set(KEYS.sidebarStyle, state.sidebarStyle);
     storage.set(KEYS.calendar, state.calendar);
     storage.set('radius', state.radius);
   }
@@ -175,19 +174,15 @@ export function set(key, value, { persist = true, silent = false } = {}) {
       state.primary = PALETTES.includes(value) ? value : 'indigo';
       break;
     case 'layout':
-      state.layout = LAYOUTS.includes(normaliseLayout(value)) ? normaliseLayout(value) : 'default';
-      break;
+    case 'density':
+    case 'sidebarStyle':
+      /* Locked shell (v1.1): ignored so old links / console calls can't break it. */
+      return state[key];
     case 'direction':
       state.direction = value === 'ltr' ? 'ltr' : 'rtl';
       break;
-    case 'density':
-      state.density = DENSITIES.includes(value) ? value : 'comfortable';
-      break;
     case 'fontSize':
       state.fontSize = FONT_SIZES.includes(value) ? value : 'md';
-      break;
-    case 'sidebarStyle':
-      state.sidebarStyle = SIDEBAR_STYLES.includes(value) ? value : 'fixed';
       break;
     case 'calendar':
       state.calendar = value === 'gregorian' ? 'gregorian' : 'jalali';
@@ -237,18 +232,18 @@ export function cycleTheme() {
   return set('theme', order[(order.indexOf(state.theme) + 1) % order.length]);
 }
 
+/** Direction follows the language (v1.1); kept for API compatibility. */
 export function toggleDirection() {
-  return set('direction', state.direction === 'rtl' ? 'ltr' : 'rtl');
+  return state.direction;
 }
 
 export function reset({ silent = false } = {}) {
   state.theme = config.defaultTheme;
   state.primary = config.defaultPrimary;
-  state.layout = normaliseLayout(config.defaultLayout);
-  state.direction = config.defaultDirection;
-  state.density = config.defaultDensity ?? 'comfortable';
+  state.layout = 'default';
+  state.density = 'comfortable';
   state.fontSize = config.defaultFontSize ?? 'md';
-  state.sidebarStyle = config.defaultSidebarStyle ?? 'fixed';
+  state.sidebarStyle = 'fixed';
   state.calendar = 'jalali';
   state.radius = 1;
   apply(true);

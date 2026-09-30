@@ -287,3 +287,64 @@
     grid-column: 2 / -1;
   }
 }
+
+/* v1.1 — phones: folders become a swipeable chip rail above the list, so the
+   inbox is visible without scrolling past the whole sidebar. While a message
+   is open the rail is hidden and the reader takes the screen. */
+@media (max-width: 767.98px) {
+  .mail-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .mail-layout > * {
+    min-inline-size: 0;
+  }
+  .mail-layout .mail-nav {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border: 0;
+    background: transparent;
+  }
+  .mail-layout .mail-nav [data-compose] {
+    height: 44px !important;
+  }
+  .mail-layout .mail-nav__list[data-mail-folders] {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0 0 0.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .mail-layout .mail-nav__list[data-mail-folders]::-webkit-scrollbar { display: none; }
+  .mail-layout .mail-nav__list[data-mail-folders] > li { flex: 0 0 auto; scroll-snap-align: start; }
+  .mail-layout .mail-nav__list[data-mail-folders] .mail-nav__link {
+    gap: 0.4rem;
+    min-block-size: 2.4rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--nv-border);
+    border-radius: 999px;
+    background: var(--nv-surface);
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+  .mail-layout .mail-nav__list[data-mail-folders] .mail-nav__link.is-active {
+    border-color: var(--nv-primary);
+    background: var(--nv-primary-soft);
+  }
+  .mail-layout .mail-nav__list[data-mail-folders] .mail-nav__count {
+    margin-inline-start: 0.15rem;
+    min-inline-size: 1.4rem;
+    padding: 0 0.35rem;
+    font-size: 0.68rem;
+  }
+  .mail-layout .mail-nav__divider,
+  .mail-layout .mail-nav__labels,
+  .mail-layout .mail-nav__list--labels,
+  .mail-layout .mail-nav__storage { display: none !important; }
+  .mail-layout.is-reading .mail-nav { display: none; }
+}

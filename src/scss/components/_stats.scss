@@ -281,3 +281,29 @@
   flex-direction: column;
   gap: var(--nv-card-gap);
 }
+
+/* v1.1 — phones: KPI strips go two-up with compact cards instead of four
+   full-screen tiles. Values may wrap (never overflow) inside their card. */
+@media (min-width: 340px) and (max-width: 639.98px) {
+  .kpi-row:has(> :nth-child(2):last-child),
+  .kpi-row:has(> :nth-child(4):last-child),
+  .kpi-row:has(> :nth-child(6):last-child),
+  .kpi-row:has(> :nth-child(8):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .kpi-row > .stat-card {
+    gap: 0.45rem;
+    padding: 0.85rem;
+    border-radius: 14px;
+  }
+  .kpi-row > .stat-card .stat-card__head { gap: 0.4rem; }
+  .kpi-row > .stat-card .stat-card__label { font-size: 0.72rem; line-height: 1.5; }
+  .kpi-row > .stat-card .stat-card__icon { width: 2rem; height: 2rem; font-size: 0.95rem; border-radius: 10px; }
+  .kpi-row > .stat-card .stat-card__value {
+    font-size: 1.15rem;
+    overflow-wrap: anywhere;
+  }
+  .kpi-row > .stat-card .stat-card__value small { font-size: 0.72rem; }
+  .kpi-row > .stat-card .stat-card__meta { font-size: 0.68rem; line-height: 1.55; }
+}

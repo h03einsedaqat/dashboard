@@ -67,7 +67,7 @@
 import { theme } from './js/core/theme.js';
 
 theme.set('primary', 'emerald');     // تغییر رنگ اصلی
-theme.set('layout', 'mini');         // تغییر چیدمان
+// layout / density / sidebarStyle از نسخه ۱.۱ ثابت‌اند و set روی آن‌ها اثری ندارد
 theme.toggleTheme();                 // روشن ⇄ تاریک
 theme.toggleDirection();             // rtl ⇄ ltr
 theme.reset();                       // بازگشت به پیش‌فرض‌ها

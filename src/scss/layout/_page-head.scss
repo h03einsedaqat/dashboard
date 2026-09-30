@@ -134,3 +134,11 @@
 .sortable-chosen {
   box-shadow: var(--nv-shadow-md);
 }
+
+/* v1.1 — nested action groups inside the page head wrap as well. */
+.page-head__actions > .d-flex,
+.page-head__actions > div {
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}

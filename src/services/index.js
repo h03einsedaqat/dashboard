@@ -41,7 +41,7 @@ import { searchService, commandService, settingsService, contentService, statusS
 export default {
   auth: authService,
   users: userService, roles: roleService, teams: teamService, departments: departmentService, customers: customerService,
-  invitations: invitationService, sessions: sessionService, apiKeys: apiKeyService, activity: activityService, notifications: notificationService,
+  invitations: invitationService, sessions: sessionService, apiKeys: apiKeyService, activity: activityService, activities: crmActivityService, notifications: notificationService,
   products: productService, categories: categoryService, brands: brandService, tags: tagService, inventory: inventoryService,
   reviews: reviewService, coupons: couponService, orders: orderService, orderActions, catalog: catalogService,
   companies: companyService, contacts: contactService, leads: leadService, deals: dealService, pipeline: pipelineService,

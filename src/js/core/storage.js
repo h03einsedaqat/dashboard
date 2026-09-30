@@ -85,8 +85,15 @@ export const storage = {
       .map((key) => key.slice(PREFIX.length));
   },
 
-  clearAll() {
-    storage.keys().forEach((key) => storage.remove(key));
+  /**
+   * Removes every Nova preference. The sign-in session is deliberately kept:
+   * “reset everything” in the customizer must never log the user out.
+   */
+  clearAll({ includeSession = false } = {}) {
+    const keep = includeSession ? [] : ['session', 'lastRoute', 'lastLogin'];
+    storage.keys().forEach((key) => {
+      if (!keep.includes(key)) storage.remove(key);
+    });
   },
 
   resetPreferences() {

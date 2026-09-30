@@ -690,6 +690,11 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
   const warnings = [];
   const errors = [];
   const store = new Map();
+  /* Panel pages sit behind the auth guard (core/auth.js). Boot them as a signed-in
+     user; auth screens boot signed-out, the way a visitor first sees them. */
+  if (!/^auth\//.test(String(label ?? ''))) {
+    store.set('nova:session', JSON.stringify({ email: 'demo@novaadmin.dev', name: 'سارا محمدی', role: 'مدیر ارشد', token: 'smoke', remember: true, at: Date.now(), seen: Date.now() }));
+  }
 
   const localStorage = {
     getItem: (key) => (store.has(key) ? store.get(key) : null),
@@ -788,7 +793,7 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
     info: () => {},
     debug: () => {},
     warn: (...args) => warnings.push(args.map(String).join(' ')),
-    error: (...args) => errors.push(args.map(String).join(' ')),
+    error: (...args) => { errors.push(args.map(String).join(" ")); if (process.env.SMOKE_STACK) process.stderr.write("ERR " + args.map((a) => a?.stack ?? String(a)).join(" ") + "\n"); },
   };
 
   const previous = {
@@ -837,7 +842,7 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
    * audit. Collect them per scenario instead.
    */
   const onUnhandled = (reason) => {
-    const message = reason instanceof Error ? `${reason.message}` : String(reason);
+    const message = reason instanceof Error ? `${reason.message}` : String(reason); if (process.env.SMOKE_STACK) process.stderr.write("STACK " + reason?.stack + "\n");
     if (!errors.includes(message)) errors.push(message);
   };
   process.on('unhandledRejection', onUnhandled);

@@ -215,7 +215,9 @@ export function formMarkup(fields, values = {}, { wide = false } = {}) {
     .map((field) => {
       const value = values[field.name] ?? field.value ?? '';
       const id = `f-${field.name}-${Math.random().toString(36).slice(2, 7)}`;
-      const col = field.col ? ` style="grid-column: span ${field.col}"` : '';
+      /* The grid is auto-fit, so a wide field takes the whole row instead of forcing a
+         second (possibly 0px) track on narrow screens with `span N`. */
+      const col = Number(field.col) > 1 ? ' style="grid-column: 1 / -1"' : '';
       const label = `<label class="form-label" for="${id}">${escapeHtml(field.label)}${field.required ? ' <span class="text-danger">*</span>' : ''}</label>`;
       let control;
       if (field.type === 'textarea') {
@@ -523,10 +525,10 @@ export function pageHeader({ title, subtitle = '', badges = [], actions = '', ic
  * @param {{columns:Array<{id:string,label:string,tone?:string,items:Array}>, onMove:Function, countLabel?:string}} config
  */
 export function kanbanMarkup({ columns, countLabel = 'مورد' }) {
-  return `<div class="kanban" data-kanban data-kanban-resource="kanban">
+  return `<div class="kanban" data-kanban data-kanban-resource="kanban" data-kanban-persist="false">
     ${columns
       .map(
-        (column) => `<div class="kanban__column" data-kanban-column="${escapeHtml(column.id)}">
+        (column) => `<div class="kanban__column" data-kanban-column="${escapeHtml(column.id)}" data-kanban-label="${escapeHtml(column.label)}">
           <header class="kanban__head">
             <h3 class="kanban__title"><span class="status-dot status-dot--${escapeHtml(column.tone ?? 'primary')}" aria-hidden="true"></span>${escapeHtml(column.label)}</h3>
             <span class="kanban__count" data-kanban-count>${toDigits(column.items.length)}</span>
@@ -537,7 +539,7 @@ export function kanbanMarkup({ columns, countLabel = 'مورد' }) {
                 (item) => `<article class="kanban-card" data-kanban-card data-id="${escapeHtml(item.id)}" data-value="${Number(item.value ?? 0)}">
                   <div class="kanban-card__head">
                     <span class="badge badge--soft-${escapeHtml(item.tone ?? 'primary')}">${escapeHtml(item.tag ?? column.label)}</span>
-                    <button type="button" class="icon-btn icon-btn--sm" data-kanban-handle aria-label="جابجایی ${escapeHtml(item.title)}"><i class="bi bi-grip-vertical"></i></button>
+                    <button type="button" class="icon-btn icon-btn--sm kanban-card__move" data-kanban-move aria-haspopup="menu" aria-expanded="false" title="انتقال به…" aria-label="انتقال «${escapeHtml(item.title)}» به ستون دیگر"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
                   </div>
                   <p class="kanban-card__title">${escapeHtml(item.title)}</p>
                   ${item.text ? `<p class="kanban-card__text">${escapeHtml(item.text)}</p>` : ''}

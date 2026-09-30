@@ -123,7 +123,15 @@ export function reconcilePageHeads(root = document) {
       moveChildren(actions, slot);
     }
     /* The row is empty now, so the whole card goes — that is the gap. */
-    if (!textOf(card.querySelector('.card__body') ?? card).length) card.remove();
+    /* Whatever is left once the title/subtitle (now shown by the page head)
+       are discounted decides: nothing meaningful → remove the empty shell
+       instead of leaving a blank pill above the content. */
+    let rest = textOf(card.querySelector('.card__body') ?? card);
+    [title, sub].forEach((node) => {
+      const t = node ? textOf(node) : '';
+      if (t) rest = rest.replace(t, '');
+    });
+    if (!rest.replace(/[\s•·|—-]+/g, '').length) card.remove();
     else card.classList.add('card--collapsed');
   }
 
