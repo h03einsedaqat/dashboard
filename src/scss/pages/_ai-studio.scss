@@ -769,7 +769,8 @@ $ais-tones: (
 .ais-summary { margin: 0; padding: 0; list-style: none; counter-reset: s; }
 .ais-summary li { counter-increment: s; position: relative; padding: 0.7rem 2.7rem 0.7rem 0.8rem; margin-bottom: 0.55rem; border-radius: 0.8rem; background: var(--nv-surface-2); font-size: 0.86rem; line-height: 1.9; }
 [dir='ltr'] .ais-summary li { padding: 0.7rem 0.8rem 0.7rem 2.7rem; }
-.ais-summary li::before { content: counter(s, persian); position: absolute; inset-inline-start: 0.7rem; top: 0.7rem; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 0.78rem; color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+:root:not([lang='en']) .ais-summary li::before { content: counter(s, persian); }
+.ais-summary li::before { content: counter(s); position: absolute; inset-inline-start: 0.7rem; top: 0.7rem; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 0.78rem; color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); }
 .ais-outs { display: grid; gap: 0.9rem; }
 .ais-out { --tone: var(--nv-primary); border: 1px solid var(--nv-border); border-inline-start: 4px solid var(--tone); border-radius: 1rem; padding: 0.9rem 1rem; background: var(--nv-surface); animation: aic-in 0.3s ease both; }
 .ais-out.is-busy { background: linear-gradient(110deg, var(--nv-surface-2) 30%, var(--nv-surface-3) 50%, var(--nv-surface-2) 70%); background-size: 200% 100%; animation: ais-shimmer 1.3s linear infinite; opacity: 1; }

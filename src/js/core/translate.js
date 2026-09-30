@@ -29,7 +29,8 @@ import { language } from './i18n.js';
 
 /** Attributes that carry user-visible copy. */
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'value'];
-const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'CODE', 'PRE']);
+/* A <textarea>'s text is its *default* value — pre-filled sample copy — so it is translated too. */
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE']);
 /** Demo records that must survive translation untouched. */
 const PROTECTED = '[data-no-i18n], .apexcharts-canvas, .code-block, .docs-code';
 
@@ -76,10 +77,23 @@ export function registerPatterns(lang, rules = []) {
   if (lang === language()) patternSet = patterns.get(lang);
 }
 
+/** Captured groups (a name, a project title) are themselves translated when possible. */
+function translateGroup(value = '') {
+  if (composeLanguage !== 'en') return value ?? '';
+  if (!value || !PERSIAN.test(value)) return latinise(value);
+  return lookup(value.trim()) ?? value;
+}
+
 function translatePattern(text) {
   if (!patternSet) return undefined;
   for (const [match, replace] of patternSet) {
-    if (match.test(text)) return text.replace(match, replace);
+    if (!match.test(text)) continue;
+    const out = typeof replace === 'function'
+      ? text.replace(match, replace)
+      : text.replace(match, (...groups) => replace.replace(/\$(\d)/g, (_, i) => translateGroup(groups[Number(i)])));
+    /* English never accepts a half-translated result (a captured name without an entry). */
+    if (composeLanguage === 'en' && LETTERS.test(out)) continue;
+    return composeLanguage === 'en' ? latinise(out).trim() : out;
   }
   return undefined;
 }
@@ -95,6 +109,8 @@ function translatePattern(text) {
  * is cached per language; the authored Persian source is never modified.
  */
 const PERSIAN = /[\u0600-\u06FF]/;
+/** Persian/Arabic *letters* — excludes digits and punctuation such as ٪ ، ٫. */
+const LETTERS = /[\u0620-\u064A\u066E-\u06D3\u06D5\u06FA-\u06FF]/;
 const DELIMITERS = /(\s*(?:[—–·|•،؛:()«»[\]/+×!؟?…"]|\s-\s)\s*|[0-9۰-۹٠-٩]+(?:[٬٫,.:/][0-9۰-۹٠-٩]+)*\s*[%٪]?)/;
 const PUNCT = { '،': ',', '؛': ';', '؟': '?', '«': '“', '»': '”', '٪': '%', '٬': ',', '٫': '.' };
 let composeLanguage = null;
@@ -147,7 +163,10 @@ function compose(text) {
   if (composeLanguage !== 'en' || !current) return undefined;
   if (composed.has(text)) return composed.get(text);
   let result;
-  if (PERSIAN.test(text) || /[۰-۹٠-٩]/.test(text)) {
+  if (!LETTERS.test(text)) {
+    /* Figures only (`۹۶٪`, `۱۴۰۵/۰۷/۰۸`, `Wednesday، 11 Mehr`): Latin digits and punctuation. */
+    result = PERSIAN.test(text) ? latinise(text) : undefined;
+  } else {
     let missing = 0;
     let total = 0;
     const parts = text.split(DELIMITERS).map((part) => {
@@ -158,8 +177,8 @@ function compose(text) {
       total += res.total;
       return part.replace(trimmed, res.text);
     });
-    /* Mostly-unknown copy stays as authored rather than turning into a mix. */
-    if (!total || missing / total <= 0.34) result = latinise(parts.join(''));
+    /* Anything short of a complete translation stays as authored — no mixed-script copy. */
+    if (total && missing === 0) result = latinise(parts.join(''));
   }
   composed.set(text, result);
   return result;
@@ -228,7 +247,8 @@ function translateText(node) {
 }
 
 function translateAttributes(el) {
-  if (isSkipped(el)) return;
+  /* Unlike text, a <textarea>'s placeholder/title is interface copy. */
+  if (!el || el.closest?.(PROTECTED)) return;
   const skip = (el.dataset.noI18nAttrs ?? '').split(/\s+/).filter(Boolean);
   let remembered = attrOriginals.get(el);
   if (!remembered) {

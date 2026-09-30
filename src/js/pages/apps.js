@@ -3,6 +3,7 @@
  * Rewritten for professional UX: chat, mail, calendar, CMS
  */
 import { $, $$, on, render, escapeHtml } from '../core/dom.js';
+import { phrase } from '../core/translate.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { modal } from '../core/modal.js';
@@ -149,7 +150,7 @@ async function renderMailList(node, folder) {
           <div class="mail-item__avatar">${escapeHtml(initials)}</div>
           <div class="mail-item__body">
             <div class="mail-item__from">${escapeHtml(mail.from)} ${isUnread ? '<span class="badge badge--soft-primary" style="font-size:9px;">جدید</span>' : ''}</div>
-            <div class="mail-item__subject">${escapeHtml(mail.subject)} <span>— ${escapeHtml((mail.preview || mail.body || '').slice(0,90))}</span></div>
+            <div class="mail-item__subject">${escapeHtml(mail.subject)} <span>— ${escapeHtml(phrase(mail.preview || mail.body || '').slice(0,90))}</span></div>
           </div>
           <div class="mail-item__meta">
             ${hasAttach ? '<i class="bi bi-paperclip"></i>' : ''}

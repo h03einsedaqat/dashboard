@@ -369,8 +369,9 @@ async function boot() {
    */
   if (i18n.lang === 'en') {
     try {
-      const { default: contentEn } = await import('./locales/content-en.js');
+      const { default: contentEn, patterns: contentPatterns } = await import('./locales/content-en.js');
       registerPhrases('en', contentEn);
+      registerPatterns('en', contentPatterns);
       registerPhrases('en', phrasesEn);
     } catch (error) {
       console.warn('[i18n] content phrase book unavailable', error);
