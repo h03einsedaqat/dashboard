@@ -1865,7 +1865,7 @@ async function initProjects() {
           <section class="card">
             <header class="card__head"><span class="card__icon"><i class="bi bi-calendar-range"></i></span><div><h2 class="card__title">نمای گانت پروژه‌ها</h2><p class="card__subtitle">مدت هر پروژه، پیشرفت و خط امروز</p></div>
               <div class="card__actions pj-legend"><span><i class="ais-dot ais-dot--primary"></i> در جریان</span><span><i class="ais-dot ais-dot--success"></i> تکمیل</span><span><i class="ais-dot ais-dot--warning"></i> ریسک</span><span><i class="ais-dot ais-dot--danger"></i> بحرانی</span></div></header>
-            <div class="card__body"><div class="pj-gantt">
+            <div class="card__body"><div class="pj-gantt-scroll"><div class="pj-gantt">
               <div class="pj-gantt__head"><div class="pj-gantt__label">پروژه</div><div class="pj-gantt__scale">${monthTicks.map((m, i) => (monthTicks.length > 8 && i % 2 ? '' : `<span style="inset-inline-start:${m.left}%">${escapeHtml(m.label)}</span>`)).join('')}</div></div>
               ${items
                 .map((p) => {
@@ -1881,7 +1881,7 @@ async function initProjects() {
                 })
                 .join('')}
               <div class="pj-gantt__today" style="--today:${today.toFixed(2)}"><span>امروز</span></div>
-            </div></div>
+            </div></div></div>
           </section>
           <div class="ais-grid">
             ${card({ title: 'پیشرفت پروژه‌ها', icon: 'bar-chart', body: '<div class="chart" data-chart-owner="controller" data-tl="progress" style="min-height:340px"></div>' }).replace('<section class="card', '<section data-col="8" class="card')}
@@ -1889,6 +1889,20 @@ async function initProjects() {
           </div>
         </div>`,
       );
+      /* Open the gantt on "today" instead of the timeline start (phones only show a slice). */
+      requestAnimationFrame(() => {
+        const scroller = $('.pj-gantt-scroll', node);
+        const marker = $('.pj-gantt__today', node);
+        if (!scroller || !marker || scroller.scrollWidth <= scroller.clientWidth + 2) return;
+        const box = scroller.getBoundingClientRect();
+        const label = $('.pj-gantt__head .pj-gantt__label', node)?.getBoundingClientRect();
+        const labelW = label ? label.width : 0;
+        /* Centre "today" in the part of the scroller not covered by the sticky project column. */
+        const rtl = getComputedStyle(scroller).direction === 'rtl';
+        const freeStart = rtl ? box.left : box.left + labelW;
+        const target = freeStart + (box.width - labelW) / 2;
+        scroller.scrollLeft += marker.getBoundingClientRect().left - target;
+      });
       await Promise.all([
         chart($('[data-tl="progress"]', node), { type: 'bar', height: 340, labels: items.map((p) => p.name.split(' — ')[0]), series: [{ name: 'پیشرفت ٪', data: items.map((p) => p.progress) }, { name: 'زمان سپری‌شده ٪', data: items.map((p) => { const a = new Date(p.startDate).getTime(); const b = new Date(p.dueDate).getTime(); return Math.max(0, Math.min(100, Math.round(((Date.now() - a) / Math.max(1, b - a)) * 100))); }) }], colors: ['#6366f1', '#cbd5e1'] }),
         chart($('[data-tl="health"]', node), { type: 'donut', height: 340, labels: ['سالم', 'در معرض ریسک', 'بحرانی'], series: ['good', 'at-risk', 'critical'].map((h) => items.filter((p) => p.health === h).length), colors: ['#10b981', '#f59e0b', '#ef4444'] }),

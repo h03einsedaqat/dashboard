@@ -32,6 +32,13 @@ export const STATUS_LABELS = {
   high: 'زیاد', urgent: 'فوری', critical: 'بحرانی', normal: 'عادی', call: 'تماس', meeting: 'جلسه', email: 'ایمیل', task: 'وظیفه', note: 'یادداشت', 'at-risk': 'در معرض خطر',
   'on-track': 'طبق برنامه', 'on-hold': 'متوقف', planning: 'برنامه‌ریزی', confirmed: 'قطعی', tentative: 'غیرقطعی', percent: 'درصدی', fixed: 'مبلغ ثابت', shipping: 'ارسال رایگان',
   spam: 'اسپم', hidden: 'مخفی', true: 'بله', false: 'خیر', present: 'حاضر', absent: 'غایب', late: 'تأخیر', remote: 'دورکار', 'full-time': 'تمام‌وقت', 'part-time': 'پاره‌وقت',
+  'super-admin': 'مدیر ارشد', admin: 'مدیر', manager: 'مدیر', editor: 'ویرایشگر', viewer: 'بیننده', user: 'کاربر', finance: 'مالی', support: 'پشتیبانی',
+  churned: 'ریزش‌کرده', vip: 'ویژه (VIP)', accepted: 'پذیرفته‌شده', order: 'سفارش', product: 'محصول', invoice: 'فاکتور', security: 'امنیت', ticket: 'تیکت',
+  project: 'پروژه', payment: 'پرداخت', ai: 'هوش مصنوعی', followup: 'پیگیری', warning: 'هشدار', info: 'اطلاع', danger: 'خطر', prospect: 'مشتری بالقوه',
+  customer: 'مشتری', planned: 'برنامه‌ریزی‌شده', fee: 'کارمزد', withdrawal: 'برداشت', deposit: 'واریز', refund: 'بازپرداخت', blocked: 'مسدود', received: 'دریافت‌شده',
+  partial: 'جزئی', 'off-duty': 'خارج از شیفت', 'near-capacity': 'نزدیک به ظرفیت', event: 'رویداد', personal: 'شخصی', holiday: 'تعطیلی', folder: 'پوشه', pdf: 'PDF',
+  sheet: 'صفحه‌گسترده', image: 'تصویر', video: 'ویدیو', code: 'کد', archive: 'فایل فشرده', beta: 'بتا', business: 'کسب‌وکار', seo: 'سئو', writing: 'نویسندگی',
+  programming: 'برنامه‌نویسی', sales: 'فروش', monthly: 'ماهانه', yearly: 'سالانه', annual: 'سالانه', male: 'مرد', female: 'زن',
   credit: 'واریز', debit: 'برداشت', in: 'ورودی', out: 'خروجی', income: 'درآمد', expense: 'هزینه', transfer: 'انتقال',
 };
 
@@ -53,10 +60,34 @@ export const FIELD_LABELS = {
   related: 'مرتبط با', outcome: 'نتیجه', score: 'امتیاز', industry: 'صنعت', website: 'وب‌سایت', employees: 'کارکنان', vehicle: 'خودرو', plate: 'پلاک', zone: 'منطقه',
   deliveries: 'تحویل‌ها', capacity: 'ظرفیت', staff: 'کارکنان', salary: 'حقوق', hiredAt: 'تاریخ استخدام', placedAt: 'تاریخ ثبت', issuedAt: 'تاریخ صدور', dueAt: 'سررسید',
   paid: 'پرداخت‌شده', payment: 'روش پرداخت', tracking: 'کد رهگیری', destination: 'مقصد', origin: 'مبدأ', carrier: 'شرکت حمل', driver: 'راننده', eta: 'زمان تخمینی',
+  firstName: 'نام', lastName: 'نام خانوادگی', joinedAt: 'تاریخ عضویت', projects: 'پروژه‌ها', tasksDone: 'تسک‌های انجام‌شده', twoFactor: 'ورود دومرحله‌ای',
+  label: 'عنوان', level: 'سطح', users: 'کاربران', members: 'اعضا', lead: 'سرپرست', head: 'مدیر بخش', headcount: 'تعداد نفرات', segment: 'بخش مشتری',
+  since: 'عضو از', orders: 'سفارش‌ها', totalSpend: 'مجموع خرید', lastOrder: 'آخرین سفارش', satisfaction: 'رضایت', sentAt: 'تاریخ ارسال', expiresIn: 'انقضا تا',
+  device: 'دستگاه', browser: 'مرورگر', ip: 'آی‌پی', current: 'نشست فعلی', lastSeen: 'آخرین بازدید', scopes: 'دسترسی‌ها', lastUsed: 'آخرین استفاده', token: 'توکن',
+  text: 'متن', actor: 'انجام‌دهنده', read: 'خوانده‌شده', discount: 'تخفیف', finalPrice: 'قیمت نهایی', tax: 'مالیات', warehouse: 'انبار', featured: 'ویژه',
+  reviews: 'نظرات', sold: 'فروش رفته', views: 'بازدید', shortDescription: 'توضیح کوتاه', seoTitle: 'عنوان سئو', seoDescription: 'توضیح سئو', icon: 'آیکن',
+  order: 'ترتیب', product: 'محصول', reserved: 'رزروشده', reorderLevel: 'نقطه سفارش', incoming: 'در راه', author: 'نویسنده', helpful: 'مفید', verified: 'تأییدشده',
+  itemsCount: 'تعداد اقلام', subtotal: 'جمع جزء', shipping: 'هزینه ارسال', currency: 'واحد پول', paymentStatus: 'وضعیت پرداخت', shippingMethod: 'روش ارسال',
+  trackingCode: 'کد رهگیری', size: 'اندازه', deals: 'معامله‌ها', openValue: 'ارزش باز', estimatedValue: 'ارزش تخمینی', receivedAt: 'تاریخ دریافت', interest: 'علاقه‌مندی',
+  weighted: 'ارزش وزنی', lastActivity: 'آخرین فعالیت', nextStep: 'گام بعدی', channel: 'کانال', spent: 'هزینه‌شده', leads: 'سرنخ‌ها', conversions: 'تبدیل‌ها',
+  tasksTotal: 'کل تسک‌ها', startDate: 'تاریخ شروع', health: 'سلامت', client: 'کارفرما', project: 'پروژه', assignee: 'مسئول انجام', overdue: 'دیرکرد',
+  estimate: 'تخمین', comments: 'دیدگاه‌ها', attachments: 'پیوست‌ها', paymentMethod: 'روش پرداخت', account: 'حساب', counterparty: 'طرف حساب', balanceAfter: 'مانده پس از تراکنش',
+  orderRef: 'شماره سفارش', change: 'تغییر', receipt: 'رسید', interval: 'دوره', startedAt: 'تاریخ شروع', renewsAt: 'تمدید در', churnRisk: 'ریسک ریزش', iban: 'شبا',
+  requester: 'درخواست‌دهنده', agent: 'کارشناس', firstResponse: 'اولین پاسخ', slaBreach: 'نقض SLA', openTickets: 'تیکت‌های باز', resolved: 'حل‌شده', avgResponse: 'میانگین پاسخ',
+  csat: 'رضایت (CSAT)', languages: 'زبان‌ها', articles: 'مقاله‌ها', manager: 'مدیر', bonus: 'پاداش', performance: 'عملکرد', attendanceRate: 'نرخ حضور', leaveBalance: 'مانده مرخصی',
+  remote: 'دورکار', skills: 'مهارت‌ها', employee: 'کارمند', days: 'روز', reason: 'دلیل', submittedAt: 'تاریخ ثبت', approver: 'تأییدکننده', base: 'حقوق پایه', allowance: 'مزایا',
+  overtime: 'اضافه‌کار', insurance: 'بیمه', deduction: 'کسورات', net: 'خالص پرداختی', period: 'دوره', paidAt: 'تاریخ پرداخت', weight: 'وزن', packages: 'تعداد بسته',
+  cost: 'هزینه', distance: 'مسافت', shippedAt: 'تاریخ ارسال', currentCity: 'شهر فعلی', onTimeRate: 'نرخ به‌موقع', shipments: 'محموله‌ها', temp: 'دما',
+  fromEmail: 'ایمیل فرستنده', preview: 'پیش‌نمایش', body: 'متن', folder: 'پوشه', labels: 'برچسب‌ها', starred: 'ستاره‌دار', unread: 'خوانده‌نشده', important: 'مهم',
+  hasAttachment: 'پیوست دارد', online: 'آنلاین', pinned: 'سنجاق‌شده', start: 'شروع', reminder: 'یادآوری', allDay: 'تمام روز', startAt: 'زمان شروع', endAt: 'زمان پایان',
+  shared: 'اشتراکی', url: 'نشانی', dimensions: 'ابعاد', uploadedBy: 'بارگذاری توسط', context: 'طول زمینه', priceIn: 'قیمت ورودی', priceOut: 'قیمت خروجی', latency: 'تأخیر',
+  quality: 'کیفیت', usage: 'مصرف', popular: 'محبوب', capabilities: 'قابلیت‌ها', favorite: 'موردعلاقه', model: 'مدل', tokens: 'توکن‌ها', prompt: 'پرامپت', style: 'سبک',
+  likes: 'پسندها', cron: 'زمان‌بندی (Cron)', lastRun: 'آخرین اجرا', runs: 'اجراها', tokensPerRun: 'توکن هر اجرا', group: 'گروه', username: 'نام کاربری', bio: 'معرفی',
+  nationalId: 'کد ملی', lastLogin: 'آخرین ورود', gender: 'جنسیت', birthDate: 'تاریخ تولد', mobile: 'موبایل', postalCode: 'کد پستی', province: 'استان', quantity: 'تعداد',
   logo: 'لوگو', avatar: 'تصویر', image: 'تصویر', lastContact: 'آخرین تماس', lastActive: 'آخرین فعالیت', probability: 'احتمال', stage: 'مرحله', expectedClose: 'بستن مورد انتظار',
 };
 
-const HIDDEN_KEYS = new Set(['avatar', 'image', 'logo', 'ownerAvatar', 'assigneeAvatar', 'driverAvatar', 'agentAvatar', 'items', 'timeline', 'messages', 'events', 'tone', 'customerId', 'companyId', 'productId', 'projectId']);
+const HIDDEN_KEYS = new Set(['labelEn', 'tone', 'token', 'dayOffset', 'avatar', 'image', 'logo', 'ownerAvatar', 'assigneeAvatar', 'driverAvatar', 'agentAvatar', 'items', 'timeline', 'messages', 'events', 'tone', 'customerId', 'companyId', 'productId', 'projectId']);
 const READONLY_KEYS = new Set(['id', 'createdAt', 'updatedAt']);
 const DATE_KEY = /(At|Date|date|^at$|^from$|^to$|^eta$|^since$|Close$|^lastRun$|^lastSeen$|^lastUsed$)/;
 const MONEY_KEY = /^(amount|total|price|finalPrice|budget|spent|revenue|value|balance|mrr|fee|minOrder|salary|subtotal|paid|cost|openValue|estimatedValue|net|base|bonus|deductions|weighted|totalSpend)$/;
@@ -96,7 +127,9 @@ const secondaryText = (record) => record.company ?? record.email ?? record.categ
 export function openRecordView({ record, columns = [], resource = '', onEdit = null, onDelete = null, detailsHref = '' }) {
   if (!record) return null;
   const image = record.avatar ?? record.image ?? record.logo ?? record.ownerAvatar ?? null;
-  const keys = Object.keys(record).filter((key) => !HIDDEN_KEYS.has(key) && key !== 'statusLabel' && key !== 'stageLabel' && key !== 'priorityLabel');
+  /* `name` is the editable display name; the split parts are derived from it. */
+  const derived = new Set('name' in record ? ['firstName', 'lastName'] : []);
+  const keys = Object.keys(record).filter((key) => !derived.has(key) && !HIDDEN_KEYS.has(key) && key !== 'statusLabel' && key !== 'stageLabel' && key !== 'priorityLabel');
   const status = record.statusLabel ?? (record.status ? statusLabel(record.status) : '');
   const highlights = keys.filter((key) => typeof record[key] === 'number').slice(0, 3);
   const content = `<div class="record-sheet">
@@ -156,7 +189,8 @@ const toInputDate = (value) => {
 export function openRecordEdit({ record, columns = [], service, rows = [], resource = '', onSaved = null, isNew = false }) {
   if (!record || !service) return null;
   const ENUM_KEYS = ['status', 'stage', 'priority', 'type', 'direction', 'category', 'channel', 'method', 'gateway', 'department', 'team', 'plan', 'role', 'source', 'carrier', 'zone'];
-  const keys = Object.keys(record).filter((key) => !HIDDEN_KEYS.has(key) && !/Label$/.test(key) && !READONLY_KEYS.has(key) && (typeof record[key] !== 'object' || record[key] === null || (Array.isArray(record[key]) && record[key].every((item) => typeof item !== 'object'))));
+  const derived = new Set('name' in record ? ['firstName', 'lastName'] : []);
+  const keys = Object.keys(record).filter((key) => !derived.has(key) && !HIDDEN_KEYS.has(key) && !/Label$/.test(key) && !READONLY_KEYS.has(key) && (typeof record[key] !== 'object' || record[key] === null || (Array.isArray(record[key]) && record[key].every((item) => typeof item !== 'object'))));
   const fields = keys.slice(0, 14).map((key) => {
     const value = record[key];
     const label = labelFor(key, columns);
@@ -178,7 +212,8 @@ export function openRecordEdit({ record, columns = [], service, rows = [], resou
     } else if (wide) {
       control = `<textarea id="${id}" name="${key}" rows="3" class="form-control" data-kind="text">${escapeHtml(value ?? '')}</textarea>`;
     } else {
-      control = `<input id="${id}" name="${key}" class="form-control" value="${escapeHtml(value ?? '')}" data-kind="text" ${['name', 'title', 'code'].includes(key) ? 'required' : ''}>`;
+      const ltr = /^(phone|mobile|email|fromEmail|ip|iban|url|website|sku|code|trackingCode|tracking|reference|orderRef|plate|slug|username)$/.test(key);
+      control = `<input id="${id}" name="${key}" class="form-control" value="${escapeHtml(value ?? '')}" data-kind="text"${ltr ? ' dir="ltr"' : ''}${key === 'email' ? ' type="email" inputmode="email"' : ''}${key === 'phone' || key === 'mobile' ? ' inputmode="tel"' : ''} ${['name', 'title', 'code'].includes(key) ? 'required' : ''}>`;
     }
     return `<div class="form-field"${wide ? ' style="grid-column:1/-1"' : ''}><label class="form-label" for="${id}">${escapeHtml(label)}</label>${control}</div>`;
   });
@@ -214,6 +249,13 @@ export function openRecordEdit({ record, columns = [], service, rows = [], resou
           else payload[input.name] = input.value.trim();
         });
         if (payload.status && record.statusLabel !== undefined) payload.statusLabel = statusLabel(payload.status);
+        if (derived.size && payload.name && payload.name !== record.name) {
+          const [first, ...rest] = payload.name.split(/\s+/);
+          payload.firstName = first;
+          payload.lastName = rest.join(' ');
+        }
+        /* Role labels shown on cards follow the edited enum value. */
+        if (payload.role && record.roleLabel !== undefined) payload.roleLabel = statusLabel(payload.role);
         save.classList.add('is-loading');
         save.disabled = true;
         try {
