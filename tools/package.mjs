@@ -233,12 +233,12 @@ fs.writeFileSync(
   path.join(STAGE, 'documentation/INDEX.md'),
   `# NOVAADMIN — documentation
 
-The template ships with 23 documentation topics in two formats:
+The template ships with 23 documentation topics in Persian (\`docs/*.md\`), English (\`docs/en/*.md\`) and Arabic (\`docs/ar/*.md\`), in two formats:
 
 | Format | Location | Best for |
 | --- | --- | --- |
 | Browsable pages | \`../html/docs/*.html\` | Reading inside the template (design system, search, table of contents) |
-| Markdown sources | \`./docs/*.md\` | Editing, version control, printing |
+| Markdown sources | \`./docs/*.md\`, \`./docs/en/*.md\`, \`./docs/ar/*.md\` | Editing, version control, printing |
 
 ## Topics
 

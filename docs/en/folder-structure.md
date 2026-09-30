@@ -39,7 +39,7 @@ novaadmin/
 │   ├── data/                      realistic sample data
 │   ├── locales/                   fa/en/ar dictionaries + generated data
 │   └── config/config.js           brand settings, defaults, currency, time zone
-├── docs/                          23 Markdown documentation sources
+├── docs/                          23 Markdown documentation sources (+ translations in en/ and ar/)
 └── tools/
     ├── manifest.mjs               single source of navigation and the page list
     ├── build-pages.mjs            generates pages + locale data

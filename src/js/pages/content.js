@@ -1008,7 +1008,10 @@ export async function initDocs() {
   const toc = $('[data-docs-toc]');
   if (toc) {
     toc.innerHTML = '<div style="font-size:12px; font-weight:800; margin-bottom:10px; color:var(--nv-heading);"><i class="bi bi-list-nested me-1"></i> سرفصل‌های این صفحه</div>';
-    $$('h2, h3', node).forEach((heading) => {
+    /* Topics carry one article per language; only the visible one feeds the TOC. */
+    const docLang = document.documentElement.lang || 'fa';
+    const article = $(`[data-doc-lang="${docLang}"]`, node) ?? $('[data-doc-lang="fa"]', node) ?? node;
+    $$('h2, h3', article).forEach((heading) => {
       heading.id = heading.id || heading.textContent.trim().replace(/\s+/g, '-').slice(0, 40);
       toc.insertAdjacentHTML('beforeend', `<a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${heading.id}" style="display:block; font-size:12px; padding:${heading.tagName==='H3'?'3px 14px 3px 0':'4px 0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a>`);
     });

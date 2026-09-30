@@ -15,7 +15,7 @@
 | `src/pages/**` | تولیدشده | هرگز ویرایش نکنید |
 | `src/locales/generated.js` | تولیدشده | هرگز ویرایش نکنید |
 | `src/data/navigation.js` | تولیدشده | هرگز ویرایش نکنید |
-| `src/partials/docs/*.html` | تولیدشده از `docs/` | به‌جای آن `docs/*.md` را ویرایش کنید |
+| `src/partials/docs/*.html` | تولیدشده از `docs/` | به‌جای آن `docs/*.md` (و `docs/en`، `docs/ar`) را ویرایش کنید |
 | `public/robots.txt`, `public/sitemap.xml` | تولیدشده | در `src/config/config.js` تنظیم کنید |
 | `tools/**` | ابزار | تغییرات خود را با diff مقایسه کنید |
 | `src/scss/**`, `src/js/**` | منبع | تغییرات خود را نگه دارید و با نسخه جدید ادغام کنید |
