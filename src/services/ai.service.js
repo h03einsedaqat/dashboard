@@ -112,7 +112,11 @@ export const chatService = {
   },
 };
 
+/** The demo assistant answers in the active UI language (fa/ar share the Persian set). */
+const englishUi = () => typeof document !== 'undefined' && document.documentElement?.getAttribute('lang') === 'en';
+
 function mockAnswer(message = '') {
+  if (englishUi()) return mockAnswerEn(message);
   const text = String(message);
   const topic = text.replace(/^[^:]{0,24}:\s*/, '').slice(0, 70);
   if (/ترجمه|translate/i.test(text)) {
@@ -145,6 +149,39 @@ function mockAnswer(message = '') {
   return `پرسش خوبی است. درباره «${topic}${text.length > 70 ? '…' : ''}» این جمع‌بندی را پیشنهاد می‌کنم:\n\n1. **تعریف دقیق هدف:** نتیجه‌ای که می‌خواهید قابل اندازه‌گیری باشد.\n2. **بررسی وضعیت فعلی:** داده‌های موجود در داشبورد را مرور کنید.\n3. **اقدامات سریع:** دو یا سه کار کم‌هزینه با اثر بالا را همین هفته اجرا کنید.\n4. **پایش:** نتیجه را هفتگی بسنجید و مسیر را اصلاح کنید.\n\nاگر جزئیات بیشتری بدهید (مخاطب، بودجه، زمان)، پاسخ دقیق‌تری آماده می‌کنم.`;
 }
 
+function mockAnswerEn(message = '') {
+  const text = String(message);
+  const topic = text.replace(/^[^:]{0,24}:\s*/, '').slice(0, 70);
+  if (/ترجمه|translat/i.test(text)) {
+    return `**Persian version:**\n\n\`\`\`text\nفروش فصل گذشته را تحلیل کردیم و سه اهرم رشد عملی شناسایی شد:\n۱. بهبود نرخ تبدیل صفحه پرداخت\n۲. راه‌اندازی برنامه وفاداری\n۳. گسترش دسته‌های پرفروش\n\`\`\`\n\nIf you need a more formal tone or localisation for a specific market, just say so.`;
+  }
+  if (/چک.?لیست|checklist/i.test(text)) {
+    return `Here's an actionable checklist:\n\n- Define the goal and success metric (KPI)\n- Collect baseline data from the sales dashboard\n- Prioritise actions by impact/effort\n- Assign an owner and a due date to each action\n- Review results weekly and adjust course\n\n**Tip:** turn each item into a task in the Projects module so its progress can be tracked.`;
+  }
+  if (/کوتاه|short/i.test(text)) {
+    return `Shorter version:\n\n**Three key actions:** improve the checkout page, launch a loyalty programme and focus on best-selling categories. Expected result: **12–18% growth** next quarter.`;
+  }
+  if (/دوستانه|friendl/i.test(text)) {
+    return `Sure! 😊 A friendlier version:\n\nHey there! We took a look at the last three months of sales and there's good news. With a few small tweaks — like a simpler checkout and a little gift for loyal customers — we can grow a lot. Are you in?`;
+  }
+  if (/ایده|idea/i.test(text)) {
+    return `Ten quick ideas:\n\n1. “15% off your second purchase” campaign\n2. Seasonal gift boxes\n3. Product video tutorials on the landing page\n4. Refer-a-friend programme with gift credit\n5. Personalised offers by email\n6. Free shipping above a set threshold\n7. Post-purchase survey with a discount code\n8. Live launch streams for new products\n9. Partnerships with niche influencers\n10. A tiered customer club`;
+  }
+  if (/خلاصه|summar|جلسه|meeting/i.test(text)) {
+    return `**Meeting summary in three parts:**\n\n**1. Key decisions**\n- Next quarter's marketing budget increases by **18%**.\n- The mobile app launch moved to month two.\n\n**2. Risks**\n- Dependence on a single payment gateway\n- Shortage of data specialists\n\n**3. Next steps**\n1. Draft a second-gateway plan — owner: Finance — due: 2 weeks\n2. Post a data analyst job ad — owner: HR\n3. Progress report at the next meeting`;
+  }
+  if (/کد|code|api|جاوا|script/i.test(text)) {
+    return `Sure. This example fetches reports with pagination and error handling:\n\n\`\`\`js\nexport async function fetchReports({ from, to, page = 1 }) {\n  const res = await fetch(\`/api/reports?page=\${page}\`, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      Authorization: \`Bearer \${import.meta.env.VITE_API_TOKEN}\`,\n    },\n    body: JSON.stringify({ from, to }),\n  });\n  if (!res.ok) throw new Error(\`HTTP \${res.status}\`);\n  return res.json();\n}\n\`\`\`\n\n**Notes:**\n- Never put the token in client-side code; use a proxy.\n- For long ranges, increase \`page\` until all data is fetched.`;
+  }
+  if (/بازاریابی|کمپین|محتوا|تقویم|marketing|campaign|content|calendar/i.test(text)) {
+    return `**Content marketing calendar — 4 weeks**\n\n1. **Week 1 — Education:** product selection guide + 3 educational Instagram posts\n2. **Week 2 — Comparison:** best-seller comparison table and a short video\n3. **Week 3 — Customer story:** two customer success stories with real photos\n4. **Week 4 — Special offer:** limited discount campaign with a countdown\n\n**Channels:** blog, Instagram, email newsletter\n**Metrics:** engagement rate, email clicks and landing page conversion`;
+  }
+  if (/فروش|تحلیل|داده|رشد|sales|analy|data|growth/i.test(text)) {
+    return `Based on the last three months of data, here's the picture:\n\n- Total revenue **IRR 22.4 billion**, up **14.2%** on the previous quarter\n- The “Digital” category is the best seller with a **38%** share\n- Cart abandonment is **68%** — above the industry average\n\n**Three practical growth ideas:**\n1. **Cut checkout steps** from 4 to 2; estimated impact: +7% conversion\n2. **Loyalty programme** for customers with more than two purchases; more repeat orders\n3. **Focus ads** on high-margin categories at peak hours (18–22)\n\nWould you like a scheduled action plan for each idea?`;
+  }
+  return `Good question. On “${topic}${text.length > 70 ? '…' : ''}”, here's my suggested approach:\n\n1. **Define the goal precisely:** the result you want should be measurable.\n2. **Review the current state:** go over the data available in the dashboard.\n3. **Quick wins:** run two or three low-cost, high-impact actions this week.\n4. **Monitor:** measure results weekly and adjust course.\n\nIf you share more details (audience, budget, timeline), I can prepare a more precise answer.`;
+}
+
 export const writerService = {
   async generate(options = {}) {
     return call('create', 'ai/writer', {
@@ -155,7 +192,7 @@ export const writerService = {
   },
   async expand(paragraph) {
     return call('create', 'ai/writer/expand', {
-      resolver: () => ({ paragraph, text: `${paragraph} در ادامه، سه نکته تکمیلی و یک مثال کاربردی برای روشن‌تر شدن موضوع ارائه می‌شود.` }),
+      resolver: () => ({ paragraph, text: englishUi() ? `${paragraph} Below are three additional points and a practical example to clarify the topic.` : `${paragraph} در ادامه، سه نکته تکمیلی و یک مثال کاربردی برای روشن‌تر شدن موضوع ارائه می‌شود.` }),
     });
   },
   async shorten(text) {

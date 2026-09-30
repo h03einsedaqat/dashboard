@@ -362,6 +362,20 @@ async function boot() {
   registerPatterns('en', PATTERNS.en);
   registerPatterns('ar', PATTERNS.ar);
   initI18n();
+  /**
+   * English also translates the demo *content* (records, dashboards, charts):
+   * that phrase book is large, so it is only fetched when English is active and
+   * the Persian build never pays for it.
+   */
+  if (i18n.lang === 'en') {
+    try {
+      const { default: contentEn } = await import('./locales/content-en.js');
+      registerPhrases('en', contentEn);
+      registerPhrases('en', phrasesEn);
+    } catch (error) {
+      console.warn('[i18n] content phrase book unavailable', error);
+    }
+  }
   /** The language this document was rendered in; a switch away from it reloads. */
   const bootLanguage = i18n.lang;
   setPhraseLanguage(i18n.lang);

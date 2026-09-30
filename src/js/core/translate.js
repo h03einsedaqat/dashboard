@@ -52,12 +52,17 @@ export function registerPhrases(lang, entries, { merge = true } = {}) {
   if (!entries) return;
   const target = merge ? { ...(books.get(lang) ?? {}), ...entries } : { ...entries };
   books.set(lang, target);
-  if (lang === language()) current = target;
+  if (lang === language()) {
+    current = target;
+    composed.clear();
+  }
 }
 
 export function setPhraseLanguage(lang) {
   current = books.get(lang) ?? null;
   patternSet = patterns.get(lang) ?? null;
+  composeLanguage = lang;
+  composed.clear();
 }
 
 /**
@@ -79,11 +84,104 @@ function translatePattern(text) {
   return undefined;
 }
 
+/* ------------------------------------------------------------ composite copy */
+
+/**
+ * Rendered copy is often *composed*: `${name} — ${company}`, `موجودی: ۱۲`,
+ * `۳ روز پیش · تهران`. A whole-string lookup misses those, so the English
+ * build falls back to translating each segment between separators/numbers,
+ * and inside a segment the longest known word runs (names, cities, units).
+ * Digits and Persian punctuation are normalised for Latin script. The result
+ * is cached per language; the authored Persian source is never modified.
+ */
+const PERSIAN = /[\u0600-\u06FF]/;
+const DELIMITERS = /(\s*(?:[—–·|•،؛:()«»[\]/+×!؟?…"]|\s-\s)\s*|[0-9۰-۹٠-٩]+(?:[٬٫,.:/][0-9۰-۹٠-٩]+)*\s*[%٪]?)/;
+const PUNCT = { '،': ',', '؛': ';', '؟': '?', '«': '“', '»': '”', '٪': '%', '٬': ',', '٫': '.' };
+let composeLanguage = null;
+const composed = new Map();
+
+const normalise = (text) => text.replace(/\s+/g, ' ').replace(/ي/g, 'ی').replace(/ك/g, 'ک').trim();
+
+function latinise(text) {
+  return text
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[،؛؟«»٪٬٫]/g, (c) => PUNCT[c])
+    .replace(/\s+([,;:.?!%)\]”])/g, '$1')
+    .replace(/([(\[“])\s+/g, '$1')
+    .replace(/\s{2,}/g, ' ');
+}
+
+/** Greedy longest-run translation of one separator-free segment. */
+function translateWords(segment) {
+  const direct = current[segment] ?? translatePattern(segment);
+  if (direct !== undefined) return { text: direct, missing: 0, total: 1 };
+  const words = segment.split(' ');
+  const out = [];
+  let missing = 0;
+  let total = 0;
+  for (let i = 0; i < words.length; ) {
+    let hit = null;
+    for (let j = words.length; j > i; j -= 1) {
+      const run = words.slice(i, j).join(' ');
+      if (current[run] !== undefined) {
+        hit = [current[run], j];
+        break;
+      }
+    }
+    const persian = PERSIAN.test(words[i]);
+    if (persian) total += 1;
+    if (hit) {
+      out.push(hit[0]);
+      i = hit[1];
+    } else {
+      if (persian) missing += 1;
+      out.push(words[i]);
+      i += 1;
+    }
+  }
+  return { text: out.join(' '), missing, total };
+}
+
+function compose(text) {
+  if (composeLanguage !== 'en' || !current) return undefined;
+  if (composed.has(text)) return composed.get(text);
+  let result;
+  if (PERSIAN.test(text) || /[۰-۹٠-٩]/.test(text)) {
+    let missing = 0;
+    let total = 0;
+    const parts = text.split(DELIMITERS).map((part) => {
+      if (!part || !PERSIAN.test(part) || DELIMITERS.test(part)) return part;
+      const trimmed = part.trim();
+      const res = translateWords(trimmed);
+      missing += res.missing;
+      total += res.total;
+      return part.replace(trimmed, res.text);
+    });
+    /* Mostly-unknown copy stays as authored rather than turning into a mix. */
+    if (!total || missing / total <= 0.34) result = latinise(parts.join(''));
+  }
+  composed.set(text, result);
+  return result;
+}
+
+/** Full lookup chain: exact → normalised → pattern → composite. */
+function lookup(source) {
+  if (!current || !source) return undefined;
+  const exact = current[source];
+  if (exact !== undefined) return exact;
+  const norm = normalise(source);
+  const hit = current[norm] ?? translatePattern(norm);
+  if (hit !== undefined) return hit;
+  return compose(norm);
+}
+
 /** Phrase lookup for callers that build markup in JavaScript. */
 export function phrase(text, fallback = '') {
   if (!text) return fallback || text;
   if (!enabled || !current) return text;
-  return current[text] ?? text;
+  if (typeof text !== 'string') return text;
+  return lookup(text) ?? text;
 }
 
 export function hasPhrase(text) {
@@ -114,9 +212,8 @@ function translateText(node) {
   const source = remembered ?? trimmed;
   if (!remembered) originals.set(node, trimmed);
 
-  let translated = current ? current[source] : undefined;
-  /** No exact phrase? Try the pattern rules before giving up. */
-  if (translated === undefined) translated = current ? translatePattern(source) : undefined;
+  /** Exact phrase → pattern rules → segment-by-segment composite. */
+  const translated = lookup(source);
   if (translated === undefined) {
     if (node.nodeValue !== raw.replace(trimmed, source)) {
       /** Switching back to Persian restores exactly what the author wrote. */
@@ -146,8 +243,7 @@ function translateAttributes(el) {
     if (!trimmed) return;
     const source = remembered[attr] ?? trimmed;
     if (!remembered[attr]) remembered[attr] = trimmed;
-    let translated = current ? current[source] : undefined;
-    if (translated === undefined && current) translated = translatePattern(source);
+    const translated = lookup(source);
     if (translated === undefined) {
       if (raw !== source) el.setAttribute(attr, source);
       return;
@@ -255,7 +351,7 @@ export function audit(scope = document.body) {
     const text = (node.nodeValue ?? '').trim();
     if (text.length < 2 || !/[\u0600-\u06FF]/.test(text)) continue;
     stats.nodes += 1;
-    if (current[text] !== undefined) stats.translated += 1;
+    if (lookup(text) !== undefined) stats.translated += 1;
     else if (stats.missing.length < 60) stats.missing.push(text);
   }
   return stats;
