@@ -49,6 +49,17 @@ function toneFor(value) {
 }
 
 /* ------------------------------------------------------------------ renderers */
+/** Semantic tone tokens stored in mock data → real colour + Persian name. */
+const TONE_COLORS = {
+  primary: ['var(--nv-primary)', 'اصلی'],
+  success: ['var(--nv-success)', 'سبز'],
+  warning: ['var(--nv-warning)', 'نارنجی'],
+  danger: ['var(--nv-danger)', 'قرمز'],
+  info: ['var(--nv-info)', 'آبی'],
+  neutral: ['var(--nv-neutral)', 'خنثی'],
+  violet: ['#8b5cf6', 'بنفش'],
+};
+
 const renderers = {
   text: (row, column) => escapeHtml(resolve(row, column) ?? '—'),
   primary: (row, column) => {
@@ -107,12 +118,16 @@ const renderers = {
   },
   boolean: (row, column) => (resolve(row, column) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> بله</span>' : '<span class="badge badge--soft-neutral">خیر</span>'),
   swatch: (row, column) => {
-    const color = row.color ?? 'var(--nv-primary)';
+    const color = TONE_COLORS[row.color]?.[0] ?? row.color ?? 'var(--nv-primary)';
     return `<span class="tag-chip" style="--chip:${escapeHtml(color)}"><i class="bi bi-tag-fill" aria-hidden="true"></i>${escapeHtml(resolve(row, column) ?? '—')}</span>`;
   },
   color: (row, column) => {
     const color = resolve(row, column);
-    return color ? `<span class="d-inline-flex align-items-center gap-2"><span class="color-dot" style="background:${escapeHtml(color)}"></span><code>${escapeHtml(color)}</code></span>` : '—';
+    if (!color) return '—';
+    const token = TONE_COLORS[color];
+    const css = token ? token[0] : color;
+    const label = token ? token[1] : color;
+    return `<span class="d-inline-flex align-items-center gap-2"><span class="color-dot" style="background:${escapeHtml(css)}"></span>${token ? escapeHtml(label) : `<code dir="ltr">${escapeHtml(label)}</code>`}</span>`;
   },
   clamp: (row, column) => `<span class="table__clamp" title="${escapeHtml(resolve(row, column) ?? '')}">${escapeHtml(resolve(row, column) ?? '—')}</span>`,
   thumbnail: (row, column) => `<img class="table__thumb" src="${escapeHtml(resolve(row, column))}" alt="" loading="lazy" />`,

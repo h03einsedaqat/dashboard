@@ -34,6 +34,7 @@ import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './j
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
 import { enhanceTables, observeTables } from './js/core/tables.js';
+import { humanize, observeHumanize } from './js/core/humanize.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
 import * as services from './services/index.js';
@@ -429,6 +430,8 @@ async function boot() {
   try {
     enhanceTables(document);
     observeTables(document.body);
+    humanize(document.querySelector('main') ?? document);
+    observeHumanize(document.body);
   } catch (error) {
     console.warn('[tables] enhancement skipped', error);
   }

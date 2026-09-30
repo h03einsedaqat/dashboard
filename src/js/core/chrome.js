@@ -508,14 +508,18 @@ function syncCustomizer() {
 
 /* ============================================================ widget editor */
 
-function widgetState() {
-  const stored = storage.get(KEYS.widgets, null);
-  const order = $$('[data-widget]').map((node) => node.dataset.widget);
-  return stored && Array.isArray(stored.order) ? stored : { order, hidden: [] };
+/** Widget layout is stored per page so dashboards don't overwrite each other. */
+const widgetKey = () => `${KEYS.widgets}:${document.body?.dataset?.page ?? location.pathname}`;
+const widgetGrid = () => $('[data-widget-grid]') ?? $('.widget-grid');
+
+function widgetState(grid = widgetGrid()) {
+  const stored = storage.get(widgetKey(), null);
+  const order = $$('[data-widget]', grid ?? document).map((node) => node.dataset.widget);
+  return stored && Array.isArray(stored.order) ? { order: stored.order, hidden: stored.hidden ?? [] } : { order, hidden: [] };
 }
 
-function applyWidgetState(grid, next) {
-  const nodes = new Map($$('[data-widget]', grid).map((node) => [node.dataset.widget, node]));
+function applyWidgetState(grid, next, persist = true) {
+  const nodes = new Map($$(':scope > [data-widget]', grid).map((node) => [node.dataset.widget, node]));
   nodes.forEach((node, id) => {
     node.hidden = next.hidden.includes(id);
   });
@@ -523,55 +527,95 @@ function applyWidgetState(grid, next) {
     const node = nodes.get(id);
     if (node) grid.append(node);
   });
-  storage.set(KEYS.widgets, next);
+  if (persist) storage.set(widgetKey(), next);
   bus.emit(EVENTS.widgets, next);
+  /* Charts measure their box — let them re-fit after moving / un-hiding. */
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
 }
 
-function initWidgetEditor() {
-  const editor = $('[data-widget-editor]');
-  const grid = $('[data-widget-grid]') ?? $('.widget-grid');
-  if (!editor || !grid) return;
-  applyWidgetState(grid, widgetState());
+function widgetTitle(node) {
+  const heading = node.querySelector('.card__title, .stat-card__label, h2, h3');
+  const text = heading?.textContent.trim();
+  return text || node.dataset.widgetTitle || node.dataset.widget;
+}
 
-  on(editor, 'click', async (event) => {
+/** Re-applies the saved layout once a controller has rendered its widget grid. */
+export function applySavedWidgets() {
+  const grid = widgetGrid();
+  if (grid && storage.get(widgetKey(), null)) applyWidgetState(grid, widgetState(grid), false);
+}
+
+let widgetEditorBound = false;
+function initWidgetEditor() {
+  const grid = widgetGrid();
+  if (grid && storage.get(widgetKey(), null)) applyWidgetState(grid, widgetState(grid), false);
+  if (widgetEditorBound) return;
+  widgetEditorBound = true;
+
+  /* Delegated: the toolbar button is rendered by controllers after boot. */
+  on(document, 'click', async (event) => {
     if (event.target.closest('[data-widget-reset]')) {
-      storage.remove(KEYS.widgets);
+      storage.remove(widgetKey());
       window.location.reload();
       return;
     }
     if (!event.target.closest('[data-widget-edit]')) return;
     event.preventDefault();
-    const current = widgetState();
-    const rows = $$('[data-widget]', grid)
-      .map((node) => ({ id: node.dataset.widget, title: node.querySelector('[data-widget-title]')?.textContent.trim() ?? node.dataset.widget }))
+    const target = widgetGrid();
+    if (!target) {
+      toast.info('ابزارکی برای چیدمان نیست', 'این صفحه ابزارک قابل جابجایی ندارد.');
+      return;
+    }
+    const current = widgetState(target);
+    const rows = $$(':scope > [data-widget]', target)
+      .map((node) => ({ id: node.dataset.widget, title: widgetTitle(node) }))
       .filter((row) => row.id);
 
     modal.open({
       title: 'شخصی‌سازی ابزارک‌ها',
       subtitle: 'ابزارک‌ها را نمایش/پنهان یا جابجا کنید — انتخاب شما در مرورگر ذخیره می‌شود.',
       size: 'md',
-      content: `<ul class="list-group" data-widget-list>${rows
+      content: `<ul class="list-group widget-editor-list" data-widget-list>${rows
         .map(
           (row) => `<li class="list-item" data-id="${escapeHtml(row.id)}">
             <i class="bi bi-grip-vertical drag-handle" data-drag-handle aria-hidden="true"></i>
             <span class="list-item__title">${escapeHtml(row.title)}</span>
-            <label class="form-switch ms-auto">
+            <span class="widget-editor-list__moves">
+              <button type="button" class="icon-btn icon-btn--sm" data-widget-up aria-label="بالا"><i class="bi bi-arrow-up"></i></button>
+              <button type="button" class="icon-btn icon-btn--sm" data-widget-down aria-label="پایین"><i class="bi bi-arrow-down"></i></button>
+            </span>
+            <label class="form-switch">
               <input type="checkbox" class="form-check-input" data-widget-visible ${current.hidden.includes(row.id) ? '' : 'checked'} />
               <span class="form-check-label visually-hidden">نمایش ${escapeHtml(row.title)}</span>
             </label>
           </li>`,
         )
         .join('')}</ul>`,
-      footer: '<button type="button" class="btn btn-light" data-modal-close>بستن</button><button type="button" class="btn btn-primary" data-widget-save>ذخیره چیدمان</button>',
+      footer: '<button type="button" class="btn btn-light me-auto" data-widget-reset-layout><i class="bi bi-arrow-counterclockwise"></i> پیش‌فرض</button><button type="button" class="btn btn-light" data-modal-close>بستن</button><button type="button" class="btn btn-primary" data-widget-save>ذخیره چیدمان</button>',
       onMount: async (panel) => {
         const list = $('[data-widget-list]', panel);
-        await createSortable(list, { handle: '[data-drag-handle]', animation: 160, ghostClass: 'is-ghost' });
+        on(list, 'click', (e) => {
+          const item = e.target.closest('[data-id]');
+          if (!item) return;
+          if (e.target.closest('[data-widget-up]') && item.previousElementSibling) item.parentNode.insertBefore(item, item.previousElementSibling);
+          if (e.target.closest('[data-widget-down]') && item.nextElementSibling) item.parentNode.insertBefore(item.nextElementSibling, item);
+        });
+        try {
+          await createSortable(list, { handle: '[data-drag-handle]', animation: 160, ghostClass: 'is-ghost' });
+        } catch {
+          /* Arrow buttons still reorder without the drag library. */
+        }
+        on($('[data-widget-reset-layout]', panel), 'click', () => {
+          storage.remove(widgetKey());
+          modal.closeTop();
+          window.location.reload();
+        });
         on($('[data-widget-save]', panel), 'click', () => {
           const order = $$('[data-id]', list).map((node) => node.dataset.id);
           const hidden = $$('[data-widget-visible]', list)
             .filter((input) => !input.checked)
             .map((input) => input.closest('[data-id]').dataset.id);
-          applyWidgetState(grid, { order, hidden });
+          applyWidgetState(target, { order, hidden });
           toast.success('چیدمان ذخیره شد', 'ابزارک‌های داشبورد به‌روزرسانی شدند.');
           modal.closeTop();
         });

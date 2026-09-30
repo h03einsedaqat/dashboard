@@ -943,3 +943,9 @@ tr:hover .reveal-actions {
 }
 .status-list { display: flex; flex-direction: column; }
 .status-service__state { justify-self: end; }
+
+/* Dashboard widget editor (chrome.js) */
+.widget-editor-list .list-item { gap: var(--nv-space-2); align-items: center; }
+.widget-editor-list .list-item__title { flex: 1 1 auto; min-width: 0; }
+.widget-editor-list__moves { display: inline-flex; gap: 0.15rem; }
+.widget-editor-list .drag-handle { cursor: grab; color: var(--nv-text-muted); }

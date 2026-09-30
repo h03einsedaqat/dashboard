@@ -478,6 +478,8 @@ export async function renderGenericApps(root = document) {
           (node.dataset.page ?? '').split('/').pop()?.replace('.html', '') ??
           'analytics';
         render(node, dashboardHarness(slug));
+        /* Restore the visitor's saved widget order / visibility for this dashboard. */
+        import('../core/chrome.js').then((mod) => mod.applySavedWidgets?.()).catch(() => {});
         /**
          * The dashboard controller ran before this harness existed (the page
          * controller order is: `route()` → generic renderer), so it is started

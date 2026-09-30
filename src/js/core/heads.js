@@ -120,7 +120,9 @@ export function reconcilePageHeads(root = document) {
         head.append(node);
         return node;
       })();
+      const statics = [...slot.children];
       moveChildren(actions, slot);
+      dedupeActions(slot, statics);
     }
     /* The row is empty now, so the whole card goes — that is the gap. */
     /* Whatever is left once the title/subtitle (now shown by the page head)
@@ -154,8 +156,12 @@ export function reconcilePageHeads(root = document) {
       })();
       [...headActions.children].forEach((child) => {
         if (keep.includes(child)) return;
-        if (child.querySelector('[data-widget-editor]') && dashHead.querySelector('[data-widget-edit]')) return;
-        if (child.querySelector('[data-export-menu]') && dashHead.querySelector('[data-export]')) return;
+        const has = (selector) => child.matches(selector) || !!child.querySelector(selector);
+        /* The dashboard toolbar already has these — drop the generated duplicates. */
+        if ((has('[data-widget-editor]') && dashHead.querySelector('[data-widget-edit]')) || (has('[data-export-menu]') && dashHead.querySelector('[data-export]'))) {
+          child.remove();
+          return;
+        }
         dashActions.prepend(child);
       });
       if (!headActions.children.length) headActions.remove();
@@ -165,6 +171,39 @@ export function reconcilePageHeads(root = document) {
   fillSubtitle(head);
   collapseEmptyActions(head);
   return 1;
+}
+
+/**
+ * The generator gives every list page generic "create / export" buttons, and
+ * controllers that render their own header bring wired versions of the same
+ * actions. After merging, the generated duplicates are removed so each action
+ * appears exactly once (the controller's copy wins — it carries the handlers).
+ */
+function actionRole(el) {
+  const names = el.getAttributeNames ? el.getAttributeNames() : [];
+  const text = (el.textContent ?? '').trim();
+  const icon = el.querySelector?.('i.bi')?.className ?? '';
+  if (names.some((name) => name === 'data-create' || name.startsWith('data-create-'))) return 'create';
+  if (el.classList?.contains('btn-primary') && (/bi-(plus|send-plus|person-plus|file-earmark-plus)/.test(icon) || /(جدید|افزودن)/.test(text))) return 'create';
+  if (names.some((name) => /^data-(table-)?export/.test(name)) || /خروجی/.test(text)) return 'export';
+  return '';
+}
+
+const actionButtons = (node) => (node.matches?.('button, a.btn') ? [node] : [...(node.querySelectorAll?.(':scope button, :scope a.btn') ?? [])].filter((btn) => !btn.closest('.dropdown__menu, .dropdown-menu, [role="menu"]')));
+
+function dedupeActions(slot, statics) {
+  const owned = new Set(
+    [...slot.children]
+      .filter((child) => !statics.includes(child))
+      .flatMap(actionButtons)
+      .map(actionRole)
+      .filter(Boolean),
+  );
+  if (!owned.size) return;
+  statics.forEach((child) => {
+    const role = actionRole(child);
+    if (role && owned.has(role)) child.remove();
+  });
 }
 
 /** Derives the subtitle from the page when neither markup nor controller gave one. */

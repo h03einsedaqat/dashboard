@@ -20,6 +20,7 @@ import { bus, EVENTS } from './bus.js';
 import { t } from './i18n.js';
 import { phrase } from './translate.js';
 import { toDigits, formatNumber, formatCompact } from './numbers.js';
+import { STATUS_LABELS } from './record-dialogs.js';
 
 const PALETTE_TOKENS = ['--nv-chart-1', '--nv-chart-2', '--nv-chart-3', '--nv-chart-4', '--nv-chart-5', '--nv-chart-6'];
 const instances = new Map();
@@ -131,13 +132,21 @@ const FLAT_TYPES = new Set(['donut', 'pie', 'radialBar', 'polarArea']);
  * rows — which is what the ten dashboards do.
  */
 /** Legend/tooltip copy lives inside the chart canvas — translation happens here. */
+/** Raw enum keys coming from the data layer (`on-hold`, `smb`) get their Persian label. */
+const RAW_KEY = /^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/;
+function humanLabel(value) {
+  if (typeof value !== 'string' || !RAW_KEY.test(value)) return value;
+  if ((document.documentElement.lang || 'fa') !== 'fa') return value;
+  return STATUS_LABELS[value] ?? STATUS_LABELS[value.replace(/_/g, '-')] ?? value;
+}
+
 function localiseSeries(series) {
   if (!Array.isArray(series)) return series;
-  return series.map((row) => (row && typeof row === 'object' && !Array.isArray(row) ? { ...row, name: phrase(row.name) } : row));
+  return series.map((row) => (row && typeof row === 'object' && !Array.isArray(row) ? { ...row, name: phrase(humanLabel(row.name)) } : row));
 }
 
 function localiseLabels(labels) {
-  return Array.isArray(labels) ? labels.map((label) => phrase(label)) : labels;
+  return Array.isArray(labels) ? labels.map((label) => phrase(humanLabel(label))) : labels;
 }
 
 function normalizeSeries(series, type) {

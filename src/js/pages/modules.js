@@ -23,6 +23,23 @@ import { initKanban } from '../core/kanban.js';
 import { goTo, url } from '../core/links.js';
 import { withState } from '../core/load.js';
 import * as kit from './kit.js';
+import { statusLabel, FIELD_LABELS } from '../core/record-dialogs.js';
+
+/* Detail pages: keys that are internal plumbing, and value formatting by key. */
+const DETAIL_SKIP = new Set(['id', 'timeline', 'notes', 'avatar', 'logo', 'tone', 'token', 'color', 'icon', 'image']);
+const MONEY_KEYS = /^(value|amount|revenue|total|price|budget|balance|lifetimeValue|ltv|spent|totalSpent)$/i;
+const DATE_KEYS = /(At|Date|date|since|lastContact)$/;
+function detailValue(key, value, record) {
+  const label = record?.[`${key}Label`];
+  if (label) return escapeHtml(String(label));
+  if (typeof value === 'number' && MONEY_KEYS.test(key)) return `<span class="numeric">${formatCurrency(value, 'IRR')}</span>`;
+  if (typeof value === 'number' && /probability|percent|rate|score/i.test(key)) return `<span class="numeric">${toDigits(value)}${/probability|percent|rate/i.test(key) ? '٪' : ''}</span>`;
+  if (typeof value === 'number') return `<span class="numeric">${formatNumber(value)}</span>`;
+  if (DATE_KEYS.test(key) && !Number.isNaN(Date.parse(value))) return escapeHtml(formatDate(value));
+  if (/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/.test(value)) return escapeHtml(statusLabel(value));
+  if (/email|website|phone|url/i.test(key)) return `<span dir="ltr">${escapeHtml(/phone/i.test(key) ? toDigits(value) : value)}</span>`;
+  return escapeHtml(value);
+}
 
 const safeAvatar = (i = 1) => {
   const n = ((Math.abs(Number(i) || 1) - 1) % 24) + 1;
@@ -1178,9 +1195,9 @@ async function initCrm() {
             title: 'اطلاعات پایه',
             body: `<div class="grid grid--2">${infoRows(
               Object.entries(r)
-                .filter(([key, value]) => !['id', 'timeline', 'notes', 'avatar', 'logo'].includes(key) && (typeof value === 'string' || typeof value === 'number'))
-                .slice(0, 10)
-                .map(([key, value]) => [key, String(value)]),
+                .filter(([key, value]) => !DETAIL_SKIP.has(key) && !/(Label|Id|Avatar|En)$/.test(key) && (typeof value === 'string' || typeof value === 'number') && value !== '')
+                .slice(0, 12)
+                .map(([key, value]) => [FIELD_LABELS[key] ?? key, detailValue(key, value, r)]),
             )}</div>`,
           }),
           () => tabs([
@@ -2236,34 +2253,46 @@ async function initHr() {
     case 'hr/attendance.html': {
       const node = host();
       const [today, monthly] = await Promise.all([services.attendanceService.today(), services.attendanceService.monthly()]);
+      const rows = asRows(today);
+      const summary = today?.summary ?? {};
+      const count = (status) => summary[status] ?? rows.filter((row) => row.status === status).length;
+      const series = monthly?.series ?? [];
+      const TONE = { present: 'success', remote: 'info', late: 'warning', absent: 'danger' };
       render(
         node,
         `<div class="dashboard-shell">
-          ${pageHeader({ title: 'حضور و غیاب', subtitle: 'وضعیت امروز و روند ماهانه', icon: 'clock-history', actions: '<button class="btn btn-light" type="button" data-check-in><i class="bi bi-box-arrow-in-right"></i> ثبت ورود</button><button class="btn btn-primary" type="button" data-check-out><i class="bi bi-box-arrow-right"></i> ثبت خروج</button>' })}
-          ${statsFrom({ present: today.present, remote: today.remote, onLeave: today.onLeave, late: today.late }, [
+          ${pageHeader({ title: 'حضور و غیاب', subtitle: 'وضعیت امروز و روند ۳۰ روز اخیر', icon: 'clock-history', actions: '<button class="btn btn-light" type="button" data-check-in><i class="bi bi-box-arrow-in-right"></i> ثبت ورود</button><button class="btn btn-primary" type="button" data-check-out><i class="bi bi-box-arrow-right"></i> ثبت خروج</button>' })}
+          ${statsFrom({ present: count('present'), remote: count('remote'), late: count('late'), absent: count('absent') }, [
             ['present', 'حاضر', 'number', 'success', 'person-check'],
             ['remote', 'دورکاری', 'number', 'info', 'house'],
-            ['onLeave', 'مرخصی', 'number', 'warning', 'calendar-x'],
-            ['late', 'تأخیر', 'number', 'danger', 'alarm'],
+            ['late', 'تأخیر', 'number', 'warning', 'alarm'],
+            ['absent', 'غایب', 'number', 'danger', 'person-x'],
           ])}
-          ${card({ title: 'روند حضور ماهانه', body: `<div class="chart" data-chart="column" data-chart-height="320" data-chart-series='${JSON.stringify([{ name: 'حاضر', data: monthly.present ?? monthly.map?.((m) => m.present) ?? [] }])}' data-chart-labels='${JSON.stringify(monthly.labels ?? [])}'></div>` })}
-          ${card({ title: 'فهرست امروز', flush: true, body: `<table class="table table--hover"><thead><tr><th>کارمند</th><th>ورود</th><th>خروج</th><th>ساعت کارکرد</th><th>وضعیت</th></tr></thead><tbody>${(asRows(today))
+          ${card({ title: 'روند حضور ۳۰ روز اخیر', subtitle: `میانگین کارکرد امروز ${toDigits(summary.averageHours ?? 0)} ساعت`, body: `<div class="chart" data-chart="column" data-chart-height="320" data-chart-series='${escapeHtml(JSON.stringify([
+            { name: 'حاضر', data: series.map((d) => d.present) },
+            { name: 'دورکاری', data: series.map((d) => d.remote) },
+            { name: 'تأخیر', data: series.map((d) => d.late) },
+            { name: 'غایب', data: series.map((d) => d.absent) },
+          ]))}' data-chart-labels='${escapeHtml(JSON.stringify(series.map((d, index) => toDigits(index + 1))))}'></div>` })}
+          ${card({ title: 'فهرست امروز', subtitle: `${toDigits(rows.length)} نفر`, flush: true, body: `<table class="table table--hover"><thead><tr><th>کارمند</th><th>دپارتمان</th><th>ورود</th><th>خروج</th><th>کارکرد</th><th>وضعیت</th></tr></thead><tbody>${rows
             .map(
-              (row) => `<tr><td><div class="table__primary"><img class="avatar avatar--sm" src="${escapeHtml(row.avatar ?? 'assets/img/avatars/avatar-01.svg')}" alt=""><span class="table__primary-title">${escapeHtml(row.name)}</span></div></td>
-              <td class="numeric">${escapeHtml(row.checkIn ?? '—')}</td><td class="numeric">${escapeHtml(row.checkOut ?? '—')}</td><td class="numeric">${toDigits(row.hours ?? 0)} ساعت</td>
-              <td>${statusBadge(row.statusLabel ?? row.status ?? 'حاضر', row.status === 'late' ? 'warning' : row.status === 'absent' ? 'danger' : 'success')}</td></tr>`,
+              (row) => `<tr><td><div class="table__primary"><img class="avatar avatar--sm" src="${escapeHtml(url(row.avatar ?? 'assets/img/avatars/avatar-01.svg'))}" alt=""><span class="table__primary-title">${escapeHtml(row.employee ?? row.name ?? '—')}</span></div></td>
+              <td>${escapeHtml(row.department ?? '—')}</td>
+              <td class="numeric">${toDigits(row.checkIn ?? '—')}</td><td class="numeric">${row.checkOut ? toDigits(row.checkOut) : '<span class="text-muted">در محل کار</span>'}</td><td class="numeric">${toDigits(row.workedHours ?? row.hours ?? 0)} ساعت</td>
+              <td>${statusBadge(statusLabel(row.status ?? 'present'), TONE[row.status] ?? 'success')}</td></tr>`,
             )
             .join('')}</tbody></table>` })}
         </div>`,
       );
       initCharts(node);
+      const clock = () => new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
       on($('[data-check-in]', node), 'click', async () => {
-        const result = await services.attendanceService.checkIn();
-        toast.success('ورود ثبت شد', `ساعت ${result.time ?? 'اکنون'} ثبت گردید.`);
+        await services.attendanceService.checkIn();
+        toast.success('ورود ثبت شد', `ساعت ${clock()} ثبت گردید.`);
       });
       on($('[data-check-out]', node), 'click', async () => {
         const result = await services.attendanceService.checkOut();
-        toast.success('خروج ثبت شد', `مجموع کارکرد امروز: ${toDigits(result.hours ?? 0)} ساعت`);
+        toast.success('خروج ثبت شد', `ساعت ${clock()} — مجموع کارکرد امروز: ${toDigits(result.hours ?? 0)} ساعت`);
       });
       return;
     }
@@ -4132,7 +4161,7 @@ async function initUsers() {
                     </span>
                     <div>
                       <h3 class="card__title" style="margin:0 0 2px; font-size:14px; font-weight:800;">${r.label.split('(')[0].trim()}</h3>
-                      <span style="font-size:11px; color:var(--nv-text-muted); font-family:var(--nv-font-mono);">${r.id}</span>
+                      <code dir="ltr" title="شناسه سیستمی نقش" style="font-size:11px; color:var(--nv-text-muted); font-family:var(--nv-font-mono); background:none; padding:0;">${r.id}</code>
                     </div>
                   </div>
                   <span class="badge badge--soft-${r.tone} rounded-pill" style="font-size:11px;">${toDigits(r.users)} کاربر</span>

@@ -39,6 +39,10 @@ export const STATUS_LABELS = {
   partial: 'جزئی', 'off-duty': 'خارج از شیفت', 'near-capacity': 'نزدیک به ظرفیت', event: 'رویداد', personal: 'شخصی', holiday: 'تعطیلی', folder: 'پوشه', pdf: 'PDF',
   sheet: 'صفحه‌گسترده', image: 'تصویر', video: 'ویدیو', code: 'کد', archive: 'فایل فشرده', beta: 'بتا', business: 'کسب‌وکار', seo: 'سئو', writing: 'نویسندگی',
   programming: 'برنامه‌نویسی', sales: 'فروش', monthly: 'ماهانه', yearly: 'سالانه', annual: 'سالانه', male: 'مرد', female: 'زن',
+  interview: 'مصاحبه', screening: 'غربالگری', test: 'آزمون', hired: 'استخدام‌شده', offer: 'پیشنهاد شغلی', applied: 'درخواست‌داده', enterprise: 'سازمانی',
+  smb: 'کسب‌وکار کوچک', startup: 'استارتاپ', good: 'خوب', realtime: 'لحظه‌ای', daily: 'روزانه', weekly: 'هفتگی', basic: 'پایه', strong: 'قوی', strict: 'سخت‌گیرانه',
+  jalali: 'شمسی (جلالی)', gregorian: 'میلادی', read: 'خواندن', write: 'نوشتن', delete: 'حذف', manage: 'مدیریت', never: 'هرگز', always: 'همیشه', public: 'عمومی',
+  private: 'خصوصی', internal: 'داخلی', light: 'روشن', dark: 'تاریک', system: 'سیستم', sent: 'ارسال‌شده', opened: 'بازشده', clicked: 'کلیک‌شده', bounced: 'برگشتی',
   credit: 'واریز', debit: 'برداشت', in: 'ورودی', out: 'خروجی', income: 'درآمد', expense: 'هزینه', transfer: 'انتقال',
 };
 
@@ -49,6 +53,7 @@ export const statusLabel = (value) => {
 
 /** Human labels for common field names (fallback when a column is not defined). */
 export const FIELD_LABELS = {
+  tier: 'سطح', closeDate: 'تاریخ بستن',
   id: 'شناسه', name: 'نام', title: 'عنوان', email: 'ایمیل', phone: 'تلفن', status: 'وضعیت', statusLabel: 'وضعیت', company: 'شرکت', customer: 'مشتری', contact: 'مخاطب',
   owner: 'مسئول', city: 'شهر', country: 'کشور', address: 'نشانی', amount: 'مبلغ', total: 'مبلغ کل', price: 'قیمت', value: 'مقدار', type: 'نوع', category: 'دسته‌بندی',
   createdAt: 'تاریخ ایجاد', updatedAt: 'آخرین به‌روزرسانی', at: 'تاریخ', date: 'تاریخ', description: 'توضیحات', notes: 'یادداشت', note: 'یادداشت', code: 'کد', role: 'نقش',
