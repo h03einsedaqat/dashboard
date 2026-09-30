@@ -363,16 +363,19 @@ async function boot() {
   registerPatterns('ar', PATTERNS.ar);
   initI18n();
   /**
-   * English also translates the demo *content* (records, dashboards, charts):
-   * that phrase book is large, so it is only fetched when English is active and
-   * the Persian build never pays for it.
+   * English and Arabic also translate the demo *content* (records, dashboards,
+   * charts): those phrase books are large, so only the active language's book
+   * is fetched and the Persian build never pays for either.
    */
-  if (i18n.lang === 'en') {
+  const contentBooks = { en: () => import('./locales/content-en.js'), ar: () => import('./locales/content-ar.js') };
+  const shellBooks = { en: phrasesEn, ar: phrasesAr };
+  if (contentBooks[i18n.lang]) {
     try {
-      const { default: contentEn, patterns: contentPatterns } = await import('./locales/content-en.js');
-      registerPhrases('en', contentEn);
-      registerPatterns('en', contentPatterns);
-      registerPhrases('en', phrasesEn);
+      const { default: content, patterns: contentPatterns } = await contentBooks[i18n.lang]();
+      registerPhrases(i18n.lang, content);
+      registerPatterns(i18n.lang, contentPatterns);
+      /* Shell phrases win over content entries for the same source text. */
+      registerPhrases(i18n.lang, shellBooks[i18n.lang]);
     } catch (error) {
       console.warn('[i18n] content phrase book unavailable', error);
     }

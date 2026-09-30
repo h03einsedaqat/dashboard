@@ -26,6 +26,7 @@ import { language } from '../core/i18n.js';
 
 /** Sample source copy follows the UI language (English has its own authored samples). */
 const englishUi = () => language() === 'en';
+const arabicUi = () => language() === 'ar';
 
 const { card, statCard, infoRows, timeline, paint, host, tabs, pageHeader, formMarkup, collectValues, openRecordForm, chart, exportable, emptyState, statusBadge, toolButtons, statsFrom, services } = kit;
 
@@ -679,7 +680,8 @@ async function aiWriter() {
 
 const SUMMARY_SOURCE_FA = `گزارش عملکرد فصل سوم شرکت نشان می‌دهد درآمد کل با رشد ۱۴.۲ درصدی نسبت به فصل قبل به ۲۲.۴ میلیارد ریال رسیده است. بیشترین سهم رشد مربوط به فروش آنلاین و مشتریان سازمانی بوده است. در همین دوره هزینه‌های عملیاتی ۴.۶ درصد افزایش یافت که عمدتاً ناشی از توسعه تیم پشتیبانی و راه‌اندازی مرکز تماس جدید بود. نرخ ریزش مشتریان سازمانی از ۳.۱ درصد به ۲.۴ درصد کاهش یافت و رضایت مشتریان در نظرسنجی فصلی به ۸۷ درصد رسید. با این حال سه ریسک اصلی شناسایی شده است: تأخیر در تأمین سرورهای جدید، وابستگی به یک درگاه پرداخت و کمبود نیروی متخصص داده. هیئت مدیره پیشنهاد کرده است بودجه فصل آینده با تمرکز بر تنوع درگاه‌های پرداخت و جذب تحلیلگر داده بازنگری شود.`;
 const SUMMARY_SOURCE_EN = `The company's Q3 performance report shows total revenue reached IRR 22.4 billion, up 14.2% on the previous quarter. Online sales and enterprise customers drove most of the growth. Operating costs rose 4.6% over the same period, mainly due to expanding the support team and opening a new call center. Enterprise churn fell from 3.1% to 2.4%, and customer satisfaction reached 87% in the quarterly survey. Three main risks were identified, however: delays in sourcing new servers, dependence on a single payment gateway and a shortage of data specialists. The board has proposed revising next quarter's budget with a focus on diversifying payment gateways and hiring data analysts.`;
-const summarySource = () => (englishUi() ? SUMMARY_SOURCE_EN : SUMMARY_SOURCE_FA);
+const SUMMARY_SOURCE_AR = `يُظهر تقرير أداء الشركة للربع الثالث أن إجمالي الإيرادات بلغ ٢٢٫٤ مليار ريال بنمو ١٤٫٢٪ مقارنة بالربع السابق. وجاءت الحصة الأكبر من النمو من المبيعات عبر الإنترنت والعملاء المؤسسيين. وفي الفترة نفسها ارتفعت المصروفات التشغيلية بنسبة ٤٫٦٪، ويعود ذلك أساساً إلى توسيع فريق الدعم وإطلاق مركز اتصال جديد. وانخفض معدل تسرّب العملاء المؤسسيين من ٣٫١٪ إلى ٢٫٤٪، ووصل رضا العملاء في الاستطلاع الفصلي إلى ٨٧٪. ومع ذلك تم تحديد ثلاثة مخاطر رئيسية: التأخر في توريد الخوادم الجديدة، والاعتماد على بوابة دفع واحدة، ونقص الكوادر المتخصصة في البيانات. واقترح مجلس الإدارة مراجعة ميزانية الربع القادم مع التركيز على تنويع بوابات الدفع واستقطاب محللي البيانات.`;
+const summarySource = () => (englishUi() ? SUMMARY_SOURCE_EN : arabicUi() ? SUMMARY_SOURCE_AR : SUMMARY_SOURCE_FA);
 
 async function aiSummarizer() {
   const node = host();
@@ -787,8 +789,19 @@ const REPURPOSE_TEXT_EN = {
   faq: 'Q: Why do we need a single panel?\nA: Because scattered data slows decisions and increases stock errors.\n\nQ: How much time does it save?\nA: On average, 40% of decision-making time.\n\nQ: Does it include an AI assistant?\nA: Yes, for automated analysis and reporting.',
 };
 
-const repurposeSource = () => (englishUi() ? REPURPOSE_SOURCE_EN : REPURPOSE_SOURCE_FA);
-const repurposeText = () => (englishUi() ? REPURPOSE_TEXT_EN : REPURPOSE_TEXT_FA);
+const REPURPOSE_SOURCE_AR = 'تواجه المتاجر الإلكترونية تحدي إدارة المخزون وتنسيق قنوات البيع. لوحة واحدة تعرض الطلبات والمخزون والتقارير في مكان واحد تقلل وقت اتخاذ القرار حتى ٤٠٪ وتخفض أخطاء المخزون إلى ما يقارب الصفر. يسهّل نوفا أدمن هذا المسار على الفرق بلوحات جاهزة وتقارير فورية ومساعد ذكاء اصطناعي.';
+
+const REPURPOSE_TEXT_AR = {
+  linkedin: '🚀 لم يعد ينبغي أن تكون إدارة المبيعات متعددة القنوات كابوساً.\n\nلا تزال معظم المتاجر الإلكترونية تتابع المخزون في عدة جداول بيانات ولوحات منفصلة. النتيجة؟ طلبات لسلع غير متوفرة وقرارات تُتخذ متأخرة.\n\nمع لوحة واحدة:\n✅ قرارات أسرع حتى ٤٠٪\n✅ أخطاء مخزون تقارب الصفر\n✅ تقارير فورية للفريق بأكمله\n\nكيف تدير مخزونك؟ 👇\n#التجارة_الإلكترونية #إدارة_المخزون',
+  twitter: '١/ لديك متجر إلكتروني وتتحقق من المخزون في ٣ أماكن مختلفة؟ هذه السلسلة لك 🧵\n\n٢/ المشكلة الأساسية: بيانات متفرقة = قرارات متأخرة\n\n٣/ الحل: لوحة واحدة للطلبات والمخزون والتقارير\n\n٤/ النتيجة: قرارات أسرع بـ ٤٠٪ وأخطاء مخزون ≈ صفر',
+  newsletter: 'الموضوع: سر المتاجر التي لا تبيع أبداً «غير متوفر»\n\nمرحباً عزيزي،\nتناولنا هذا الأسبوع أحد أكثر آلام المتاجر الإلكترونية تكراراً: تنسيق المخزون بين القنوات. فيما يلي ثلاث خطوات بسيطة لتوحيد البيانات وخفض وقت اتخاذ القرار بنسبة ٤٠٪…',
+  instagram: 'لم تعد بحاجة للتنقل بين ٥ لوحات 😮‍💨\nالطلبات والمخزون والتقارير كلها في مكان واحد 📊\n⏱ قرارات أسرع بـ ٤٠٪\n📦 أخطاء المخزون ≈ صفر\nرابط العرض في النبذة 💜\n#متجر_إلكتروني #أعمال',
+  script: '[المشهد ١ — ٠ إلى ٥ ثوانٍ] لقطة قريبة لعدة نوافذ جداول بيانات مزدحمة. التعليق الصوتي: «ما زلت تتحقق من المخزون يدوياً؟»\n[المشهد ٢ — ٥ إلى ٢٠ ثانية] الانتقال إلى لوحة نوفا بمخططات مباشرة.\n[المشهد ٣ — ٢٠ إلى ٤٠ ثانية] عرض تنبيه المخزون وتقرير فوري.\n[الختام] «نوفا أدمن — كل شيء في لمحة.»',
+  faq: 'سؤال: لماذا نحتاج إلى لوحة واحدة؟\nجواب: لأن البيانات المتفرقة تبطئ القرار وتزيد أخطاء المخزون.\n\nسؤال: كم نوفر من الوقت؟\nجواب: في المتوسط ٤٠٪ من وقت اتخاذ القرار.\n\nسؤال: هل يتضمن مساعد ذكاء اصطناعي؟\nجواب: نعم، للتحليل وإعداد التقارير تلقائياً.',
+};
+
+const repurposeSource = () => (englishUi() ? REPURPOSE_SOURCE_EN : arabicUi() ? REPURPOSE_SOURCE_AR : REPURPOSE_SOURCE_FA);
+const repurposeText = () => (englishUi() ? REPURPOSE_TEXT_EN : arabicUi() ? REPURPOSE_TEXT_AR : REPURPOSE_TEXT_FA);
 
 async function aiRepurposer() {
   const node = host();

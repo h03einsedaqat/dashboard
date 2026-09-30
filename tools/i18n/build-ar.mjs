@@ -17,7 +17,7 @@ for (const file of fs.readdirSync(here('./ar/')).filter((f) => f.endsWith('.tsv'
     const key = keys[Number(line.slice(0, tab))];
     const value = line.slice(tab + 1).trim();
     if (key === undefined) { console.warn('bad index', file, line.slice(0, 20)); continue; }
-    if (value) book[key] = value;
+    if (value) book[key] = value.replace(/[۰-۹]/g, (d) => '٠١٢٣٤٥٦٧٨٩'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)]);
   }
 }
 /* Edge-punctuated template fragments reuse the bare translation. */

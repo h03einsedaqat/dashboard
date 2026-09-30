@@ -78,22 +78,27 @@ export function registerPatterns(lang, rules = []) {
 }
 
 /** Captured groups (a name, a project title) are themselves translated when possible. */
+let groupMissed = false;
 function translateGroup(value = '') {
-  if (composeLanguage !== 'en') return value ?? '';
-  if (!value || !PERSIAN.test(value)) return latinise(value);
-  return lookup(value.trim()) ?? value;
+  if (!COMPOSING.has(composeLanguage)) return value ?? '';
+  if (!value || !LETTERS.test(value)) return script(value ?? '');
+  const hit = lookup(value.trim());
+  if (hit === undefined) groupMissed = true;
+  return hit ?? value;
 }
 
 function translatePattern(text) {
   if (!patternSet) return undefined;
   for (const [match, replace] of patternSet) {
     if (!match.test(text)) continue;
+    groupMissed = false;
     const out = typeof replace === 'function'
       ? text.replace(match, replace)
       : text.replace(match, (...groups) => replace.replace(/\$(\d)/g, (_, i) => translateGroup(groups[Number(i)])));
-    /* English never accepts a half-translated result (a captured name without an entry). */
+    /* A half-translated result (a captured name without an entry) is never accepted. */
     if (composeLanguage === 'en' && LETTERS.test(out)) continue;
-    return composeLanguage === 'en' ? latinise(out).trim() : out;
+    if (composeLanguage === 'ar' && (groupMissed || PERSIAN_ONLY.test(out))) continue;
+    return COMPOSING.has(composeLanguage) ? script(out).trim() : out;
   }
   return undefined;
 }
@@ -113,8 +118,20 @@ const PERSIAN = /[\u0600-\u06FF]/;
 const LETTERS = /[\u0620-\u064A\u066E-\u06D3\u06D5\u06FA-\u06FF]/;
 const DELIMITERS = /(\s*(?:[—–·|•،؛:()«»[\]/+×!؟?…"]|\s-\s)\s*|[0-9۰-۹٠-٩]+(?:[٬٫,.:/][0-9۰-۹٠-٩]+)*\s*[%٪]?)/;
 const PUNCT = { '،': ',', '؛': ';', '؟': '?', '«': '“', '»': '”', '٪': '%', '٬': ',', '٫': '.' };
+/** Letters Arabic does not use: their presence means Persian copy survived. */
+const PERSIAN_ONLY = /[\u06CC\u06A9\u067E\u0686\u0698\u06AF]/;
+/** Languages whose content book supports segment composition. */
+const COMPOSING = new Set(['en', 'ar']);
 let composeLanguage = null;
 const composed = new Map();
+
+/** Arabic keeps its own punctuation; only Persian digits become Arabic-Indic. */
+function arabicise(text) {
+  return text.replace(/[۰-۹]/g, (d) => '٠١٢٣٤٥٦٧٨٩'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)]);
+}
+
+/** Script normalisation for the active composing language. */
+const script = (text) => (composeLanguage === 'ar' ? arabicise(text) : latinise(text));
 
 const normalise = (text) => text.replace(/\s+/g, ' ').replace(/ي/g, 'ی').replace(/ك/g, 'ک').trim();
 
@@ -160,12 +177,13 @@ function translateWords(segment) {
 }
 
 function compose(text) {
-  if (composeLanguage !== 'en' || !current) return undefined;
+  if (!COMPOSING.has(composeLanguage) || !current) return undefined;
   if (composed.has(text)) return composed.get(text);
   let result;
   if (!LETTERS.test(text)) {
-    /* Figures only (`۹۶٪`, `۱۴۰۵/۰۷/۰۸`, `Wednesday، 11 Mehr`): Latin digits and punctuation. */
-    result = PERSIAN.test(text) ? latinise(text) : undefined;
+    /* Figures only (`۹۶٪`, `۱۴۰۵/۰۷/۰۸`): the target script's digits and punctuation. */
+    const out = PERSIAN.test(text) ? script(text) : undefined;
+    result = out !== text ? out : undefined;
   } else {
     let missing = 0;
     let total = 0;
@@ -178,7 +196,10 @@ function compose(text) {
       return part.replace(trimmed, res.text);
     });
     /* Anything short of a complete translation stays as authored — no mixed-script copy. */
-    if (total && missing === 0) result = latinise(parts.join(''));
+    if (total && missing === 0) {
+      const out = script(parts.join(''));
+      if (!(composeLanguage === 'ar' && PERSIAN_ONLY.test(out))) result = out;
+    }
   }
   composed.set(text, result);
   return result;
