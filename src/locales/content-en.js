@@ -5,6 +5,8 @@
  * `main.js` only when English is the active language.
  */
 export default {
+  "حالت عربی اکنون همه داده‌های نمونه داشبوردها را به عربی نمایش می‌دهد: جدول‌ها، کارت‌ها، نمودارها، نام‌ها، وضعیت‌ها، پنجره‌ها و پاسخ‌های نمونه هوش مصنوعی، با ارقام عربی و نام ماه‌های عربی": "Arabic mode now shows all dashboard demo data in Arabic: tables, cards, charts, names, statuses, dialogs and AI sample replies, with Arabic digits and Arabic month names",
+  "مستندات توسعه‌دهنده (۲۳ بخش) به انگلیسی و عربی ترجمه شد و با تغییر زبان رابط، متن مستندات، فهرست سرفصل‌ها و دکمه‌های بخش قبلی/بعدی هم عوض می‌شوند": "The developer documentation (23 topics) is translated into English and Arabic; switching the interface language also switches the docs text, the section outline and the previous/next buttons",
   "— آخرین به‌روزرسانی": "— last update",
   "— اصل اساسی در طراحی تجربه کاربری مدرن": "— A core principle of modern UX design",
   "— این کلید دیگر به‌طور کامل نمایش داده نمی‌شود.": "— this key will not be shown in full again.",
