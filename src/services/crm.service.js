@@ -105,18 +105,13 @@ export const pipelineService = {
   },
 };
 
-export const crmActivityService = {
-  async list({ limit = 12 } = {}) {
-    return call('list', 'crm/activities', {
-      resolver: () => ({ items: activitiesCrm.slice(0, limit), total: activitiesCrm.length }),
-    });
-  },
-  async create(payload) {
-    return call('create', 'crm/activities', {
-      resolver: () => ({ id: `act-${Date.now()}`, at: new Date().toISOString(), outcome: 'در انتظار پاسخ', ...payload }),
-    });
-  },
-};
+export const crmActivityService = createResourceService({
+  name: 'crm/activities',
+  collection: () => activitiesCrm,
+  idPrefix: 'act',
+  searchFields: ['subject', 'related', 'owner', 'outcome'],
+  sortFields: ['at', 'duration', 'subject'],
+});
 
 export const callService = createResourceService({
   name: 'calls',

@@ -23,16 +23,46 @@ export const PAYMENT_METHODS = [
   { id: 'cash', label: 'پرداخت در محل', icon: 'cash-coin' },
 ];
 
-export const categories = categoryNames.map((name, i) => ({
-  id: `cat-${i + 1}`,
-  name,
-  slug: name.replace(/\s+/g, '-'),
-  icon: pick(['bag', 'headphones', 'laptop', 'router', 'printer', 'hdd', 'printer-fill', 'controller', 'phone', 'house-gear']),
-  products: int(4, 38),
-  parent: i > 5 ? pick(categoryNames.slice(0, 5)) : null,
-  status: i === 7 ? 'inactive' : 'active',
-  revenue: int(220, 4200) * 1000000,
-}));
+/*
+ * Curated catalogue tree. The RNG calls of the original generator are still
+ * consumed (same order) so every dataset generated after this one stays
+ * byte-identical; only the category meta is replaced with real values.
+ */
+const CATEGORY_META = {
+  'لوازم جانبی کامپیوتر': { slug: 'pc-accessories', icon: 'mouse', parent: 'لپ‌تاپ و کامپیوتر', color: 'violet', description: 'ماوس، کیبورد، هاب و تجهیزات میز کار' },
+  'صوتی و تصویری': { slug: 'audio-video', icon: 'headphones', parent: null, color: 'info', description: 'هدفون، اسپیکر، مانیتور و پروژکتور' },
+  'لپ‌تاپ و کامپیوتر': { slug: 'laptops-computers', icon: 'laptop', parent: null, color: 'primary', description: 'لپ‌تاپ، کامپیوتر رومیزی و آل‌این‌وان' },
+  'شبکه و اینترنت': { slug: 'networking', icon: 'router', parent: 'خانه هوشمند', color: 'success', description: 'مودم، روتر، سوییچ و اکسس‌پوینت' },
+  'چاپ و اسکن': { slug: 'print-scan', icon: 'printer', parent: 'تجهیزات اداری', color: 'warning', description: 'پرینتر، اسکنر و مواد مصرفی' },
+  'ذخیره‌سازی داده': { slug: 'storage', icon: 'device-hdd', parent: 'لپ‌تاپ و کامپیوتر', color: 'danger', description: 'هارد، SSD، فلش و NAS' },
+  'تجهیزات اداری': { slug: 'office-equipment', icon: 'briefcase', parent: null, color: 'warning', description: 'ماشین‌های اداری، دستگاه حضور و غیاب و…' },
+  'گیمینگ': { slug: 'gaming', icon: 'controller', parent: 'لپ‌تاپ و کامپیوتر', color: 'danger', description: 'کنسول، دسته بازی و تجهیزات گیمینگ' },
+  'موبایل و تبلت': { slug: 'mobile-tablet', icon: 'phone', parent: null, color: 'info', description: 'گوشی هوشمند، تبلت و لوازم جانبی' },
+  'خانه هوشمند': { slug: 'smart-home', icon: 'house-gear', parent: null, color: 'success', description: 'دوربین، دستیار صوتی، روشنایی و امنیت' },
+};
+export const categories = categoryNames.map((name, i) => {
+  const base = {
+    icon: pick(['bag', 'headphones', 'laptop', 'router', 'printer', 'hdd', 'printer-fill', 'controller', 'phone', 'house-gear']),
+    products: int(4, 38),
+    parent: i > 5 ? pick(categoryNames.slice(0, 5)) : null,
+    revenue: int(220, 4200) * 1000000,
+  };
+  const meta = CATEGORY_META[name] ?? {};
+  return {
+    id: `cat-${i + 1}`,
+    name,
+    slug: meta.slug ?? `category-${i + 1}`,
+    icon: meta.icon ?? base.icon,
+    color: meta.color ?? 'primary',
+    description: meta.description ?? '',
+    products: base.products,
+    parent: meta.parent !== undefined ? meta.parent : base.parent,
+    status: name === 'گیمینگ' ? 'inactive' : 'active',
+    featured: ['لپ‌تاپ و کامپیوتر', 'موبایل و تبلت', 'خانه هوشمند'].includes(name),
+    order: i + 1,
+    revenue: base.revenue,
+  };
+});
 
 export const brands = brandNames.map((name, i) => ({
   id: `brand-${i + 1}`,

@@ -29,11 +29,16 @@ import { initKanban } from './js/core/kanban.js';
 import { exportable } from './js/pages/kit.js';
 import { initCalendar } from './js/core/calendar.js';
 import { storage } from './js/core/storage.js';
+import { isAuthenticated, touchSession, clearSession, tabWasInPanel, lastRoute } from './js/core/auth.js';
 import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './js/core/load.js';
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
+import { enhanceTables, observeTables } from './js/core/tables.js';
+import { humanize, observeHumanize } from './js/core/humanize.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
+import { monthNames, WEEK_DAYS_LONG_AR } from './js/core/jalali.js';
+import { words as numberWords } from './js/core/numbers.js';
 import * as services from './services/index.js';
 
 /* ------------------------------------------------------------- global errors */
@@ -79,11 +84,6 @@ function initShortcuts() {
     if (meta && event.shiftKey && event.key.toLowerCase() === 'd') {
       event.preventDefault();
       toast.info('حالت نمایش تغییر کرد', theme.toggleTheme() === 'dark' ? 'تم تاریک فعال شد.' : 'تم روشن فعال شد.');
-      return;
-    }
-    if (meta && event.shiftKey && event.key.toLowerCase() === 'r') {
-      event.preventDefault();
-      theme.toggleDirection();
       return;
     }
     if (meta && event.shiftKey && event.key.toLowerCase() === 'l') {
@@ -132,8 +132,9 @@ function initMisc() {
     on(button, 'click', async () => {
       const ok = await modal.confirm({ title: 'خروج از حساب', text: 'از حساب کاربری خود خارج می‌شوید؟', tone: 'danger', confirmText: 'خروج' });
       if (!ok) return;
+      clearSession();
       toast.info('خروج انجام شد', 'در حال انتقال به صفحه ورود…');
-      setTimeout(() => goTo('auth/login.html'), 700);
+      setTimeout(() => goTo('auth/login.html', { replace: true }), 500);
     }),
   );
 
@@ -294,6 +295,32 @@ function exposeApi() {
 
 /* ---------------------------------------------------------------- start up */
 
+/**
+ * A tab that was working inside the panel and suddenly lands on the marketing
+ * page — a dev-server restart, a preview reload or a proxy hiccup reloads the
+ * site root — used to look exactly like being logged out. When the session is
+ * still valid, the same tab was in the panel, the last panel view is recent and
+ * the visitor did not deliberately navigate here from inside the site, return
+ * them to where they were. `?landing=1` always shows the landing page.
+ */
+function resumePanel() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('landing')) return false;
+    let fromSite = false;
+    try {
+      fromSite = Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin;
+    } catch {}
+    if (fromSite || !tabWasInPanel() || !isAuthenticated()) return false;
+    const target = lastRoute();
+    if (!target) return false;
+    goTo(target, { replace: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Login-first demo flow: panel pages require a (mock) session. */
 function authGuard() {
   const body = document.body;
@@ -301,22 +328,62 @@ function authGuard() {
   const kind = body?.dataset.kind ?? '';
   const isPublic =
     !page || page === 'index.html' || page === 'preview.html' || kind === 'auth' || kind === 'landing' || /^(auth|system|docs)\//.test(page) || body?.dataset.section === 'landing';
+  const isLanding = page === 'index.html' || kind === 'landing' || body?.dataset.section === 'landing';
+  if (isLanding && resumePanel()) return false;
   if (isPublic || config.authGuard === false) {
+    /* Panel-side public pages (system/, docs/) keep the session warm too. */
+    if (!isLanding && kind !== 'auth' && !page.startsWith('auth/') && isAuthenticated()) touchSession(page);
     document.documentElement.classList.remove('is-guarded');
     return true;
   }
-  let session = null;
+  /* Storage fully blocked (sandboxed webviews): nothing can persist a session,
+     so the demo stays open instead of looping back to the login page. */
+  let storageBlocked = false;
   try {
-    session = window.localStorage.getItem('nova:session') || window.sessionStorage.getItem('nova:session');
+    void window.localStorage.length;
   } catch {
-    session = '1';
+    storageBlocked = true;
   }
-  if (session) {
+  if (storageBlocked || isAuthenticated()) {
+    touchSession(page);
     document.documentElement.classList.remove('is-guarded');
     return true;
   }
   goTo(`auth/login.html?next=${encodeURIComponent(page)}`, { replace: true });
   return false;
+}
+
+/**
+ * Arabic output that the formatters already produce (month and weekday names,
+ * relative times, number words). Composed copy such as `موعد: ٢٦ مِهر ١٤٠٥` or
+ * `آخرین فعالیت: قبل أسبوعين` mixes these with Persian; registering them as
+ * identity entries lets the composer accept the Arabic part as translated.
+ */
+function arabicTokens() {
+  const tokens = new Set();
+  const add = (text) => String(text).split(/[\s،,]+/).forEach((word) => {
+    const clean = word.replace(/[0-9٠-٩۰-۹.٫٬:]/g, '').trim();
+    if (clean && !/[یکپچژگ]/.test(clean)) tokens.add(clean);
+  });
+  const names = monthNames('ar');
+  [...names.jalali, ...names.gregorian, ...WEEK_DAYS_LONG_AR].forEach(add);
+  try {
+    const rtf = new Intl.RelativeTimeFormat('ar-AE', { numeric: 'auto' });
+    ['year', 'month', 'week', 'day', 'hour', 'minute', 'second'].forEach((unit) => {
+      for (let value = -12; value <= 12; value += 1) add(rtf.format(value, unit));
+    });
+  } catch {
+    /* Intl without RelativeTimeFormat — the static lists above still apply. */
+  }
+  const w = numberWords('ar');
+  [...w.compact, ...w.bytes, w.hour, w.minute, ...Object.values(w.currency).map((c) => c.suffix)].forEach(add);
+  /* The composer normalises ي/ك to ی/ک before lookup, so both spellings map to the Arabic token. */
+  const entries = {};
+  tokens.forEach((token) => {
+    entries[token] = token;
+    entries[token.replace(/ي/g, 'ی').replace(/ك/g, 'ک')] = token;
+  });
+  return entries;
 }
 
 async function boot() {
@@ -330,6 +397,25 @@ async function boot() {
   registerPatterns('en', PATTERNS.en);
   registerPatterns('ar', PATTERNS.ar);
   initI18n();
+  /**
+   * English and Arabic also translate the demo *content* (records, dashboards,
+   * charts): those phrase books are large, so only the active language's book
+   * is fetched and the Persian build never pays for either.
+   */
+  const contentBooks = { en: () => import('./locales/content-en.js'), ar: () => import('./locales/content-ar.js') };
+  const shellBooks = { en: phrasesEn, ar: phrasesAr };
+  if (contentBooks[i18n.lang]) {
+    try {
+      const { default: content, patterns: contentPatterns } = await contentBooks[i18n.lang]();
+      registerPhrases(i18n.lang, content);
+      registerPatterns(i18n.lang, contentPatterns);
+      /* Shell phrases win over content entries for the same source text. */
+      registerPhrases(i18n.lang, shellBooks[i18n.lang]);
+      if (i18n.lang === 'ar') registerPhrases('ar', arabicTokens());
+    } catch (error) {
+      console.warn('[i18n] content phrase book unavailable', error);
+    }
+  }
   /** The language this document was rendered in; a switch away from it reloads. */
   const bootLanguage = i18n.lang;
   setPhraseLanguage(i18n.lang);
@@ -394,6 +480,15 @@ async function boot() {
   // (table reloads, kanban, chat, toasts) working as well.
   fixLinks(document);
   observeLinks(document.body);
+  /* Responsive tables: scroll-safe wrapper + stacked record cards on phones. */
+  try {
+    enhanceTables(document);
+    observeTables(document.body);
+    humanize(document.querySelector('main') ?? document);
+    observeHumanize(document.body);
+  } catch (error) {
+    console.warn('[tables] enhancement skipped', error);
+  }
   /**
    * Controller-owned chart placeholders (`data-chart-key` without series) are
    * drawn by their page controller; everything declarative is drawn here. Any

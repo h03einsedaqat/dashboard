@@ -110,16 +110,45 @@ export const deals = Array.from({ length: 34 }).map((_, i) => {
   };
 });
 
-export const activitiesCrm = Array.from({ length: 24 }).map((_, i) => ({
-  id: `act-${i + 1}`,
-  type: pick(['call', 'email', 'meeting', 'note', 'task']),
-  subject: pick(['تماس پیگیری پیشنهاد', 'ارسال قرارداد', 'جلسه دمو محصول', 'یادداشت جلسه', 'پیگیری پرداخت', 'معرفی تیم فنی']),
-  related: pick([...companies.map((c) => c.name), ...deals.map((d) => d.title)]),
-  owner: pick(users).name,
-  at: date(int(0, 30), int(8, 21), int(0, 59)),
-  duration: pick([15, 30, 45, 60, 90]),
-  outcome: pick(['موفق', 'در انتظار پاسخ', 'نیازمند پیگیری', 'بی‌نتیجه']),
-}));
+const ACTIVITY_OUTCOMES = [
+  ['done', 'موفق'],
+  ['pending', 'در انتظار پاسخ'],
+  ['followup', 'نیازمند پیگیری'],
+  ['failed', 'بی‌نتیجه'],
+];
+const ACTIVITY_SUBJECTS = {
+  call: ['تماس پیگیری پیشنهاد', 'تماس معرفی محصول', 'پیگیری پرداخت فاکتور', 'تماس رضایت‌سنجی'],
+  email: ['ارسال قرارداد', 'ارسال پیش‌فاکتور', 'ارسال مستندات فنی', 'ایمیل پیگیری جلسه'],
+  meeting: ['جلسه دمو محصول', 'جلسه مذاکره قیمت', 'معرفی تیم فنی', 'بازبینی فصلی حساب'],
+  note: ['یادداشت جلسه', 'ثبت نیاز مشتری', 'ثبت اعتراض قیمت', 'یادداشت تحویل حساب'],
+  task: ['آماده‌سازی پروپوزال', 'تنظیم دسترسی پایلوت', 'به‌روزرسانی قرارداد', 'هماهنگی نصب'],
+};
+const ACTIVITY_TYPES = Object.keys(ACTIVITY_SUBJECTS);
+const ACTIVITY_RELATED = [...companies.map((c) => c.name), ...deals.map((d) => d.title)];
+
+/*
+ * Deterministic (index-driven) so the CRM activity log is identical on every
+ * page load and does not shift the shared RNG sequence used by other datasets.
+ */
+export const activitiesCrm = Array.from({ length: 56 }).map((_, i) => {
+  const type = ACTIVITY_TYPES[(i * 3 + Math.floor(i / 5)) % ACTIVITY_TYPES.length];
+  const [status, statusLabel] = ACTIVITY_OUTCOMES[(i * 7 + 1) % 11 < 5 ? 0 : (i * 5) % ACTIVITY_OUTCOMES.length];
+  const owner = users[(i * 5 + 2) % users.length];
+  const minutesAgo = 14 + i * 197 + ((i * 37) % 120);
+  return {
+    id: `act-${i + 1}`,
+    type,
+    subject: ACTIVITY_SUBJECTS[type][(i + Math.floor(i / 4)) % 4],
+    related: ACTIVITY_RELATED[(i * 7 + 3) % ACTIVITY_RELATED.length],
+    owner: owner.name,
+    ownerAvatar: owner.avatar,
+    at: new Date(Date.now() - minutesAgo * 60000).toISOString(),
+    duration: type === 'note' ? 5 : [15, 30, 45, 60, 90][(i * 3) % 5],
+    status,
+    statusLabel,
+    outcome: statusLabel,
+  };
+});
 
 export const calls = Array.from({ length: 18 }).map((_, i) => ({
   id: `call-${i + 1}`,

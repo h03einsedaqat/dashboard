@@ -1707,7 +1707,9 @@
   .landing-hero__preview {
     margin-block-start: var(--nv-space-6);
   }
-  .landing-nav {
+  /* Closed by default; the hamburger's `.is-open` must still win here (it
+     used to be overridden, so the menu button opened nothing on tablets). */
+  .landing-nav:not(.is-open) {
     display: none;
   }
 }
@@ -1953,3 +1955,35 @@
     color: var(--nv-text-muted);
   }
 }
+
+/* v1.1 — the section-menu (hamburger) button exists only where the nav is
+   collapsed. On wide screens the full nav is visible and the button is gone. */
+.landing-header [data-landing-menu] {
+  display: none;
+}
+@media (max-width: 1199.98px) {
+  .landing-header [data-landing-menu] {
+    display: inline-flex;
+  }
+}
+
+/* v1.1 — “one stable shell” cards (replace the old layout switcher) ------- */
+.landing-layout--static { cursor: default; align-content: start; }
+.landing-layout__preview.is-mini i:nth-child(1) { width: 10%; }
+.landing-layout__preview.is-collapse { justify-content: center; }
+.landing-layout__preview.is-collapse i:nth-child(1) { display: none; }
+.landing-layout__preview.is-collapse i:nth-child(2) { flex: 0 0 38%; border-radius: 10px; outline: 2px solid color-mix(in srgb, var(--nv-primary) 45%, transparent); outline-offset: 2px; }
+.landing-layout__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-height: 5.5rem; align-content: center; padding: .45rem; border-radius: var(--nv-radius-md); background: var(--nv-surface-3); border: 1px solid var(--nv-border); }
+.landing-swatch {
+  width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 3px solid var(--nv-surface); cursor: pointer;
+  background: var(--swatch); box-shadow: 0 0 0 1px var(--nv-border); transition: transform .15s, box-shadow .15s;
+}
+.landing-swatch:hover { transform: scale(1.08); }
+.landing-swatch.is-active { box-shadow: 0 0 0 2px var(--swatch), 0 6px 14px -6px var(--swatch); }
+.landing-swatch:focus-visible, .landing-chip:focus-visible { outline: 2px solid var(--nv-primary); outline-offset: 2px; }
+.landing-chip {
+  display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .35rem .8rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--nv-border); background: var(--nv-surface); color: var(--nv-text); font-size: var(--nv-text-caption); font-weight: 700;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.landing-chip.is-active { border-color: var(--nv-primary); background: var(--nv-primary-soft); color: var(--nv-primary); }

@@ -29,21 +29,72 @@
 .datatable__search {
   flex: 1 1 16rem;
   max-width: 22rem;
+  min-width: 0;
 }
 
 .datatable__toolbar-spacer {
   flex: 1 1 auto;
 }
 
+/* Filters + «ستون‌ها» + «خروجی». Wraps instead of pushing the buttons out of
+   the card on narrow screens (the bug behind every «export button is outside
+   the box» report on phones). */
 .datatable__toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--nv-space-2);
+  min-width: 0;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+.datatable__toolbar-actions > .dropdown {
+  flex: 0 0 auto;
+}
+
+/* Inline filter selects inside the toolbar (the stand-alone filter strip keeps
+   its grid below). */
+.datatable__toolbar-actions .datatable__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  min-width: 0;
+}
+.datatable__toolbar-actions .datatable__filters .form-select {
+  inline-size: auto;
+  min-inline-size: 8.5rem;
+  max-inline-size: 100%;
+}
+
+@media (max-width: 575.98px) {
+  .datatable__toolbar {
+    padding: var(--nv-space-3);
+    gap: var(--nv-space-2);
+  }
+  .datatable__search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .datatable__toolbar-actions {
+    flex: 1 1 100%;
+    margin-inline-start: 0;
+  }
+  .datatable__toolbar-actions .datatable__filters {
+    flex: 1 1 0;
+  }
+  .datatable__toolbar-actions .datatable__filters .form-select {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    inline-size: 100%;
+  }
 }
 
 .datatable__filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
   gap: var(--nv-space-3);
   padding: var(--nv-space-4) var(--nv-card-pad);
   border-block-end: 1px solid var(--nv-divider);
@@ -343,4 +394,83 @@
   display: flex;
   align-items: center;
   gap: var(--nv-space-3);
+}
+
+/* Search field: the magnifier sits inside the input (it used to render on its
+   own line above the field). */
+.datatable__search {
+  position: relative;
+}
+.datatable__search > .bi {
+  position: absolute;
+  inset-inline-start: 0.85rem;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  color: var(--nv-text-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.datatable__search > .form-control {
+  padding-inline-start: 2.35rem;
+  min-height: 2.35rem;
+}
+
+@media (max-width: 575.98px) {
+  /* Icon-only «ستون‌ها» / «خروجی» on phones — the filter select gets the room. */
+  .datatable__toolbar-actions > .dropdown > .btn {
+    inline-size: 2.35rem;
+    block-size: 2.35rem;
+    padding: 0;
+    justify-content: center;
+  }
+  .datatable__toolbar-actions > .dropdown > .btn > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .datatable__toolbar-actions .datatable__filters .form-select {
+    min-height: 2.35rem;
+  }
+  .pagination [data-nav='first'],
+  .pagination [data-nav='last'] {
+    display: none;
+  }
+  .datatable__pager {
+    justify-content: center;
+  }
+}
+@media (max-width: 575.98px) {
+  .datatable__pager {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--nv-space-2);
+  }
+  .datatable__foot {
+    padding-inline: var(--nv-space-3);
+  }
+  .datatable__pager {
+    inline-size: 100%;
+    min-inline-size: 0;
+  }
+  .datatable__pager .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    max-inline-size: 100%;
+  }
+  .datatable__pager .pagination .page-link {
+    min-inline-size: 2.3rem;
+    min-block-size: 2.3rem;
+    padding-inline: 0.35rem;
+  }
+}
+@media (max-width: 359.98px) {
+  .datatable__pager .pagination .page-link {
+    min-inline-size: 2rem;
+    min-block-size: 2rem;
+    padding-inline: 0.25rem;
+  }
 }

@@ -1070,3 +1070,10 @@
   justify-content: flex-start;
   padding-inline: var(--nv-space-3);
 }
+
+/* v1.1 — the footer shares the content gutter (it touched the screen edge on phones) */
+.app-footer { padding-inline: var(--nv-content-pad); }
+@media (max-width: 575.98px) {
+  .app-footer__inner { flex-direction: column; align-items: flex-start; gap: var(--nv-space-3); }
+  .app-footer__links { gap: var(--nv-space-2) var(--nv-space-4); }
+}

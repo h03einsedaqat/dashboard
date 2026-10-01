@@ -572,11 +572,11 @@ body[data-direction='rtl'] .form-select {
 /* ------------------------------------------------------------- form layout */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: var(--nv-space-5);
 }
 .form-grid--wide {
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 .form-section {
   display: flex;
@@ -699,4 +699,26 @@ body[data-direction='rtl'] .form-select {
   padding: 0.28rem 0.55rem;
   font-size: var(--nv-text-caption);
   border-radius: var(--nv-radius-xs);
+}
+
+/* v1.1 — inline field feedback + small form hooks used by controllers */
+.form-feedback {
+  display: block;
+  min-height: 1.1em;
+  margin-block-start: 0.3rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-danger);
+  &:empty { min-height: 0; margin: 0; }
+}
+.cat-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-3);
+  min-width: 0;
+}
+.pm-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
 }

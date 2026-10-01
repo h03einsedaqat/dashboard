@@ -173,10 +173,14 @@
 .ai-collage__msg--bot { justify-self: end; background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; border-end-end-radius: 4px; }
 .ai-collage__cta { position: absolute; z-index: 5; inset-block-end: .25rem; inset-inline-start: 30%; box-shadow: 0 12px 24px -8px color-mix(in srgb, var(--nv-primary) 70%, transparent); }
 @media (max-width: 767.98px) {
-  .ai-collage { min-height: 0; }
+  /* Phones: one clean screenshot, one floating artwork in its corner and the
+     CTA as a full-width button *below* the picture — the third artwork used to
+     be absolutely positioned on top of «باز کردن محاوره». */
+  .ai-collage { min-height: 0; padding: 0.75rem 0 0; display: flex; flex-direction: column; }
   .ai-collage__main { width: 100%; }
-  .ai-collage__second, .ai-collage__art--2, .ai-collage__chat { display: none; }
-  .ai-collage__cta { position: static; margin-top: 1rem; }
+  .ai-collage__second, .ai-collage__art--2, .ai-collage__art--3, .ai-collage__chat { display: none; }
+  .ai-collage__art--1 { width: 60px; height: 60px; border-width: 3px; inset-block-start: -0.35rem; inset-inline-start: auto; inset-inline-end: -0.35rem; }
+  .ai-collage__cta { position: relative; z-index: 5; inset: auto; align-self: center; margin-top: 1.25rem; min-width: min(100%, 16rem); justify-content: center; }
 }
 
 /* ------------------------------------------------------------ demo cards */

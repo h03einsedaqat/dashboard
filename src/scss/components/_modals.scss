@@ -365,3 +365,155 @@ html.is-scroll-locked body {
     transform: none;
   }
 }
+
+/* ==========================================================================
+   v1.1 — every dialog fits the screen
+   --------------------------------------------------------------------------
+   Dialogs used to size to their content and clip whatever did not fit, so on
+   a phone long create/edit forms lost their «ذخیره» / «انصراف» buttons and
+   sometimes even the close button. Now every runtime dialog is a flex column:
+   the header and footer are pinned, only the body scrolls, and the panel can
+   never be taller than the visible viewport (dynamic viewport units, so the
+   mobile browser toolbars are taken into account). On phones the dialog
+   becomes a bottom sheet with a grab handle and safe-area padding.
+   ========================================================================== */
+.modal-backdrop[data-modal-id] {
+  --nv-modal-gap: clamp(0.75rem, 5vh, 3rem);
+  padding: var(--nv-modal-gap) var(--nv-space-4);
+  overflow: hidden;
+}
+.modal-backdrop[data-modal-id] > .modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2 * var(--nv-modal-gap));
+  max-height: calc(100dvh - 2 * var(--nv-modal-gap));
+  min-height: 0;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__header,
+.modal-backdrop[data-modal-id] > .modal > .modal__footer {
+  flex: 0 0 auto;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__header {
+  align-items: flex-start;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__header > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__header [data-modal-close] {
+  flex: 0 0 auto;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.modal-backdrop[data-modal-id] > .modal > .modal__footer {
+  flex-wrap: wrap;
+  background: var(--nv-surface);
+}
+.modal__title {
+  overflow-wrap: anywhere;
+}
+
+/* Form grids inside dialogs: a field that asked for two columns must not
+   create an implicit second column on a one-column phone layout. */
+.modal__body .form-grid > [style*='grid-column'] {
+  min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+  .modal-backdrop[data-modal-id] {
+    --nv-modal-gap: 0px;
+    align-items: flex-end;
+    padding: 0;
+    padding-block-start: max(env(safe-area-inset-top, 0px), 2.5rem);
+  }
+  .modal-backdrop[data-modal-id] > .modal,
+  .modal-backdrop[data-modal-id] > .modal-sm,
+  .modal-backdrop[data-modal-id] > .modal-lg,
+  .modal-backdrop[data-modal-id] > .modal-xl,
+  .modal-backdrop[data-modal-id] > .modal-full {
+    width: 100%;
+    max-height: calc(100vh - 2.5rem);
+    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 2.5rem));
+    margin: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    border-block-end: 0;
+    transform: translateY(24px);
+  }
+  .modal-backdrop[data-modal-id].is-visible > .modal {
+    transform: none;
+  }
+  /* Grab handle — a visual cue that this is a sheet. */
+  .modal-backdrop[data-modal-id] > .modal::before {
+    content: '';
+    flex: 0 0 auto;
+    align-self: center;
+    inline-size: 2.5rem;
+    block-size: 0.28rem;
+    margin-block: 0.55rem 0.1rem;
+    border-radius: 99px;
+    background: var(--nv-border-strong, var(--nv-border));
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__header {
+    padding: var(--nv-space-2) var(--nv-space-4) var(--nv-space-3);
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__header .modal__title {
+    font-size: 1rem;
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__header .modal__subtitle {
+    font-size: var(--nv-text-caption);
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__header [data-modal-close] {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__body {
+    padding: var(--nv-space-4);
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__footer {
+    padding: var(--nv-space-3) var(--nv-space-4);
+    padding-block-end: calc(var(--nv-space-3) + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 20px -16px rgba(15, 23, 42, 0.35);
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__footer > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+  .modal-backdrop[data-modal-id] > .modal > .modal__footer > .me-auto,
+  .modal-backdrop[data-modal-id] > .modal > .modal__footer > .ms-auto {
+    flex: 1 1 100%;
+    margin: 0 !important;
+    order: 3;
+  }
+  .modal__body .form-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: var(--nv-space-3);
+  }
+  .modal__body .form-grid > * {
+    grid-column: auto !important;
+  }
+  /* Confirm / alert dialogs stay compact centred cards. */
+  .modal-backdrop[data-modal-id]:has(> .modal-sm.modal--centered) {
+    align-items: center;
+    padding: var(--nv-space-4);
+  }
+  .modal-backdrop[data-modal-id] > .modal-sm.modal--centered {
+    border-radius: var(--nv-radius-xl);
+    border-block-end: 1px solid var(--nv-border);
+    max-height: calc(100dvh - 2rem);
+  }
+  .modal-backdrop[data-modal-id] > .modal-sm.modal--centered::before {
+    display: none;
+  }
+}
+.modal-backdrop[data-modal-id] > .modal:focus,
+.modal-backdrop[data-modal-id] > .modal:focus-visible {
+  outline: none;
+}

@@ -33,7 +33,7 @@ import { formatCurrency, formatNumber, formatPercent, toDigits, parseNumber } fr
 import { formatDate, relativeTime } from './jalali.js';
 import * as services from '../../services/index.js';
 import { COLUMNS } from './columns.js';
-import { openRecordView, openRecordEdit, statusLabel } from './record-dialogs.js';
+import { openRecordView, openRecordEdit, statusLabel, FIELD_LABELS } from './record-dialogs.js';
 
 const tables = new WeakMap();
 
@@ -49,6 +49,17 @@ function toneFor(value) {
 }
 
 /* ------------------------------------------------------------------ renderers */
+/** Semantic tone tokens stored in mock data → real colour + Persian name. */
+const TONE_COLORS = {
+  primary: ['var(--nv-primary)', 'اصلی'],
+  success: ['var(--nv-success)', 'سبز'],
+  warning: ['var(--nv-warning)', 'نارنجی'],
+  danger: ['var(--nv-danger)', 'قرمز'],
+  info: ['var(--nv-info)', 'آبی'],
+  neutral: ['var(--nv-neutral)', 'خنثی'],
+  violet: ['#8b5cf6', 'بنفش'],
+};
+
 const renderers = {
   text: (row, column) => escapeHtml(resolve(row, column) ?? '—'),
   primary: (row, column) => {
@@ -107,12 +118,16 @@ const renderers = {
   },
   boolean: (row, column) => (resolve(row, column) ? '<span class="badge badge--soft-success"><i class="bi bi-check2"></i> بله</span>' : '<span class="badge badge--soft-neutral">خیر</span>'),
   swatch: (row, column) => {
-    const color = row.color ?? 'var(--nv-primary)';
+    const color = TONE_COLORS[row.color]?.[0] ?? row.color ?? 'var(--nv-primary)';
     return `<span class="tag-chip" style="--chip:${escapeHtml(color)}"><i class="bi bi-tag-fill" aria-hidden="true"></i>${escapeHtml(resolve(row, column) ?? '—')}</span>`;
   },
   color: (row, column) => {
     const color = resolve(row, column);
-    return color ? `<span class="d-inline-flex align-items-center gap-2"><span class="color-dot" style="background:${escapeHtml(color)}"></span><code>${escapeHtml(color)}</code></span>` : '—';
+    if (!color) return '—';
+    const token = TONE_COLORS[color];
+    const css = token ? token[0] : color;
+    const label = token ? token[1] : color;
+    return `<span class="d-inline-flex align-items-center gap-2"><span class="color-dot" style="background:${escapeHtml(css)}"></span>${token ? escapeHtml(label) : `<code dir="ltr">${escapeHtml(label)}</code>`}</span>`;
   },
   clamp: (row, column) => `<span class="table__clamp" title="${escapeHtml(resolve(row, column) ?? '')}">${escapeHtml(resolve(row, column) ?? '—')}</span>`,
   thumbnail: (row, column) => `<img class="table__thumb" src="${escapeHtml(resolve(row, column))}" alt="" loading="lazy" />`,
@@ -351,15 +366,17 @@ function renderFilters(instance) {
     const [field, rawOptions] = entry.split(':');
     return { field: field.trim(), options: (rawOptions ?? '').split('|').map((option) => option.trim()).filter(Boolean) };
   });
+  const labelFor = (field) => instance.columns.find((column) => column.key === field)?.label ?? FIELD_LABELS[field] ?? statusLabel(field);
   render(
     host,
     specs
-      .map(
-        (spec) => `<select class="form-select form-select-sm" data-datatable-filter="${spec.field}" aria-label="فیلتر ${spec.field}">
-          <option value="">همه ${escapeHtml(spec.field)}</option>
-          ${spec.options.map((option) => `<option value="${escapeHtml(option)}" ${instance.state.filters[spec.field] === option ? 'selected' : ''}>${escapeHtml(option)}</option>`).join('')}
-        </select>`,
-      )
+      .map((spec) => {
+        const label = labelFor(spec.field);
+        return `<select class="form-select form-select-sm" data-datatable-filter="${escapeHtml(spec.field)}" aria-label="فیلتر ${escapeHtml(label)}">
+          <option value="">همه ${escapeHtml(label)}</option>
+          ${spec.options.map((option) => `<option value="${escapeHtml(option)}" ${instance.state.filters[spec.field] === option ? 'selected' : ''}>${escapeHtml(statusLabel(option))}</option>`).join('')}
+        </select>`;
+      })
       .join(''),
   );
 }

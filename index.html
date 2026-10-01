@@ -12,7 +12,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#4f46e5" />
-    <meta name="description" content="NOVAADMIN — قالب حرفه‌ای داشبورد و پنل مدیریت فارسی؛ ۲۰۶ صفحه RTL، ۱۰ داشبورد تخصصی، ۶ چیدمان، ۸ پالت رنگی، تقویم جلالی، حالت تاریک و پشتیبانی از ۳ زبان." />
+    <meta name="description" content="NOVAADMIN — قالب حرفه‌ای داشبورد و پنل مدیریت فارسی؛ ۲۰۶ صفحه RTL، ۱۰ داشبورد تخصصی، ۶ پالت رنگی، تقویم جلالی، حالت تاریک و پشتیبانی از ۳ زبان." />
     <meta name="keywords" content="قالب داشبورد فارسی, پنل مدیریت RTL, admin template persian, bootstrap rtl dashboard, قالب ادمین جلالی" />
     <meta name="author" content="NOVAADMIN" />
     <meta name="robots" content="index, follow" />
@@ -22,7 +22,7 @@
     <meta property="og:locale" content="fa_IR" />
     <meta property="og:url" content="https://novaadmin.dev/" />
     <meta property="og:title" content="NOVAADMIN — قالب داشبورد و پنل مدیریت فارسی" />
-    <meta property="og:description" content="۲۰۶ صفحه واقعی، ۱۰ داشبورد تخصصی، RTL کامل، تقویم جلالی، ۸ پالت رنگی و شش چیدمان — با سورس کامل." />
+    <meta property="og:description" content="۲۰۶ صفحه واقعی، ۱۰ داشبورد تخصصی، RTL کامل، تقویم جلالی، ۶ پالت رنگی و طراحی کاملاً واکنش‌گرا — با سورس کامل." />
     <meta property="og:image" content="https://novaadmin.dev/assets/img/previews/analytics-light.svg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="750" />
@@ -49,7 +49,7 @@
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "Admin Dashboard Template",
         "operatingSystem": "Web",
-        "softwareVersion": "1.0.2",
+        "softwareVersion": "1.1.0",
         "inLanguage": ["fa", "en", "ar"],
         "url": "https://novaadmin.dev/",
         "image": "https://novaadmin.dev/assets/img/previews/analytics-light.svg",
@@ -147,7 +147,7 @@
       <div class="container-xxl">
         <div class="row align-items-center g-5">
           <div class="col-lg-5" data-reveal>
-            <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> نسخه <span data-app-version>۱٫۰٫۰</span> — آماده انتشار</span>
+            <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> نسخه <span data-app-version>۱٫۱٫۰</span> — آماده انتشار</span>
             <h1 class="landing-hero__title">
               یک <span class="text-gradient">پنل مدیریت</span> که مثل محصول واقعی ساخته شده، نه مثل دمو
             </h1>
@@ -298,7 +298,7 @@
             <ul class="list-check mb-4">
               <li>حالت mock و حالت API با یک کلید روشن/خاموش می‌شوند</li>
               <li>خطا، timeout و retry یک‌جا تعریف شده‌اند (ApiError)</li>
-              <li>state سراسری: تم، زبان، چیدمان و جستجو در همه صفحه‌ها مشترک است</li>
+              <li>state سراسری: تم، زبان، رنگ و جستجو در همه صفحه‌ها مشترک است</li>
               <li>هر بلوک UI مستقل است؛ کم‌کردن یک بخش، بقیه را نمی‌شکند</li>
             </ul>
             <div class="landing-tech" data-landing-tech data-reveal>
@@ -413,26 +413,26 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
       </div>
     </section>
 
-    <!-- 6 — layouts: one data attribute, six shells -->
+    <!-- 6 — shell: one stable layout that adapts to every screen -->
     <section class="section" id="layouts">
       <div class="container-xxl">
         <div class="section-head section-head--center" data-reveal>
           <span class="eyebrow"><i class="bi bi-columns-gap" aria-hidden="true"></i> چیدمان</span>
-          <h2 class="section-title">شش پوسته، یک مجموعه کامپوننت</h2>
-          <p class="section-subtitle">روی هر کدام کلیک کنید — چیدمان همین‌جا اعمال می‌شود، در حافظه می‌ماند و در بقیه صفحه‌ها هم همین را می‌بینید.</p>
+          <h2 class="section-title">یک پوسته پایدار، سازگار با هر صفحه‌نمایش</h2>
+          <p class="section-subtitle">سایدبار، هدر و جدول‌ها در دسکتاپ، تبلت و موبایل تست شده‌اند؛ حالت تاریک و رنگ اصلی را همین‌جا امتحان کنید — انتخاب شما در همه صفحه‌ها می‌ماند.</p>
         </div>
 
         <div class="landing-layouts" data-landing-layouts data-reveal>
           <div class="state-panel state-panel--loading">
             <span class="spinner spinner--sm" aria-hidden="true"></span>
-            <span class="state-panel__title">در حال بارگذاری چیدمان‌ها…</span>
+            <span class="state-panel__title">در حال بارگذاری…</span>
           </div>
         </div>
 
         <div class="callout callout--info mt-5" data-reveal>
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <div>
-            <strong>هیچ‌وقت نمی‌شکند.</strong> هر چیدمان در breakpoint‌های از پیش تعیین‌شده به حالت امن برمی‌گردد: زیر ۱۴۰۰ پیکسل «دو ستونه» به ریل جمع‌شونده تبدیل می‌شود و زیر ۹۹۲ پیکسل سایدبار کشویی می‌شود. شعار کنار لوگو هم در باریک‌ترین حالت‌ها حذف یا بیضی می‌شود، نه اینکه روی آیکن بیفتد.
+            <strong>هیچ‌وقت نمی‌شکند.</strong> زیر ۹۹۲ پیکسل سایدبار به کشوی لمسی تبدیل می‌شود، جدول‌ها در موبایل به کارت‌های خوانا تبدیل می‌شوند و همه پنجره‌ها (مودال‌ها) با هدر و دکمه‌های ثابت، اسکرول‌پذیر می‌مانند. جهت صفحه هم خودکار از زبان پیروی می‌کند: فارسی و عربی راست‌چین، انگلیسی چپ‌چین.
           </div>
         </div>
       </div>
@@ -508,9 +508,9 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
         <div class="row g-4">
           <div class="col-lg-4" data-reveal>
             <span class="eyebrow"><i class="bi bi-megaphone" aria-hidden="true"></i> تازه‌ها</span>
-            <h2 class="section-title">نسخه <span data-app-version>۱٫۰٫۰</span></h2>
-            <p class="section-subtitle">انتشار عمومی با ۲۰۶ صفحه، ۱۰ داشبورد، شش چیدمان، سه زبان و کیت رابط کامل. از این پس هر نسخه با CHANGELOG منتشر می‌شود.</p>
-            <a class="btn btn-light" href="#release"><i class="bi bi-clock-history" aria-hidden="true"></i> تاریخچه کامل نسخه‌ها</a>
+            <h2 class="section-title">نسخه <span data-app-version>۱٫۱٫۰</span></h2>
+            <p class="section-subtitle">نسخه کیفیت و پایداری: ورود و نشست بازنویسی شد، همه جدول‌ها و مودال‌ها در موبایل کامل دیده می‌شوند، کانبان و قیف فروش روان شدند و استودیو تصاویر محصول و دسته‌بندی‌ها از نو طراحی شدند.</p>
+            <a class="btn btn-light" href="system/changelog.html"><i class="bi bi-clock-history" aria-hidden="true"></i> تاریخچه کامل نسخه‌ها</a>
           </div>
           <div class="col-lg-8" data-reveal>
             <div class="card h-100">

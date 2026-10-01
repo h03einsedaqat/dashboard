@@ -22,6 +22,11 @@ import { relativeTime, formatDate } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import * as kit from './kit.js';
+import { language } from '../core/i18n.js';
+
+/** Sample source copy follows the UI language (English has its own authored samples). */
+const englishUi = () => language() === 'en';
+const arabicUi = () => language() === 'ar';
 
 const { card, statCard, infoRows, timeline, paint, host, tabs, pageHeader, formMarkup, collectValues, openRecordForm, chart, exportable, emptyState, statusBadge, toolButtons, statsFrom, services } = kit;
 
@@ -673,11 +678,14 @@ async function aiWriter() {
 
 /* ---------------------------------------------------------- summarizer page */
 
-const SUMMARY_SOURCE = `گزارش عملکرد فصل سوم شرکت نشان می‌دهد درآمد کل با رشد ۱۴.۲ درصدی نسبت به فصل قبل به ۲۲.۴ میلیارد ریال رسیده است. بیشترین سهم رشد مربوط به فروش آنلاین و مشتریان سازمانی بوده است. در همین دوره هزینه‌های عملیاتی ۴.۶ درصد افزایش یافت که عمدتاً ناشی از توسعه تیم پشتیبانی و راه‌اندازی مرکز تماس جدید بود. نرخ ریزش مشتریان سازمانی از ۳.۱ درصد به ۲.۴ درصد کاهش یافت و رضایت مشتریان در نظرسنجی فصلی به ۸۷ درصد رسید. با این حال سه ریسک اصلی شناسایی شده است: تأخیر در تأمین سرورهای جدید، وابستگی به یک درگاه پرداخت و کمبود نیروی متخصص داده. هیئت مدیره پیشنهاد کرده است بودجه فصل آینده با تمرکز بر تنوع درگاه‌های پرداخت و جذب تحلیلگر داده بازنگری شود.`;
+const SUMMARY_SOURCE_FA = `گزارش عملکرد فصل سوم شرکت نشان می‌دهد درآمد کل با رشد ۱۴.۲ درصدی نسبت به فصل قبل به ۲۲.۴ میلیارد ریال رسیده است. بیشترین سهم رشد مربوط به فروش آنلاین و مشتریان سازمانی بوده است. در همین دوره هزینه‌های عملیاتی ۴.۶ درصد افزایش یافت که عمدتاً ناشی از توسعه تیم پشتیبانی و راه‌اندازی مرکز تماس جدید بود. نرخ ریزش مشتریان سازمانی از ۳.۱ درصد به ۲.۴ درصد کاهش یافت و رضایت مشتریان در نظرسنجی فصلی به ۸۷ درصد رسید. با این حال سه ریسک اصلی شناسایی شده است: تأخیر در تأمین سرورهای جدید، وابستگی به یک درگاه پرداخت و کمبود نیروی متخصص داده. هیئت مدیره پیشنهاد کرده است بودجه فصل آینده با تمرکز بر تنوع درگاه‌های پرداخت و جذب تحلیلگر داده بازنگری شود.`;
+const SUMMARY_SOURCE_EN = `The company's Q3 performance report shows total revenue reached IRR 22.4 billion, up 14.2% on the previous quarter. Online sales and enterprise customers drove most of the growth. Operating costs rose 4.6% over the same period, mainly due to expanding the support team and opening a new call center. Enterprise churn fell from 3.1% to 2.4%, and customer satisfaction reached 87% in the quarterly survey. Three main risks were identified, however: delays in sourcing new servers, dependence on a single payment gateway and a shortage of data specialists. The board has proposed revising next quarter's budget with a focus on diversifying payment gateways and hiring data analysts.`;
+const SUMMARY_SOURCE_AR = `يُظهر تقرير أداء الشركة للربع الثالث أن إجمالي الإيرادات بلغ ٢٢٫٤ مليار ريال بنمو ١٤٫٢٪ مقارنة بالربع السابق. وجاءت الحصة الأكبر من النمو من المبيعات عبر الإنترنت والعملاء المؤسسيين. وفي الفترة نفسها ارتفعت المصروفات التشغيلية بنسبة ٤٫٦٪، ويعود ذلك أساساً إلى توسيع فريق الدعم وإطلاق مركز اتصال جديد. وانخفض معدل تسرّب العملاء المؤسسيين من ٣٫١٪ إلى ٢٫٤٪، ووصل رضا العملاء في الاستطلاع الفصلي إلى ٨٧٪. ومع ذلك تم تحديد ثلاثة مخاطر رئيسية: التأخر في توريد الخوادم الجديدة، والاعتماد على بوابة دفع واحدة، ونقص الكوادر المتخصصة في البيانات. واقترح مجلس الإدارة مراجعة ميزانية الربع القادم مع التركيز على تنويع بوابات الدفع واستقطاب محللي البيانات.`;
+const summarySource = () => (englishUi() ? SUMMARY_SOURCE_EN : arabicUi() ? SUMMARY_SOURCE_AR : SUMMARY_SOURCE_FA);
 
 async function aiSummarizer() {
   const node = host();
-  const seed = await services.summarizerService.summarize({ text: SUMMARY_SOURCE, bullets: 4 });
+  const seed = await services.summarizerService.summarize({ text: summarySource(), bullets: 4 });
   const words = (text) => String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
   const summaryHtml = (result) => `<ol class="ais-summary">${(result.bullets ?? result.summary ?? []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ol>`;
   render(
@@ -691,7 +699,7 @@ async function aiSummarizer() {
             <div class="ais-drop" data-file-drop><i class="bi bi-cloud-arrow-up"></i><div><strong>فایل را اینجا رها کنید یا کلیک کنید</strong><small>PDF، DOCX یا TXT تا ۱۰ مگابایت</small></div><input type="file" hidden accept=".pdf,.docx,.txt" data-file-input></div>
             <div class="ais-file mt-2"><i class="bi bi-file-earmark-pdf-fill"></i><div><strong>${escapeHtml(seed.fileName)}</strong><small>${formatNumber(seed.words)} کلمه • ${escapeHtml(seed.readingTime)} مطالعه</small></div><span class="badge badge--soft-success ms-auto">پردازش شد</span></div>
             <label class="form-label mt-3">متن ورودی</label>
-            <textarea class="form-control" name="text" rows="9" placeholder="متن خود را اینجا بچسبانید…">${escapeHtml(SUMMARY_SOURCE)}</textarea>
+            <textarea class="form-control" name="text" rows="9" placeholder="متن خود را اینجا بچسبانید…">${escapeHtml(summarySource())}</textarea>
             <div class="row g-2 mt-1">
               <div class="col-4"><label class="form-label">تعداد نکات</label><select class="form-select form-select--sm" name="bullets"><option>3</option><option selected>4</option></select></div>
               <div class="col-4"><label class="form-label">سبک</label><select class="form-select form-select--sm" name="style"><option>فهرست نکات</option><option>پاراگراف</option><option>خلاصه اجرایی</option></select></div>
@@ -705,9 +713,9 @@ async function aiSummarizer() {
           ${card({ title: 'کلیدواژه‌ها و موضوعات', icon: 'tags', body: `<div class="ais-chips" data-keypoints>${seed.keywords.map((k) => `<span class="ais-chip"><i class="bi bi-hash"></i>${escapeHtml(k)}</span>`).join('')}</div>
             <div class="mt-3">${[['مثبت', 62, 'success'], ['خنثی', 27, 'info'], ['منفی', 11, 'danger']].map(([label, value, tone]) => `<div class="ais-model__meter ais-tone--${tone} mb-2"><span style="width:48px">${label}</span><div class="ais-bar"><span style="width:${value}%"></span></div><strong>${pct(value, 0)}</strong></div>`).join('')}</div>` })}
           <div class="ais-kpis">
-            ${kpi({ label: 'کلمات متن', value: `<span data-source-words>${formatNumber(words(SUMMARY_SOURCE))}</span>`, icon: 'file-text', tone: 'primary' })}
+            ${kpi({ label: 'کلمات متن', value: `<span data-source-words>${formatNumber(words(summarySource()))}</span>`, icon: 'file-text', tone: 'primary' })}
             ${kpi({ label: 'کلمات خلاصه', value: `<span data-summary-words>${formatNumber(words((seed.bullets ?? []).join(' ')))}</span>`, icon: 'text-paragraph', tone: 'violet' })}
-            ${kpi({ label: 'فشرده‌سازی', value: `<span data-compression>${pct(Math.round((1 - words((seed.bullets ?? []).join(' ')) / words(SUMMARY_SOURCE)) * 100), 0)}</span>`, icon: 'arrows-angle-contract', tone: 'success' })}
+            ${kpi({ label: 'فشرده‌سازی', value: `<span data-compression>${pct(Math.round((1 - words((seed.bullets ?? []).join(' ')) / words(summarySource())) * 100), 0)}</span>`, icon: 'arrows-angle-contract', tone: 'success' })}
           </div>
         </div>
       </div>
@@ -759,9 +767,9 @@ async function aiSummarizer() {
 
 /* ---------------------------------------------------------- repurposer page */
 
-const REPURPOSE_SOURCE = 'فروشگاه‌های ایرانی با چالش مدیریت موجودی و هماهنگی کانال‌های فروش مواجه‌اند. یک پنل واحد که سفارش‌ها، انبار و گزارش‌ها را یکجا نشان دهد، زمان تصمیم‌گیری را تا ۴۰ درصد کاهش می‌دهد و خطای موجودی را تقریباً به صفر می‌رساند. نووا ادمین با داشبوردهای آماده، گزارش لحظه‌ای و دستیار هوش مصنوعی این مسیر را برای تیم‌ها ساده می‌کند.';
+const REPURPOSE_SOURCE_FA = 'فروشگاه‌های ایرانی با چالش مدیریت موجودی و هماهنگی کانال‌های فروش مواجه‌اند. یک پنل واحد که سفارش‌ها، انبار و گزارش‌ها را یکجا نشان دهد، زمان تصمیم‌گیری را تا ۴۰ درصد کاهش می‌دهد و خطای موجودی را تقریباً به صفر می‌رساند. نووا ادمین با داشبوردهای آماده، گزارش لحظه‌ای و دستیار هوش مصنوعی این مسیر را برای تیم‌ها ساده می‌کند.';
 
-const REPURPOSE_TEXT = {
+const REPURPOSE_TEXT_FA = {
   linkedin: '🚀 مدیریت چندکاناله فروش دیگر نباید کابوس باشد.\n\nبیشتر فروشگاه‌های ایرانی هنوز موجودی را در چند فایل اکسل و چند پنل جداگانه دنبال می‌کنند. نتیجه؟ سفارش‌هایی که موجود نیستند و تصمیم‌هایی که دیر گرفته می‌شوند.\n\nبا یک پنل واحد:\n✅ زمان تصمیم‌گیری تا ۴۰٪ کمتر\n✅ خطای موجودی نزدیک به صفر\n✅ گزارش لحظه‌ای برای کل تیم\n\nشما چطور موجودی را مدیریت می‌کنید؟ 👇\n#تجارت_الکترونیک #مدیریت_موجودی',
   twitter: '۱/ فروشگاه اینترنتی دارید و موجودی را در ۳ جای مختلف چک می‌کنید؟ این رشته برای شماست 🧵\n\n۲/ مشکل اصلی: داده پراکنده = تصمیم دیر\n\n۳/ راه‌حل: یک داشبورد واحد برای سفارش، انبار و گزارش\n\n۴/ نتیجه: ۴۰٪ تصمیم‌گیری سریع‌تر و خطای موجودی ≈ صفر',
   newsletter: 'موضوع: راز فروشگاه‌هایی که هیچ‌وقت «ناموجود» نمی‌فروشند\n\nسلام دوست عزیز،\nاین هفته سراغ یکی از پرتکرارترین دردهای فروشگاه‌های آنلاین رفتیم: هماهنگی موجودی بین کانال‌ها. در ادامه سه قدم ساده برای یکپارچه‌سازی داده‌ها و کاهش ۴۰ درصدی زمان تصمیم‌گیری را می‌خوانید…',
@@ -770,14 +778,39 @@ const REPURPOSE_TEXT = {
   faq: 'پرسش: چرا به یک پنل واحد نیاز داریم؟\nپاسخ: چون داده پراکنده سرعت تصمیم را کم و خطای موجودی را زیاد می‌کند.\n\nپرسش: چقدر در زمان صرفه‌جویی می‌شود؟\nپاسخ: به‌طور میانگین ۴۰ درصد در زمان تصمیم‌گیری.\n\nپرسش: آیا دستیار هوش مصنوعی هم دارد؟\nپاسخ: بله، برای تحلیل و گزارش‌گیری خودکار.',
 };
 
+const REPURPOSE_SOURCE_EN = 'Online stores struggle with inventory management and keeping sales channels in sync. A single panel that shows orders, stock and reports in one place cuts decision time by up to 40% and brings stock errors close to zero. NovaAdmin makes that path simple for teams with ready-made dashboards, real-time reports and an AI assistant.';
+
+const REPURPOSE_TEXT_EN = {
+  linkedin: '🚀 Multichannel sales management shouldn\'t be a nightmare anymore.\n\nMost online stores still track inventory across several spreadsheets and separate panels. The result? Orders for items that are out of stock, and decisions made too late.\n\nWith a single panel:\n✅ Up to 40% faster decisions\n✅ Stock errors close to zero\n✅ Real-time reports for the whole team\n\nHow do you manage your inventory? 👇\n#ecommerce #inventorymanagement',
+  twitter: '1/ Running an online store and checking stock in 3 different places? This thread is for you 🧵\n\n2/ The core problem: scattered data = late decisions\n\n3/ The fix: one dashboard for orders, stock and reports\n\n4/ The result: 40% faster decisions and stock errors ≈ zero',
+  newsletter: 'Subject: The secret of stores that never sell “out of stock”\n\nHi there,\nThis week we tackled one of the most common pains of online stores: keeping inventory in sync across channels. Below are three simple steps to unify your data and cut decision time by 40%…',
+  instagram: 'No more jumping between 5 panels 😮‍💨\nOrders, stock and reports all in one place 📊\n⏱ 40% faster decisions\n📦 Stock errors ≈ zero\nDemo link in bio 💜\n#onlinestore #business',
+  script: '[Scene 1 — 0–5 s] Close-up of several cluttered spreadsheet windows. Voice-over: “Still checking stock by hand?”\n[Scene 2 — 5–20 s] Cut to the Nova dashboard with live charts.\n[Scene 3 — 20–40 s] Show a stock alert and a real-time report.\n[End] “NovaAdmin — everything at a glance.”',
+  faq: 'Q: Why do we need a single panel?\nA: Because scattered data slows decisions and increases stock errors.\n\nQ: How much time does it save?\nA: On average, 40% of decision-making time.\n\nQ: Does it include an AI assistant?\nA: Yes, for automated analysis and reporting.',
+};
+
+const REPURPOSE_SOURCE_AR = 'تواجه المتاجر الإلكترونية تحدي إدارة المخزون وتنسيق قنوات البيع. لوحة واحدة تعرض الطلبات والمخزون والتقارير في مكان واحد تقلل وقت اتخاذ القرار حتى ٤٠٪ وتخفض أخطاء المخزون إلى ما يقارب الصفر. يسهّل نوفا أدمن هذا المسار على الفرق بلوحات جاهزة وتقارير فورية ومساعد ذكاء اصطناعي.';
+
+const REPURPOSE_TEXT_AR = {
+  linkedin: '🚀 لم يعد ينبغي أن تكون إدارة المبيعات متعددة القنوات كابوساً.\n\nلا تزال معظم المتاجر الإلكترونية تتابع المخزون في عدة جداول بيانات ولوحات منفصلة. النتيجة؟ طلبات لسلع غير متوفرة وقرارات تُتخذ متأخرة.\n\nمع لوحة واحدة:\n✅ قرارات أسرع حتى ٤٠٪\n✅ أخطاء مخزون تقارب الصفر\n✅ تقارير فورية للفريق بأكمله\n\nكيف تدير مخزونك؟ 👇\n#التجارة_الإلكترونية #إدارة_المخزون',
+  twitter: '١/ لديك متجر إلكتروني وتتحقق من المخزون في ٣ أماكن مختلفة؟ هذه السلسلة لك 🧵\n\n٢/ المشكلة الأساسية: بيانات متفرقة = قرارات متأخرة\n\n٣/ الحل: لوحة واحدة للطلبات والمخزون والتقارير\n\n٤/ النتيجة: قرارات أسرع بـ ٤٠٪ وأخطاء مخزون ≈ صفر',
+  newsletter: 'الموضوع: سر المتاجر التي لا تبيع أبداً «غير متوفر»\n\nمرحباً عزيزي،\nتناولنا هذا الأسبوع أحد أكثر آلام المتاجر الإلكترونية تكراراً: تنسيق المخزون بين القنوات. فيما يلي ثلاث خطوات بسيطة لتوحيد البيانات وخفض وقت اتخاذ القرار بنسبة ٤٠٪…',
+  instagram: 'لم تعد بحاجة للتنقل بين ٥ لوحات 😮‍💨\nالطلبات والمخزون والتقارير كلها في مكان واحد 📊\n⏱ قرارات أسرع بـ ٤٠٪\n📦 أخطاء المخزون ≈ صفر\nرابط العرض في النبذة 💜\n#متجر_إلكتروني #أعمال',
+  script: '[المشهد ١ — ٠ إلى ٥ ثوانٍ] لقطة قريبة لعدة نوافذ جداول بيانات مزدحمة. التعليق الصوتي: «ما زلت تتحقق من المخزون يدوياً؟»\n[المشهد ٢ — ٥ إلى ٢٠ ثانية] الانتقال إلى لوحة نوفا بمخططات مباشرة.\n[المشهد ٣ — ٢٠ إلى ٤٠ ثانية] عرض تنبيه المخزون وتقرير فوري.\n[الختام] «نوفا أدمن — كل شيء في لمحة.»',
+  faq: 'سؤال: لماذا نحتاج إلى لوحة واحدة؟\nجواب: لأن البيانات المتفرقة تبطئ القرار وتزيد أخطاء المخزون.\n\nسؤال: كم نوفر من الوقت؟\nجواب: في المتوسط ٤٠٪ من وقت اتخاذ القرار.\n\nسؤال: هل يتضمن مساعد ذكاء اصطناعي؟\nجواب: نعم، للتحليل وإعداد التقارير تلقائياً.',
+};
+
+const repurposeSource = () => (englishUi() ? REPURPOSE_SOURCE_EN : arabicUi() ? REPURPOSE_SOURCE_AR : REPURPOSE_SOURCE_FA);
+const repurposeText = () => (englishUi() ? REPURPOSE_TEXT_EN : arabicUi() ? REPURPOSE_TEXT_AR : REPURPOSE_TEXT_FA);
+
 async function aiRepurposer() {
   const node = host();
   const formats = rows(await services.repurposeService.formats());
   const tones = { linkedin: 'info', twitter: 'neutral', newsletter: 'primary', instagram: 'danger', script: 'warning', faq: 'success' };
   const outputCard = (f) => `<article class="ais-out ais-tone--${tones[f.id] ?? 'primary'}" data-out="${escapeHtml(f.id)}">
-    <header><span class="ais-name__icon"><i class="bi bi-${escapeHtml(f.icon)}"></i></span><div><strong>${escapeHtml(f.label)}</strong><small>${escapeHtml(f.length)} • ${toDigits(Math.round((REPURPOSE_TEXT[f.id] ?? '').length / 4))} توکن</small></div>
+    <header><span class="ais-name__icon"><i class="bi bi-${escapeHtml(f.icon)}"></i></span><div><strong>${escapeHtml(f.label)}</strong><small>${escapeHtml(f.length)} • ${toDigits(Math.round((repurposeText()[f.id] ?? '').length / 4))} توکن</small></div>
       <div class="ms-auto d-flex gap-1"><button class="icon-btn icon-btn--sm" type="button" data-copy-out title="کپی"><i class="bi bi-clipboard"></i></button><button class="icon-btn icon-btn--sm" type="button" data-regen-out title="تولید دوباره"><i class="bi bi-arrow-repeat"></i></button></div></header>
-    <div class="ais-out__text">${escapeHtml(REPURPOSE_TEXT[f.id] ?? '').replace(/\n/g, '<br>')}</div>
+    <div class="ais-out__text">${escapeHtml(repurposeText()[f.id] ?? '').replace(/\n/g, '<br>')}</div>
   </article>`;
   const initial = formats.filter((f) => ['linkedin', 'instagram', 'twitter'].includes(f.id));
   render(
@@ -787,7 +820,7 @@ async function aiRepurposer() {
         <section data-col="5" class="card">
           <header class="card__head"><span class="card__icon"><i class="bi bi-file-text"></i></span><div><h2 class="card__title">متن پایه</h2><p class="card__subtitle">یک بار بنویسید، در همه کانال‌ها منتشر کنید</p></div></header>
           <form class="card__body" data-repurpose-form>
-            <textarea class="form-control" rows="8" name="text" placeholder="متن منبع را بچسبانید…">${escapeHtml(REPURPOSE_SOURCE)}</textarea>
+            <textarea class="form-control" rows="8" name="text" placeholder="متن منبع را بچسبانید…">${escapeHtml(repurposeSource())}</textarea>
             <label class="form-label mt-3">قالب‌های خروجی</label>
             <div class="ais-style-grid" data-format-pick>${formats.map((f) => `<button type="button" class="ais-style ais-tone--${tones[f.id] ?? 'primary'} ${initial.includes(f) ? 'is-active' : ''}" data-format="${escapeHtml(f.id)}"><i class="bi bi-${escapeHtml(f.icon)}"></i><span>${escapeHtml(f.label)}</span></button>`).join('')}</div>
             <div class="row g-2 mt-2"><div class="col-6"><label class="form-label">لحن</label><select class="form-select form-select--sm"><option>متناسب با کانال</option><option>رسمی</option><option>صمیمی</option></select></div><div class="col-6"><label class="form-label">ایموجی</label><select class="form-select form-select--sm"><option>متعادل</option><option>زیاد</option><option>بدون ایموجی</option></select></div></div>

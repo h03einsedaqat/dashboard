@@ -1620,7 +1620,7 @@ export const pageMeta = {
   },
   "ecommerce/categories.html": {
     "section": "applications",
-    "kind": "list",
+    "kind": "app",
     "parents": [
       {
         "id": "ecommerce",

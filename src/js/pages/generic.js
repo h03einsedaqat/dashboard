@@ -42,6 +42,7 @@ const FILTER_PRESETS = {
 };
 
 const SUMMARY_LABELS = {
+  activities: [['total', 'کل فعالیت‌ها'], ['done', 'موفق'], ['followup', 'نیازمند پیگیری'], ['pending', 'در انتظار پاسخ']],
   orders: [['total', 'کل سفارش‌ها'], ['revenue', 'درآمد', 'currency'], ['pending', 'در انتظار پرداخت'], ['averageOrder', 'میانگین سبد', 'currency']],
   products: [['total', 'کل محصولات'], ['published', 'منتشر شده'], ['outOfStock', 'ناموجود'], ['inventoryValue', 'ارزش انبار', 'currency']],
   users: [['total', 'کل کاربران'], ['active', 'کاربران فعال'], ['invited', 'دعوت‌شده'], ['twoFactor', 'ورود دو مرحله‌ای']],
@@ -477,6 +478,8 @@ export async function renderGenericApps(root = document) {
           (node.dataset.page ?? '').split('/').pop()?.replace('.html', '') ??
           'analytics';
         render(node, dashboardHarness(slug));
+        /* Restore the visitor's saved widget order / visibility for this dashboard. */
+        import('../core/chrome.js').then((mod) => mod.applySavedWidgets?.()).catch(() => {});
         /**
          * The dashboard controller ran before this harness existed (the page
          * controller order is: `route()` → generic renderer), so it is started

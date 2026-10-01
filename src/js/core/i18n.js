@@ -99,7 +99,6 @@ export function setLanguage(lang, { direction = null, persist = true, silent = f
   const dir = direction || directionFor(next);
   html.setAttribute('dir', dir);
   html.setAttribute('data-lang', next);
-  if (persist) storage.set(KEYS.direction, dir);
 
   applyTranslations();
   if (!silent) {
@@ -157,7 +156,6 @@ export function initSelectors(root = document) {
 
 export function initI18n() {
   const stored = storage.get(KEYS.language, config.defaultLanguage);
-  const storedDirection = storage.get(KEYS.direction, null);
   const htmlLang = document.documentElement.getAttribute('lang');
   /**
    * A `?lang=` URL parameter wins over storage: the language reload keeps the
@@ -174,10 +172,8 @@ export function initI18n() {
   state.dict = getLocale(state.lang);
   setNumberLanguage(state.lang);
   applyTranslations();
-  // Keep the pre-paint direction when the user chose one explicitly.
-  if (storedDirection && storedDirection !== directionFor(state.lang)) {
-    document.documentElement.setAttribute('dir', storedDirection);
-  }
+  /* Direction always follows the language (v1.1). */
+  document.documentElement.setAttribute('dir', directionFor(state.lang));
   initSelectors();
   renderLanguageLabels();
   return state;

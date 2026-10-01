@@ -81,7 +81,11 @@ function mountOverlay(instance) {
   lockScroll(true);
   document.addEventListener('keydown', onEscape);
 
-  const autofocus = $('[autofocus]', panel) ?? panel.querySelector('input:not([type="hidden"]), textarea, select, button');
+  /* Touch screens: focusing a field would pop the keyboard over half of the
+     sheet, and focusing the close button paints a ring on it. The dialog
+     itself takes focus (keyboard users still Tab into it). */
+  const coarse = window.matchMedia?.('(pointer: coarse)')?.matches;
+  const autofocus = $('[autofocus]', panel) ?? (coarse ? panel : panel.querySelector('input:not([type="hidden"]):not([readonly]), textarea, select') ?? panel);
   setTimeout(() => autofocus?.focus({ preventScroll: true }), 80);
 
   options.onMount?.(panel, instance);
@@ -128,7 +132,16 @@ function createInstance(options) {
 export const modal = {
   /** Opens a modal and returns its instance (`instance.close()`). */
   open(options = {}) {
-    return createInstance(options).open();
+    /* Safety net: the same dialog requested twice within a few hundred ms
+       (a control bound by two handlers, a double tap) returns the dialog that
+       is already open instead of stacking an identical copy on top of it. */
+    const top = stack.at(-1);
+    const signature = `${options.variant ?? 'modal'}|${options.title ?? ''}|${String(options.content ?? '').length}`;
+    if (top && !top.closed && top.signature === signature && Date.now() - top.openedAt < 400) return top;
+    const instance = createInstance(options);
+    instance.signature = signature;
+    instance.openedAt = Date.now();
+    return instance.open();
   },
 
   /** Centered drawer panel (filters, details, composer). */

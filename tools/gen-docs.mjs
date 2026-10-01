@@ -12,6 +12,12 @@
  *
  *   npm run gen:docs
  *
+ * Translations: `docs/en/<slug>.md` and `docs/ar/<slug>.md` are rendered next
+ * to the Persian source into the same partial, each article wrapped in
+ * `<div class="docs-lang" data-doc-lang="fa|en|ar" data-no-i18n>`. CSS shows
+ * the one matching `<html lang>` (Persian is the fallback), so switching the
+ * interface language also switches the documentation text.
+ *
  * Supported syntax: headings (#, ##, ###), paragraphs, bullet/numbered lists,
  * fenced code blocks, inline code, **bold**, *italic*, links, images, tables,
  * blockquotes (rendered as callouts) and horizontal rules.
@@ -23,6 +29,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_DIR = path.join(ROOT, 'docs');
 const OUTPUT_DIR = path.join(ROOT, 'src/partials/docs');
+/** Persian is the source language; `docs/en` and `docs/ar` hold translations. */
+const DOC_LANGUAGES = ['fa', 'en', 'ar'];
 
 /* ---------------------------------------------------------------- inline ---- */
 
@@ -197,7 +205,7 @@ export function renderMarkdown(markdown) {
       }
       index -= 1;
       const text = body.join(' ');
-      const tone = /هشدار|Warning|تحذير/i.test(text) ? 'warning' : /نکته|هدف|Tip|ملاحظة/i.test(text) ? 'info' : 'success';
+      const tone = /هشدار|Warning|تحذير/i.test(text) ? 'warning' : /نکته|هدف|Tip|Note|Goal|ملاحظة|نصيحة|الهدف/i.test(text) ? 'info' : 'success';
       const icon = tone === 'warning' ? 'exclamation-triangle' : tone === 'info' ? 'info-circle' : 'check2-circle';
       const [strong, ...rest] = text.split(/\.\s/);
       blocks.push(
@@ -243,9 +251,15 @@ export function buildDocs() {
 
   for (const name of sources.sort()) {
     if (name.toLowerCase() === 'readme.md') continue;
-    const markdown = fs.readFileSync(path.join(SOURCE_DIR, name), 'utf8');
+    const articles = [];
+    for (const lang of DOC_LANGUAGES) {
+      const file = lang === 'fa' ? path.join(SOURCE_DIR, name) : path.join(SOURCE_DIR, lang, name);
+      if (!fs.existsSync(file)) continue;
+      const markdown = fs.readFileSync(file, 'utf8');
+      articles.push(`<div class="docs-lang" data-doc-lang="${lang}" lang="${lang}" data-no-i18n>\n${renderMarkdown(markdown)}\n</div>`);
+    }
     const target = path.join(OUTPUT_DIR, name.replace(/\.md$/, '.html'));
-    fs.writeFileSync(target, `${renderMarkdown(markdown)}\n`, 'utf8');
+    fs.writeFileSync(target, `${articles.join('\n')}\n`, 'utf8');
     files.push(name);
   }
 

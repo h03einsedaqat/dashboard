@@ -12,6 +12,7 @@
  *   </div>
  */
 import { $, $$, on, render, escapeHtml } from '../core/dom.js';
+import { phrase } from '../core/translate.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { formatCompact, formatCurrency, formatDuration, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
@@ -159,7 +160,7 @@ async function collectSeries(instance) {
         { name: 'واقعی', data: revenue.series.find((s) => s.id === 'revenue')?.data ?? [] },
       ],
       labels: revenue.labels,
-      extra: { yaxis: { title: { text: 'مبلغ (ریال)' }, labels: { formatter: (value) => (typeof value === 'number' ? formatCompact(value) : String(value ?? '')) } } },
+      extra: { yaxis: { title: { text: phrase('مبلغ (ریال)') }, labels: { formatter: (value) => (typeof value === 'number' ? formatCompact(value) : String(value ?? '')) } } },
     },
     traffic: {
       type: 'area',

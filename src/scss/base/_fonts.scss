@@ -34,6 +34,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* English UI: the Vazirmatn `ss01` set swaps in Persian digit shapes, so the
+   English build turns it off — figures render as Latin 0–9 everywhere. */
+html[lang='en'] body {
+  font-feature-settings: normal;
+}
+
 /* Latin text inside an RTL page still gets a proper stack */
 [lang='en'],
 .font-latin {

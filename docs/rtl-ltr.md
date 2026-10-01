@@ -33,7 +33,7 @@ theme.toggleDirection();
 theme.set('direction', 'ltr');
 ```
 
-یا از دکمه‌ای با `data-direction-toggle` یا از پنل شخصی‌سازی: `[data-customizer="direction"] [data-value="ltr"]`.
+یا از دکمه‌ای با `data-direction-toggle`. (از نسخه ۱.۱ گزینه جهت از پنل شخصی‌سازی حذف شده و جهت همراه زبان عوض می‌شود.)
 
 ## نکات مهم برای کامپوننت‌ها
 

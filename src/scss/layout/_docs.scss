@@ -51,6 +51,22 @@
   max-width: 72ch;
 }
 
+/* Each topic ships in fa/en/ar; only the article matching <html lang> is shown
+   (Persian is the fallback when the language is unknown). */
+.docs-lang {
+  display: none;
+}
+
+html[lang='en'] .docs-lang[data-doc-lang='en'],
+html[lang='ar'] .docs-lang[data-doc-lang='ar'],
+html:not([lang='en']):not([lang='ar']) .docs-lang[data-doc-lang='fa'] {
+  display: block;
+}
+
+.docs-lang[data-doc-lang='en'] {
+  direction: ltr;
+}
+
 .docs-article {
   display: flex;
   flex-direction: column;

@@ -83,20 +83,9 @@ export async function initLanding() {
   initHeroShowcase(node);
   initFaqControls(node);
 
-  on(node, 'click', (event) => {
-    const demoBtn = event.target.closest('[data-cta="demo"]');
-    if (demoBtn) {
-      let session = null;
-      try {
-        session = window.localStorage.getItem('nova:session') || window.sessionStorage.getItem('nova:session');
-      } catch {}
-      if (session) {
-        event.preventDefault();
-        goTo('dashboards/analytics.html');
-      }
-    }
-  });
-
+  /* The landing never skips the login page: every “login / live demo” CTA
+     goes to auth/login.html, which offers “continue as …” when a session is
+     already active. */
   const block = (selector, load, options = {}) => {
     const target = $(selector, node);
     if (!target) return Promise.resolve();
@@ -490,29 +479,63 @@ async function landingDemos() {
 }
 
 async function landingLayouts() {
-  const layouts = [
-    { value: 'sidebar', icon: 'layout-sidebar-inset', title: 'سایدبار (پیش‌فرض)', text: 'ستون کناری باز با زیرمنوی آکاردئونی.' },
-    { value: 'mini', icon: 'layout-sidebar', title: 'مینی', text: 'فقط آیکن‌ها؛ با هاور، نام منو نمایان می‌شود.' },
-    { value: 'collapse', icon: 'list-nested', title: 'جمع‌شونده', text: 'سایدبار باریک با ریل آیکن و حالت کشویی.' },
-    { value: 'horizontal', icon: 'menu-button-wide', title: 'افقی', text: 'منوی بالای صفحه با گروه‌های بازشو — بدون ستون کناری.' },
-    { value: 'twocol', icon: 'columns-gap', title: 'دو ستونی', text: 'ریل آیکن + پنل دوم برای زیرمENU گروه فعال.' },
-    { value: 'boxed', icon: 'border', title: 'باکس‌دار', text: 'همان چیدمان داخل یک قاب با عرض محدود.' },
+  const cards = [
+    { icon: 'layout-sidebar-inset', title: 'سایدبار کامل', text: 'منوی کناری با زیرمنوی آکاردئونی، جست‌وجو و نشان‌گر صفحه فعال.', preview: 'sidebar' },
+    { icon: 'layout-sidebar', title: 'ریل جمع‌شونده', text: 'با دکمه هدر یا Ctrl + B سایدبار به ریل آیکن تبدیل می‌شود و فضای کار بیشتر می‌شود.', preview: 'mini' },
+    { icon: 'phone', title: 'کشوی موبایل', text: 'در تبلت و موبایل منو کشویی و لمسی است؛ جدول‌ها کارت می‌شوند و دکمه‌ها از کادر بیرون نمی‌زنند.', preview: 'collapse' },
   ];
-  const current = theme.snapshot?.()?.layout ?? 'default';
-  const isOn = (value) => (value === 'sidebar' ? current === 'default' || current === 'sidebar' : current === value);
-  return layouts
+  const palettes = [
+    ['indigo', '#4f46e5'], ['blue', '#2563eb'], ['emerald', '#059669'], ['violet', '#7c3aed'], ['rose', '#e11d48'], ['orange', '#ea580c'],
+  ];
+  const current = theme.snapshot?.() ?? theme.state ?? {};
+  const staticCards = cards
     .map(
-      (layout) => `<button class="landing-layout${isOn(layout.value) ? ' is-active' : ''}" type="button" data-layout-option="${escapeHtml(layout.value)}" aria-pressed="${isOn(layout.value)}">
+      (card) => `<article class="landing-layout landing-layout--static">
         <span class="landing-layout__head">
-          <i class="bi bi-${escapeHtml(layout.icon)}" aria-hidden="true"></i>
-          <span class="landing-layout__title">${escapeHtml(layout.title)}</span>
-          <i class="bi bi-check2-circle landing-layout__check" aria-hidden="true"></i>
+          <i class="bi bi-${escapeHtml(card.icon)}" aria-hidden="true"></i>
+          <span class="landing-layout__title">${escapeHtml(card.title)}</span>
         </span>
-        <span class="landing-layout__preview" aria-hidden="true"><i></i><i></i></span>
-        <span class="landing-layout__text">${escapeHtml(layout.text)}</span>
-      </button>`,
+        <span class="landing-layout__preview is-${escapeHtml(card.preview)}" aria-hidden="true"><i></i><i></i></span>
+        <span class="landing-layout__text">${escapeHtml(card.text)}</span>
+      </article>`,
     )
     .join('');
+  const themeCard = `<article class="landing-layout landing-layout--static">
+      <span class="landing-layout__head">
+        <i class="bi bi-moon-stars" aria-hidden="true"></i>
+        <span class="landing-layout__title">حالت روشن / تاریک</span>
+      </span>
+      <span class="landing-layout__swatches" role="group" aria-label="حالت تم">
+        <button type="button" class="landing-chip${current.theme === 'light' ? ' is-active' : ''}" data-theme-option="light"><i class="bi bi-sun" aria-hidden="true"></i> روشن</button>
+        <button type="button" class="landing-chip${current.theme === 'dark' ? ' is-active' : ''}" data-theme-option="dark"><i class="bi bi-moon-stars" aria-hidden="true"></i> تاریک</button>
+        <button type="button" class="landing-chip${current.theme === 'system' ? ' is-active' : ''}" data-theme-option="system"><i class="bi bi-display" aria-hidden="true"></i> سیستم</button>
+      </span>
+      <span class="landing-layout__text">پالت تاریک برای همه کامپوننت‌ها و نمودارها طراحی شده، نه فقط وارونه‌سازی رنگ.</span>
+    </article>`;
+  const dirCard = `<article class="landing-layout landing-layout--static">
+      <span class="landing-layout__head">
+        <i class="bi bi-translate" aria-hidden="true"></i>
+        <span class="landing-layout__title">سه زبان، جهت خودکار</span>
+      </span>
+      <span class="landing-layout__preview is-sidebar" aria-hidden="true"><i></i><i></i></span>
+      <span class="landing-layout__text">فارسی و عربی راست‌چین، انگلیسی چپ‌چین؛ جهت همیشه از زبان پیروی می‌کند و هیچ ترکیب ناسازگاری ساخته نمی‌شود.</span>
+    </article>`;
+  const colorCard = `<article class="landing-layout landing-layout--static">
+      <span class="landing-layout__head">
+        <i class="bi bi-palette" aria-hidden="true"></i>
+        <span class="landing-layout__title">شش رنگ اصلی</span>
+      </span>
+      <span class="landing-layout__swatches" role="group" aria-label="رنگ اصلی">
+        ${palettes
+          .map(
+            ([name, hex]) =>
+              `<button type="button" class="landing-swatch${current.primary === name ? ' is-active' : ''}" data-primary-option="${name}" style="--swatch:${hex}" aria-label="${name}" aria-pressed="${current.primary === name}"></button>`,
+          )
+          .join('')}
+      </span>
+      <span class="landing-layout__text">رنگ برند را انتخاب کنید؛ دکمه‌ها، نمودارها و نشان‌ها یکجا هماهنگ می‌شوند.</span>
+    </article>`;
+  return staticCards + themeCard + dirCard + colorCard;
 }
 
 async function landingAi() {
@@ -915,103 +938,95 @@ function browseAllMarkup() {
 
 /* ==================================================================== docs */
 
+/** Chrome strings of the docs reader, per interface language. */
+const DOCS_UI = {
+  fa: { prev: 'بخش قبلی', next: 'بخش بعدی', none: 'نتیجه‌ای یافت نشد', results: 'نتایج جستجو' },
+  en: { prev: 'Previous', next: 'Next', none: 'No results found', results: 'Search results' },
+  ar: { prev: 'القسم السابق', next: 'القسم التالي', none: 'لا توجد نتائج', results: 'نتائج البحث' },
+};
+
 export async function initDocs() {
-  const node = $('[data-docs-content]') ?? host();
+  /* Docs pages are static partials (tools/gen-docs.mjs) inside `.docs-content`;
+     there is no `[data-app]` placeholder, so the reader chrome hooks in here. */
+  const node = $('[data-docs-content]') ?? $('.docs-content') ?? host();
   if (!node) return;
   node.dataset.appClaimed = '1';
+  const lang = ['fa', 'en', 'ar'].includes(document.documentElement.lang) ? document.documentElement.lang : 'fa';
+  const ui = DOCS_UI[lang];
   const page = kit.pageId();
-  const nav = await services.docsService.nav('fa');
-  const info = await services.docsService.page(page);
+  const [nav, info] = await Promise.all([services.docsService.nav(lang), services.docsService.page(page)]);
+  const titleOf = (target) => nav?.flatMap((group) => group.items).find((item) => item.url === target)?.title ?? target;
 
-  // Add reading progress indicator at top of docs
+  // reading progress indicator
   if (!$('#docs-reading-progress')) {
-    document.body.insertAdjacentHTML('afterbegin', '<div id="docs-reading-progress" style="position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--nv-primary),#8b5cf6);z-index:9999;width:0%;transition:width 0.1s;"></div>');
+    document.body.insertAdjacentHTML('afterbegin', '<div id="docs-reading-progress" aria-hidden="true" style="position:fixed;top:0;inset-inline-start:0;height:3px;background:linear-gradient(90deg,var(--nv-primary),#8b5cf6);z-index:9999;width:0%;transition:width 0.1s;"></div>');
     window.addEventListener('scroll', () => {
       const h = document.documentElement.scrollHeight - window.innerHeight;
-      if (h > 0) {
-        const p = Math.min(100, Math.max(0, (window.scrollY / h) * 100));
-        const bar = document.getElementById('docs-reading-progress');
-        if (bar) bar.style.width = `${p}%`;
-      }
+      const bar = document.getElementById('docs-reading-progress');
+      if (bar && h > 0) bar.style.width = `${Math.min(100, Math.max(0, (window.scrollY / h) * 100))}%`;
     }, { passive: true });
   }
 
+  /* The sidebar is rendered at build time (and translated by i18n); search
+     simply filters its topic links in place. */
   const navHost = $('[data-docs-nav]');
-  if (navHost && nav?.length) {
-    render(
-      navHost,
-      nav
-        .map(
-          (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
-            .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-            .join('')}</ul></div>`,
-        )
-        .join(''),
-    );
-  }
   const search = $('[data-docs-search]');
-  if (search) {
-    on(
-      search,
-      'input',
-      debounce(async (event) => {
-        const term = event.target.value.trim();
-        if (!term) {
-          if (navHost && nav?.length) {
-            render(
-              navHost,
-              nav
-                .map(
-                  (group) => `<div class="docs-nav__group mb-3"><p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-heading); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i class="bi bi-folder-fill text-primary"></i> ${escapeHtml(group.title)}</p><ul class="list-group" style="gap:3px;">${group.items
-                    .map((item) => `<li><a class="files-nav__link ${item.url === page ? 'is-active' : ''}" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:8px;"><i class="bi bi-file-earmark-text${item.url === page ? '-fill text-primary' : ''}"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-                    .join('')}</ul></div>`,
-                )
-                .join(''),
-            );
-          }
-          return;
-        }
-        const found = await searchService.search(term, { limit: 10 });
-        render(
-          navHost,
-          `<p class="docs-nav__label" style="font-weight:800; font-size:12px; color:var(--nv-primary); margin-bottom:8px;">نتایج جستجو (${toDigits(found.items.length)})</p><ul class="list-group" style="gap:4px;">${found.items
-            .map((item) => `<li><a class="files-nav__link" href="${escapeHtml(item.url)}" style="border-radius:8px; padding:6px 10px; font-size:12px;"><i class="bi bi-search text-primary"></i><span>${escapeHtml(item.title)}</span></a></li>`)
-            .join('') || '<li class="list-item text-muted" style="font-size:12px; padding:8px;">نتیجه‌ای یافت نشد</li>'}</ul>`,
-        );
-      }, 220),
-    );
+  if (search && navHost) {
+    const empty = document.createElement('p');
+    empty.className = 'docs-nav__empty text-muted';
+    empty.style.cssText = 'font-size:12px; padding:8px;';
+    empty.hidden = true;
+    empty.setAttribute('data-no-i18n', '');
+    empty.textContent = ui.none;
+    navHost.append(empty);
+    on(search, 'input', debounce((event) => {
+      const term = event.target.value.trim().toLowerCase();
+      let shown = 0;
+      /* Filter the topic leaves; a group stays visible while any child matches. */
+      const items = $$('li', navHost).filter((item) => $(':scope > a[href]', item));
+      const leaves = items.filter((item) => !$('ul', item));
+      leaves.forEach((item) => {
+        const match = !term || $(':scope > a[href]', item).textContent.toLowerCase().includes(term);
+        item.hidden = !match;
+        if (match) shown += 1;
+      });
+      items.filter((item) => $('ul', item)).forEach((group) => {
+        group.hidden = Boolean(term) && !leaves.some((leaf) => !leaf.hidden && group.contains(leaf));
+      });
+      empty.hidden = !term || shown > 0;
+    }, 160));
   }
 
   const toc = $('[data-docs-toc]');
   if (toc) {
-    toc.innerHTML = '<div style="font-size:12px; font-weight:800; margin-bottom:10px; color:var(--nv-heading);"><i class="bi bi-list-nested me-1"></i> سرفصل‌های این صفحه</div>';
-    $$('h2, h3', node).forEach((heading) => {
-      heading.id = heading.id || heading.textContent.trim().replace(/\s+/g, '-').slice(0, 40);
-      toc.insertAdjacentHTML('beforeend', `<a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${heading.id}" style="display:block; font-size:12px; padding:${heading.tagName==='H3'?'3px 14px 3px 0':'4px 0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a>`);
+    /* Topics carry one article per language; only the visible one feeds the TOC. */
+    const article = $(`[data-doc-lang="${lang}"]`, node) ?? $('[data-doc-lang="fa"]', node) ?? node;
+    const headings = $$('h2, h3', article);
+    toc.setAttribute('data-no-i18n', '');
+    toc.innerHTML = '';
+    headings.forEach((heading, index) => {
+      heading.id = heading.id || `${lang}-${index + 1}-${heading.textContent.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40)}`;
+      toc.insertAdjacentHTML(
+        'beforeend',
+        `<li style="list-style:none;"><a class="docs-toc__link ${heading.tagName === 'H3' ? 'is-sub' : ''}" href="#${escapeHtml(heading.id)}" style="display:block; font-size:12px; padding-block:${heading.tagName === 'H3' ? '3px' : '4px'}; padding-inline-start:${heading.tagName === 'H3' ? '14px' : '0'}; color:var(--nv-text-muted);">${escapeHtml(heading.textContent.trim())}</a></li>`,
+      );
     });
   }
 
   const pager = $('[data-docs-pager]');
   if (pager) {
+    pager.setAttribute('data-no-i18n', '');
+    /* Arrows point along the reading direction. */
+    const back = lang === 'en' ? 'arrow-left' : 'arrow-right';
+    const forward = lang === 'en' ? 'arrow-right' : 'arrow-left';
     render(
       pager,
-      `<div class="docs-pager" style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; padding-top:20px; border-top:1px solid var(--nv-border);">
-        ${info?.prev ? `<a class="btn btn-light btn-sm" href="${escapeHtml(info.prev)}"><i class="bi bi-arrow-right"></i> بخش قبلی</a>` : '<span></span>'}
-        ${info?.next ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(info.next)}">بخش بعدی <i class="bi bi-arrow-left"></i></a>` : '<span></span>'}
+      `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:40px; padding-top:20px; border-top:1px solid var(--nv-border);">
+        ${info?.prev ? `<a class="btn btn-light btn-sm" href="${escapeHtml(url(info.prev))}" rel="prev"><i class="bi bi-${back}" aria-hidden="true"></i> <span>${escapeHtml(ui.prev)}: ${escapeHtml(titleOf(info.prev))}</span></a>` : '<span></span>'}
+        ${info?.next ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(url(info.next))}" rel="next"><span>${escapeHtml(ui.next)}: ${escapeHtml(titleOf(info.next))}</span> <i class="bi bi-${forward}" aria-hidden="true"></i></a>` : '<span></span>'}
       </div>`,
     );
   }
-
-  $$('[data-copy]').forEach((button) =>
-    on(button, 'click', async () => {
-      const pre = button.closest('.code-block')?.querySelector('code') || button.parentElement?.querySelector('code');
-      if (!pre) return;
-      await navigator.clipboard?.writeText(pre.textContent).catch(()=>null);
-      button.innerHTML = '<i class="bi bi-check2 text-success"></i> کپی شد';
-      setTimeout(() => { button.innerHTML = '<i class="bi bi-copy"></i> کپی'; }, 2000);
-      toast.success('کد کپی شد', 'نمونه کد در حافظه موقت قرار گرفت.');
-    }),
-  );
 }
 
 /* ================================================================ settings */
@@ -1049,8 +1064,9 @@ export async function initSettings() {
 
   // Bespoke view for Appearance
   if (section === 'appearance') {
-    const curTheme = theme.getTheme?.() || 'dark';
-    const curPrimary = theme.getPrimary?.() || 'indigo';
+    const curTheme = theme.get('theme') || 'light';
+    const curPrimary = theme.get('primary') || 'indigo';
+    const curFont = theme.get('fontSize') || 'md';
     render(
       node,
       `<div class="dashboard-shell">
@@ -1121,23 +1137,16 @@ export async function initSettings() {
 
         <div class="card" style="border-radius:18px;">
           <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
-            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">تراکم و اندازه فونت</h3>
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">اندازه فونت</h3>
           </div>
           <div class="card__body" style="padding:20px;">
             <div class="grid grid--2" style="gap:20px;">
               <div>
-                <label class="form-label">تراکم المان‌ها و جدول‌ها</label>
-                <select class="form-select" data-setting-density>
-                  <option value="comfortable" selected>راحت و جادار (Comfortable)</option>
-                  <option value="compact">فشرده سازمانی (Compact)</option>
-                </select>
-              </div>
-              <div>
                 <label class="form-label">مقیاس فونت رابط کاربری</label>
                 <select class="form-select" data-setting-fontsize>
-                  <option value="sm">کوچک (13px)</option>
-                  <option value="md" selected>استاندارد (14px - پیشنهادی)</option>
-                  <option value="lg">بزرگ (15px)</option>
+                  <option value="sm"${curFont === 'sm' ? ' selected' : ''}>کوچک (13px)</option>
+                  <option value="md"${curFont === 'md' ? ' selected' : ''}>استاندارد (14px - پیشنهادی)</option>
+                  <option value="lg"${curFont === 'lg' ? ' selected' : ''}>بزرگ (15px)</option>
                 </select>
               </div>
             </div>
@@ -1150,21 +1159,27 @@ export async function initSettings() {
       const themeBtn = e.target.closest('[data-set-theme]');
       if (themeBtn) {
         const t = themeBtn.dataset.setTheme;
-        theme.setTheme?.(t);
-        toast.success('تم تغییر کرد', `پوسته به حالت ${t} تنظیم شد.`);
+        theme.set('theme', t);
+        toast.success('تم تغییر کرد', { light: 'حالت روشن فعال شد.', dark: 'حالت تاریک فعال شد.', system: 'تم از تنظیمات سیستم پیروی می‌کند.' }[t] ?? '');
         $$('.theme-choice-card', node).forEach(c => c.style.borderColor = 'var(--nv-border)');
         themeBtn.style.borderColor = 'var(--nv-primary)';
       }
       const primaryBtn = e.target.closest('[data-set-primary]');
       if (primaryBtn) {
         const p = primaryBtn.dataset.setPrimary;
-        theme.setPrimary?.(p);
-        toast.success('رنگ اصلی تغییر کرد', `رنگ به ${p} تنظیم شد.`);
-        initSettings();
+        theme.set('primary', p);
+        toast.success('رنگ اصلی تغییر کرد', 'رنگ برند در همه صفحه‌ها اعمال شد.');
+        $$('[data-set-primary]', node).forEach((chip) => {
+          chip.style.borderColor = chip === primaryBtn ? 'var(--nv-primary)' : 'var(--nv-border)';
+        });
       }
       if (e.target.closest('[data-save-settings]')) {
-        toast.success('تنظیمات ظاهر ذخیره شد');
+        toast.success('تنظیمات ظاهر ذخیره شد', 'تغییرات به‌صورت خودکار ذخیره می‌شوند.');
       }
+    });
+    on($('[data-setting-fontsize]', node), 'change', (e) => {
+      theme.set('fontSize', e.target.value);
+      toast.success('اندازه فونت تغییر کرد');
     });
     return;
   }
@@ -1184,40 +1199,23 @@ export async function initSettings() {
 
         <div class="card mb-4" style="border-radius:18px;">
           <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
-            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">سبک ساختار و سایدبار</h3>
+            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">ساختار پنل</h3>
           </div>
           <div class="card__body" style="padding:20px;">
-            <div class="grid grid--3" style="gap:16px;">
-              ${[
-                { id: 'sidebar', name: 'سایدبار پیش‌فرض', desc: 'منوی کناری کامل با زیرمنوهای آکاردئونی', icon: 'layout-sidebar' },
-                { id: 'mini', name: 'سایدبار فشرده (مینی)', desc: 'فقط آیکون‌ها با بازشدن بازشو روی ماوس', icon: 'layout-sidebar-inset' },
-                { id: 'horizontal', name: 'چیدمان افقی (Top Nav)', desc: 'منوی سراسری در بالای صفحه برای پورتال‌ها', icon: 'layout-text-sidebar' },
-              ].map((l, i) => `
-                <div class="layout-card ${i===0?'is-active':''}" data-set-layout="${l.id}" style="cursor:pointer; border:2px solid ${i===0?'var(--nv-primary)':'var(--nv-border)'}; border-radius:14px; padding:16px; background:var(--nv-surface-2);">
-                  <div style="font-size:28px; color:var(--nv-primary); margin-bottom:8px;"><i class="bi bi-${l.icon}"></i></div>
-                  <h4 style="margin:0 0 4px; font-size:14px; font-weight:800; color:var(--nv-heading);">${l.name}</h4>
-                  <p style="margin:0; font-size:11px; color:var(--nv-text-muted); line-height:1.6;">${l.desc}</p>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="border-radius:18px;">
-          <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
-            <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">رفتار هدر و محتوا</h3>
-          </div>
-          <div class="card__body" style="padding:20px;">
+            <p style="margin:0 0 16px; font-size:13px; color:var(--nv-text-muted); line-height:1.9;">پنل از یک ساختار پایدار و تست‌شده استفاده می‌کند: سایدبار کناری در دسکتاپ، کشوی لمسی زیر ۹۹۲ پیکسل و جهت صفحه که خودکار از زبان پیروی می‌کند (فارسی و عربی راست‌چین، انگلیسی چپ‌چین).</p>
             <div class="grid grid--2" style="gap:24px;">
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="sticky-header" checked>
-                <label class="form-check-label" for="sticky-header" style="font-size:13px; font-weight:700;">هدر ثابت و چسبان (Sticky Header)</label>
-                <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">هنگام پیمایش صفحه، نوار ابزار بالا همیشه در دسترس می‌ماند.</div>
+                <input class="form-check-input" type="checkbox" id="sidebar-rail" data-setting-rail ${document.documentElement.classList.contains('sidebar-collapsed') ? 'checked' : ''}>
+                <label class="form-check-label" for="sidebar-rail" style="font-size:13px; font-weight:700;">سایدبار جمع‌شده (ریل آیکن)</label>
+                <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">فقط آیکن منوها نمایش داده می‌شود؛ با Ctrl + B یا دکمه هدر هم قابل تغییر است. (در دسکتاپ)</div>
               </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="boxed-container">
-                <label class="form-check-label" for="boxed-container" style="font-size:13px; font-weight:700;">حالت محصور با عرض محدود (Boxed Layout)</label>
-                <div style="font-size:11px; color:var(--nv-text-muted); margin-top:2px;">محتوای صفحات در نمایشگرهای عریض بیش از ۱۴۰۰ پیکسل کشیده نمی‌شود.</div>
+              <div>
+                <label class="form-label" for="setting-language">زبان رابط کاربری</label>
+                <select class="form-select" id="setting-language" data-setting-language>
+                  <option value="fa"${document.documentElement.lang === 'fa' ? ' selected' : ''}>فارسی (راست‌چین)</option>
+                  <option value="en"${document.documentElement.lang === 'en' ? ' selected' : ''}>English (LTR)</option>
+                  <option value="ar"${document.documentElement.lang === 'ar' ? ' selected' : ''}>العربية (راست‌چین)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1225,16 +1223,17 @@ export async function initSettings() {
       </div>`,
     );
 
-    on(node, 'click', (e) => {
-      const card = e.target.closest('[data-set-layout]');
-      if (card) {
-        $$('.layout-card', node).forEach(c => c.style.borderColor = 'var(--nv-border)');
-        card.style.borderColor = 'var(--nv-primary)';
-        theme.setLayout?.(card.dataset.setLayout);
-        toast.success('چیدمان اعمال شد');
+    on($('[data-setting-rail]', node), 'change', (e) => {
+      const want = e.target.checked;
+      if (document.documentElement.classList.contains('sidebar-collapsed') !== want) {
+        document.querySelector('[data-sidebar-collapse]')?.click();
       }
+      toast.success(want ? 'سایدبار جمع شد' : 'سایدبار باز شد');
+    });
+    on($('[data-setting-language]', node), 'change', (e) => setLanguage(e.target.value));
+    on(node, 'click', (e) => {
       if (e.target.closest('[data-save-settings]')) {
-        toast.success('تنظیمات چیدمان ذخیره شد');
+        toast.success('تنظیمات ذخیره شد', 'تغییرات به‌صورت خودکار ذخیره می‌شوند.');
       }
     });
     return;
@@ -1270,7 +1269,7 @@ export async function initSettings() {
             </div>
           </div>
 
-          <div class="card" style="border-radius:18px; grid-column: span 2;">
+          <div class="card" style="border-radius:18px; grid-column: 1 / -1;">
             <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border);">
               <h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">مشخصات اصلی سامانه</h3>
             </div>
@@ -1315,7 +1314,7 @@ export async function initSettings() {
           ${statCard({ label: 'وضعیت سلامت سرور', value: '۱۰۰٪ پایدار', hint: 'آپ‌تایم: ۹۹٫۹۸٪ در سال جاری', tone: 'success', icon: 'activity' })}
           ${statCard({ label: 'مصرف حافظه RAM', value: '۱٫۲ / ۴ GB', hint: '۲۸٪ مصرف شده (نرمال)', tone: 'info', icon: 'memory' })}
           ${statCard({ label: 'پایگاه داده', value: 'PostgreSQL 16', hint: 'اتصال فعال و همگام', tone: 'primary', icon: 'database' })}
-          ${statCard({ label: 'نسخه پلتفرم', value: 'v1.0.2 Pro', hint: 'آخرین پچ امنیتی نصب است', tone: 'warning', icon: 'patch-check' })}
+          ${statCard({ label: 'نسخه پلتفرم', value: `v${config.version} Pro`, hint: 'آخرین پچ امنیتی نصب است', tone: 'warning', icon: 'patch-check' })}
         </div>
 
         <div class="grid grid--2 mb-4" style="gap:20px;">
@@ -1591,7 +1590,6 @@ function settingsFields(section, values) {
     ],
     layout: [
       { name: 'layout', label: 'چیدمان پیش‌فرض', type: 'select', options: ['sidebar', 'mini', 'collapse', 'horizontal', 'twocol', 'boxed'] },
-      { name: 'direction', label: 'جهت پیش‌فرض', type: 'select', options: [{ value: 'rtl', label: 'راست‌به‌چپ' }, { value: 'ltr', label: 'چپ‌به‌راست' }] },
       { name: 'stickyHeader', label: 'هدر چسبان', type: 'switch' },
       { name: 'compactSidebar', label: 'منوی جمع‌شده در شروع', type: 'switch' },
     ],
@@ -2144,10 +2142,8 @@ export async function initAuth() {
   if (!node) return;
   
   if (page === 'auth-logout' || page === 'auth-lock') {
-    try {
-      window.localStorage.removeItem('nova:session');
-      window.sessionStorage.removeItem('nova:session');
-    } catch {}
+    const { clearSession } = await import('../core/auth.js');
+    clearSession();
   }
 
   const { url, goTo } = await import('../core/links.js');
@@ -2641,13 +2637,10 @@ export async function initAuth() {
         submit.disabled = true;
       }
       const syncEmail = email ? email.value.trim() : 'demo@novaadmin.dev';
-      const syncSession = JSON.stringify({ email: syncEmail, name: 'سارا محمدی', token: `demo-${Date.now().toString(36)}`, at: Date.now() });
-      try { window.localStorage.setItem('nova:session', syncSession); } catch {}
-      try { window.sessionStorage.setItem('nova:session', syncSession); } catch {}
-      try { document.cookie = `nova_session=${encodeURIComponent(syncSession)}; path=/; max-age=86400; SameSite=Lax`; } catch {}
-      try { window.localStorage.setItem('nova:lastLogin', String(Date.now())); } catch {}
-      try { window.sessionStorage.setItem('nova:lastLogin', String(Date.now())); } catch {}
-      try { window.__nova_session = syncSession; } catch {}
+      {
+        const { setSession } = await import('../core/auth.js');
+        setSession({ email: syncEmail, name: 'سارا محمدی' });
+      }
       try {
         if (services.authService?.login && email) {
           await services.authService.login({ email: email.value, password: password?.value ?? '' }).catch(()=>null);
@@ -2774,32 +2767,53 @@ export async function initSystemPages() {
   }
 
   if (name === 'changelog') {
-    const log = await services.contentService.changelog();
+    const log = (await services.contentService.changelog()) ?? [];
+    /** Type chips in a fixed, meaningful order with localized labels. */
+    const TYPES = {
+      added: { label: 'افزوده شد', icon: 'plus-circle' },
+      improved: { label: 'بهبود', icon: 'stars' },
+      changed: { label: 'تغییر', icon: 'arrow-repeat' },
+      fixed: { label: 'رفع اشکال', icon: 'bug' },
+      removed: { label: 'حذف شد', icon: 'dash-circle' },
+    };
+    const ORDER = ['fixed', 'improved', 'added', 'changed', 'removed'];
+    const current = log[0];
+    const totals = ORDER.map((type) => [type, (current?.items ?? []).filter((item) => (item.type ?? 'added') === type).length]).filter(([, count]) => count);
     render(
       node,
       `<div class="dashboard-shell">
-        ${pageHeader({ title: 'تغییرات نسخه‌ها', subtitle: 'تاریخچه کامل نسخه‌ها و تغییرات هر انتشار', icon: 'clipboard-data' })}
-        ${card({ body: log
-          .map(
-            (release) => {
-              /**
-               * One release in the mock data: `{ version, date (Jalali string),
-               * highlights, items: [{ type, text }] }`. Entries are grouped by
-               * change type so the page can show the coloured type chips.
-               */
-              const items = release.items ?? [];
-              const groups = release.groups ?? [...new Set(items.map((item) => item.type ?? 'added'))].map((type) => ({ type, items: items.filter((item) => (item.type ?? 'added') === type) }));
-              const date = /^[۰-۹0-9/:-]+$/.test(String(release.date ?? '')) ? release.date : formatDate(release.date, { format: 'medium' });
-              return `<section class="changelog-item"><header class="d-flex align-items-center gap-3"><span class="changelog-item__version">v${escapeHtml(release.version)}</span><span class="changelog-item__date">${escapeHtml(date ?? '')}</span>${release.badge ? statusBadge(release.badge, 'primary') : ''}</header>
+        ${pageHeader({
+          title: 'تغییرات نسخه‌ها',
+          subtitle: 'تاریخچه کامل نسخه‌ها و تغییرات هر انتشار',
+          icon: 'clipboard-data',
+          badges: current ? [statusBadge(`نسخه فعلی ${current.version}`, 'primary')] : [],
+        })}
+        ${current ? `<div class="changelog-summary">${totals
+          .map(([type, count]) => `<span class="changelog-type changelog-type--${type}"><i class="bi bi-${TYPES[type].icon}" aria-hidden="true"></i> ${toDigits(count)} ${TYPES[type].label}</span>`)
+          .join('')}</div>` : ''}
+        ${card({ body: log.length ? log
+          .map((release, index) => {
+            const items = release.items ?? [];
+            const types = [...new Set(items.map((item) => item.type ?? 'added'))].sort((a, b) => (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99);
+            const groups = release.groups ?? types.map((type) => ({ type, items: items.filter((item) => (item.type ?? 'added') === type) }));
+            const date = /^[۰-۹0-9/:-]+$/.test(String(release.date ?? '')) ? release.date : formatDate(release.date, { format: 'medium' });
+            return `<section class="changelog-item${index === 0 ? ' is-current' : ''}">
+              <header class="changelog-item__head">
+                <span class="changelog-item__version">v${escapeHtml(release.version)}</span>
+                <span class="changelog-item__date"><i class="bi bi-calendar3" aria-hidden="true"></i> ${escapeHtml(toDigits(date ?? ''))}</span>
+                ${release.badge ? statusBadge(release.badge, index === 0 ? 'success' : 'primary') : ''}
+              </header>
               ${release.highlights ? `<p class="changelog-item__highlights">${escapeHtml(release.highlights)}</p>` : ''}
               ${groups
-                .map(
-                  (group) => `<h4 class="mt-3"><span class="changelog-type changelog-type--${escapeHtml(group.type)}">${escapeHtml(group.type)}</span></h4><ul class="checklist">${(group.items ?? []).map((item) => `<li>${escapeHtml(item.text ?? item)}</li>`).join('')}</ul>`,
-                )
-                .join('')}</section>`;
-            },
-          )
-          .join('') })}
+                .map((group) => {
+                  const meta = TYPES[group.type] ?? { label: group.type, icon: 'dot' };
+                  return `<h4 class="changelog-item__group"><span class="changelog-type changelog-type--${escapeHtml(group.type)}"><i class="bi bi-${meta.icon}" aria-hidden="true"></i> ${escapeHtml(meta.label)}</span></h4>
+                  <ul class="checklist changelog-list changelog-list--${escapeHtml(group.type)}">${(group.items ?? []).map((item) => `<li><i class="bi bi-${meta.icon}" aria-hidden="true"></i><span>${escapeHtml(item.text ?? item)}</span></li>`).join('')}</ul>`;
+                })
+                .join('')}
+            </section>`;
+          })
+          .join('') : emptyState({ icon: 'clock-history', title: 'هنوز نسخه‌ای ثبت نشده است' }) })}
       </div>`,
     );
     return;
@@ -2807,18 +2821,60 @@ export async function initSystemPages() {
 
   if (name === 'status') {
     const overview = await services.statusService.overview();
+    const STATE = {
+      operational: { label: 'فعال', tone: 'success', dot: 'online' },
+      degraded: { label: 'کندی', tone: 'warning', dot: 'warning' },
+      down: { label: 'قطع', tone: 'danger', dot: 'danger' },
+    };
+    const INCIDENT = {
+      investigating: { label: 'در حال بررسی', tone: 'warning' },
+      identified: { label: 'شناسایی شد', tone: 'warning' },
+      monitoring: { label: 'تحت نظر', tone: 'info' },
+      resolved: { label: 'رفع شد', tone: 'success' },
+    };
+    const bars = (overview.uptimeBars ?? []).slice(-30);
+    /** Per-service history: the shared timeline plus the service's own current state. */
+    const history = (service) =>
+      bars
+        .map((bar, index) => {
+          const state = index === bars.length - 1 && service.state !== 'operational' ? service.state : typeof bar === 'object' ? bar.state ?? 'operational' : 'operational';
+          return `<span class="status-uptime__bar" data-state="${escapeHtml(state)}" title="${escapeHtml(STATE[state]?.label ?? state)}"></span>`;
+        })
+        .join('');
+    const when = (value) => (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(value) ? value : relativeTime(value));
     render(
       node,
       `<div class="dashboard-shell">
-        ${pageHeader({ title: 'وضعیت سرویس‌ها', subtitle: `آپ‌تایم کلی ${toDigits(overview.uptime)}٪`, icon: 'activity', badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning')] })}
-        <div class="card"><div class="card__body">${overview.services
-          .map(
-            (service) => `<div class="status-service ${service.state !== 'operational' ? 'status-service--warning' : ''}"><div><p class="status-service__name"><span class="status-dot status-dot--${service.state === 'operational' ? 'online' : 'warning'}"></span>${escapeHtml(service.name)}</p>
-              <p class="status-service__meta">${toDigits(service.latency ?? 0)} میلی‌ثانیه • ${toDigits(service.uptime)}٪ آپ‌تایم</p></div>
-              <div class="status-uptime">${(overview.uptimeBars ?? []).slice(-20).map((bar) => `<span class="status-uptime__bar" style="block-size:${Math.max(20, bar)}%"></span>`).join('')}</div></div>`,
-          )
-          .join('')}</div></div>
-        ${card({ title: 'رویدادها', flush: true, body: `<ul class="list-group">${(overview.incidents ?? []).map((incident) => `<li class="list-item"><span class="status-dot status-dot--${incident.severity === 'high' ? 'danger' : 'warning'}"></span><span class="list-item__title">${escapeHtml(incident.title)}<span class="list-item__sub">${escapeHtml(incident.text ?? '')}</span></span><span class="list-item__meta">${relativeTime(incident.at)}</span></li>`).join('')}</ul>` })}
+        ${pageHeader({ title: 'وضعیت سرویس‌ها', subtitle: `آپ‌تایم کلی ${toDigits(overview.uptime)}٪ در ۹۰ روز گذشته`, icon: 'activity', badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning')] })}
+        ${card({
+          title: 'سرویس‌ها',
+          subtitle: `${toDigits(bars.length)} روز اخیر`,
+          flush: true,
+          body: `<div class="status-list">${(overview.services ?? [])
+            .map((service) => {
+              const meta = STATE[service.state] ?? STATE.operational;
+              return `<div class="status-service${service.state !== 'operational' ? ' status-service--warning' : ''}">
+                <div class="status-service__info">
+                  <p class="status-service__name"><span class="status-dot status-dot--${meta.dot}"></span>${escapeHtml(service.name)}</p>
+                  <p class="status-service__meta">${toDigits(formatNumber(service.response ?? service.latency ?? 0))} میلی‌ثانیه • ${toDigits(service.uptime)}٪ آپ‌تایم</p>
+                </div>
+                <div class="status-uptime" aria-label="تاریخچه ${toDigits(bars.length)} روز">${history(service)}</div>
+                <span class="status-service__state">${statusBadge(meta.label, meta.tone)}</span>
+              </div>`;
+            })
+            .join('')}</div>`,
+        })}
+        ${card({
+          title: 'رویدادها',
+          flush: true,
+          body: `<ul class="list-group">${(overview.incidents ?? [])
+            .map((incident) => {
+              const meta = INCIDENT[incident.state] ?? INCIDENT.investigating;
+              const updates = incident.updates ?? (incident.text ? [incident.text] : []);
+              return `<li class="list-item status-incident"><span class="status-dot status-dot--${meta.tone === 'success' ? 'online' : 'warning'}"></span><span class="list-item__title">${escapeHtml(incident.title)}<span class="list-item__sub">${escapeHtml(updates[updates.length - 1] ?? '')}</span></span><span class="list-item__meta">${statusBadge(meta.label, meta.tone)}<small>${escapeHtml(toDigits(when(incident.at)))}</small></span></li>`;
+            })
+            .join('')}</ul>`,
+        })}
       </div>`,
     );
     return;

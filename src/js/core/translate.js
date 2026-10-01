@@ -29,7 +29,8 @@ import { language } from './i18n.js';
 
 /** Attributes that carry user-visible copy. */
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'value'];
-const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'CODE', 'PRE']);
+/* A <textarea>'s text is its *default* value — pre-filled sample copy — so it is translated too. */
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE']);
 /** Demo records that must survive translation untouched. */
 const PROTECTED = '[data-no-i18n], .apexcharts-canvas, .code-block, .docs-code';
 
@@ -52,12 +53,17 @@ export function registerPhrases(lang, entries, { merge = true } = {}) {
   if (!entries) return;
   const target = merge ? { ...(books.get(lang) ?? {}), ...entries } : { ...entries };
   books.set(lang, target);
-  if (lang === language()) current = target;
+  if (lang === language()) {
+    current = target;
+    composed.clear();
+  }
 }
 
 export function setPhraseLanguage(lang) {
   current = books.get(lang) ?? null;
   patternSet = patterns.get(lang) ?? null;
+  composeLanguage = lang;
+  composed.clear();
 }
 
 /**
@@ -71,19 +77,155 @@ export function registerPatterns(lang, rules = []) {
   if (lang === language()) patternSet = patterns.get(lang);
 }
 
+/** Captured groups (a name, a project title) are themselves translated when possible. */
+let groupMissed = false;
+function translateGroup(value = '') {
+  if (!COMPOSING.has(composeLanguage)) return value ?? '';
+  if (!value || !LETTERS.test(value)) return script(value ?? '');
+  const hit = lookup(value.trim());
+  /* A group that is already Arabic (a label or date rendered in Arabic) is kept as is. */
+  if (hit === undefined && composeLanguage === 'ar' && !PERSIAN_ONLY.test(value) && ARABIC_ONLY.test(value)) return value;
+  if (hit === undefined) groupMissed = true;
+  return hit ?? value;
+}
+
 function translatePattern(text) {
   if (!patternSet) return undefined;
   for (const [match, replace] of patternSet) {
-    if (match.test(text)) return text.replace(match, replace);
+    if (!match.test(text)) continue;
+    groupMissed = false;
+    const out = typeof replace === 'function'
+      ? text.replace(match, replace)
+      : text.replace(match, (...groups) => replace.replace(/\$(\d)/g, (_, i) => translateGroup(groups[Number(i)])));
+    /* A half-translated result (a captured name without an entry) is never accepted. */
+    if (composeLanguage === 'en' && LETTERS.test(out)) continue;
+    if (composeLanguage === 'ar' && (groupMissed || PERSIAN_ONLY.test(out))) continue;
+    return COMPOSING.has(composeLanguage) ? script(out).trim() : out;
   }
   return undefined;
+}
+
+/* ------------------------------------------------------------ composite copy */
+
+/**
+ * Rendered copy is often *composed*: `${name} — ${company}`, `موجودی: ۱۲`,
+ * `۳ روز پیش · تهران`. A whole-string lookup misses those, so the English
+ * build falls back to translating each segment between separators/numbers,
+ * and inside a segment the longest known word runs (names, cities, units).
+ * Digits and Persian punctuation are normalised for Latin script. The result
+ * is cached per language; the authored Persian source is never modified.
+ */
+const PERSIAN = /[\u0600-\u06FF]/;
+/** Persian/Arabic *letters* — excludes digits and punctuation such as ٪ ، ٫. */
+const LETTERS = /[\u0620-\u064A\u066E-\u06D3\u06D5\u06FA-\u06FF]/;
+const DELIMITERS = /(\s*(?:[—–·|•،؛:()«»[\]/+×!؟?…"]|\s-\s)\s*|[0-9۰-۹٠-٩]+(?:[٬٫,.:/][0-9۰-۹٠-٩]+)*\s*[%٪]?)/;
+const PUNCT = { '،': ',', '؛': ';', '؟': '?', '«': '“', '»': '”', '٪': '%', '٬': ',', '٫': '.' };
+/** Letters Arabic does not use: their presence means Persian copy survived. */
+const PERSIAN_ONLY = /[\u06CC\u06A9\u067E\u0686\u0698\u06AF]/;
+/** Arabic-only letters/diacritics (ة أ إ ى ؤ ئ ي ك, harakat, Arabic-Indic digits) — absent from Persian copy. */
+const ARABIC_ONLY = /[\u0629\u0623\u0625\u0649\u0624\u0626\u064A\u0643\u064B-\u0652\u0660-\u0669]/;
+/** Languages whose content book supports segment composition. */
+const COMPOSING = new Set(['en', 'ar']);
+let composeLanguage = null;
+const composed = new Map();
+
+/** Arabic keeps its own punctuation; only Persian digits become Arabic-Indic. */
+function arabicise(text) {
+  return text.replace(/[۰-۹]/g, (d) => '٠١٢٣٤٥٦٧٨٩'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)]);
+}
+
+/** Script normalisation for the active composing language. */
+const script = (text) => (composeLanguage === 'ar' ? arabicise(text) : latinise(text));
+
+const normalise = (text) => text.replace(/\s+/g, ' ').replace(/ي/g, 'ی').replace(/ك/g, 'ک').trim();
+
+function latinise(text) {
+  return text
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[،؛؟«»٪٬٫]/g, (c) => PUNCT[c])
+    .replace(/\s+([,;:.?!%)\]”])/g, '$1')
+    .replace(/([(\[“])\s+/g, '$1')
+    .replace(/\s{2,}/g, ' ');
+}
+
+/** Greedy longest-run translation of one separator-free segment. */
+function translateWords(segment) {
+  const direct = current[segment] ?? translatePattern(segment);
+  if (direct !== undefined) return { text: direct, missing: 0, total: 1 };
+  const words = segment.split(' ');
+  const out = [];
+  let missing = 0;
+  let total = 0;
+  for (let i = 0; i < words.length; ) {
+    let hit = null;
+    for (let j = words.length; j > i; j -= 1) {
+      const run = words.slice(i, j).join(' ');
+      if (current[run] !== undefined) {
+        hit = [current[run], j];
+        break;
+      }
+    }
+    const persian = PERSIAN.test(words[i]);
+    if (persian) total += 1;
+    if (hit) {
+      out.push(hit[0]);
+      i = hit[1];
+    } else {
+      if (persian) missing += 1;
+      out.push(words[i]);
+      i += 1;
+    }
+  }
+  return { text: out.join(' '), missing, total };
+}
+
+function compose(text) {
+  if (!COMPOSING.has(composeLanguage) || !current) return undefined;
+  if (composed.has(text)) return composed.get(text);
+  let result;
+  if (!LETTERS.test(text)) {
+    /* Figures only (`۹۶٪`, `۱۴۰۵/۰۷/۰۸`): the target script's digits and punctuation. */
+    const out = PERSIAN.test(text) ? script(text) : undefined;
+    result = out !== text ? out : undefined;
+  } else {
+    let missing = 0;
+    let total = 0;
+    const parts = text.split(DELIMITERS).map((part) => {
+      if (!part || !PERSIAN.test(part) || DELIMITERS.test(part)) return part;
+      const trimmed = part.trim();
+      const res = translateWords(trimmed);
+      missing += res.missing;
+      total += res.total;
+      return part.replace(trimmed, res.text);
+    });
+    /* Anything short of a complete translation stays as authored — no mixed-script copy. */
+    if (total && missing === 0) {
+      const out = script(parts.join(''));
+      if (!(composeLanguage === 'ar' && PERSIAN_ONLY.test(out))) result = out;
+    }
+  }
+  composed.set(text, result);
+  return result;
+}
+
+/** Full lookup chain: exact → normalised → pattern → composite. */
+function lookup(source) {
+  if (!current || !source) return undefined;
+  const exact = current[source];
+  if (exact !== undefined) return exact;
+  const norm = normalise(source);
+  const hit = current[norm] ?? translatePattern(norm);
+  if (hit !== undefined) return hit;
+  return compose(norm);
 }
 
 /** Phrase lookup for callers that build markup in JavaScript. */
 export function phrase(text, fallback = '') {
   if (!text) return fallback || text;
   if (!enabled || !current) return text;
-  return current[text] ?? text;
+  if (typeof text !== 'string') return text;
+  return lookup(text) ?? text;
 }
 
 export function hasPhrase(text) {
@@ -114,9 +256,8 @@ function translateText(node) {
   const source = remembered ?? trimmed;
   if (!remembered) originals.set(node, trimmed);
 
-  let translated = current ? current[source] : undefined;
-  /** No exact phrase? Try the pattern rules before giving up. */
-  if (translated === undefined) translated = current ? translatePattern(source) : undefined;
+  /** Exact phrase → pattern rules → segment-by-segment composite. */
+  const translated = lookup(source);
   if (translated === undefined) {
     if (node.nodeValue !== raw.replace(trimmed, source)) {
       /** Switching back to Persian restores exactly what the author wrote. */
@@ -131,7 +272,8 @@ function translateText(node) {
 }
 
 function translateAttributes(el) {
-  if (isSkipped(el)) return;
+  /* Unlike text, a <textarea>'s placeholder/title is interface copy. */
+  if (!el || el.closest?.(PROTECTED)) return;
   const skip = (el.dataset.noI18nAttrs ?? '').split(/\s+/).filter(Boolean);
   let remembered = attrOriginals.get(el);
   if (!remembered) {
@@ -146,8 +288,7 @@ function translateAttributes(el) {
     if (!trimmed) return;
     const source = remembered[attr] ?? trimmed;
     if (!remembered[attr]) remembered[attr] = trimmed;
-    let translated = current ? current[source] : undefined;
-    if (translated === undefined && current) translated = translatePattern(source);
+    const translated = lookup(source);
     if (translated === undefined) {
       if (raw !== source) el.setAttribute(attr, source);
       return;
@@ -255,7 +396,7 @@ export function audit(scope = document.body) {
     const text = (node.nodeValue ?? '').trim();
     if (text.length < 2 || !/[\u0600-\u06FF]/.test(text)) continue;
     stats.nodes += 1;
-    if (current[text] !== undefined) stats.translated += 1;
+    if (lookup(text) !== undefined) stats.translated += 1;
     else if (stats.missing.length < 60) stats.missing.push(text);
   }
   return stats;
