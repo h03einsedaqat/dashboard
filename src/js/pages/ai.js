@@ -231,7 +231,7 @@ async function aiChat() {
           <button class="aic-new" type="button" data-new-chat><i class="bi bi-plus-lg"></i> گفتگوی جدید</button>
           <label class="aic-search"><i class="bi bi-search"></i><input type="search" placeholder="جستجو در گفتگوها…" data-chat-search aria-label="جستجو در گفتگوها"></label>
         </div>
-        <div class="aic-list" data-conversation-list>
+        <div class="aic-list" data-conversation-list data-rail data-rail-surface="card">
           ${conversations.some((c) => c.pinned) ? `<div class="aic-group"><i class="bi bi-pin-angle-fill"></i> سنجاق‌شده</div>${conversations.filter((c) => c.pinned).map((c) => convItem(c)).join('')}` : ''}
           ${groups
             .map((group) => {
@@ -264,7 +264,7 @@ async function aiChat() {
         </header>
         <div class="aic-stream" data-chat-stream>${welcome()}</div>
         <div class="aic-compose-wrap">
-          <div class="aic-quick">${QUICK_ACTIONS.map(([icon, label]) => `<button type="button" class="ais-chip" data-quick="${label}"><i class="bi bi-${icon}"></i> ${label}</button>`).join('')}</div>
+          <div class="aic-quick" data-rail>${QUICK_ACTIONS.map(([icon, label]) => `<button type="button" class="ais-chip" data-quick="${label}"><i class="bi bi-${icon}"></i> ${label}</button>`).join('')}</div>
           <form class="aic-compose" data-ai-composer>
             <textarea rows="1" name="message" placeholder="پیام خود را بنویسید… (مثلاً: یک ایمیل پیگیری برای مشتری بنویس)" aria-label="متن پیام"></textarea>
             <div class="aic-compose__row">

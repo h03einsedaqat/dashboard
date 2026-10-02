@@ -34,6 +34,16 @@ import { formatDate, relativeTime } from './jalali.js';
 import * as services from '../../services/index.js';
 import { COLUMNS } from './columns.js';
 import { openRecordView, openRecordEdit, statusLabel, FIELD_LABELS } from './record-dialogs.js';
+import { goTo } from './links.js';
+
+/**
+ * Resources whose edit action belongs on a dedicated form page instead of the
+ * generic modal — the page owns their richer editors (the image gallery with
+ * add/remove/reorder for products, wizard steps elsewhere).
+ */
+const FORM_PAGES = {
+  products: 'ecommerce/product-create.html',
+};
 
 const tables = new WeakMap();
 
@@ -603,6 +613,16 @@ function attachLoad(instance) {
       return;
     }
     if (handled === true) return;
+    /**
+     * Some resources have a *real* form page (products ship the media studio
+     * with the add/remove carousel). Sending the pencil there gives the same
+     * experience as «افزودن محصول» — the compact modal can never edit photos.
+     */
+    const formPage = FORM_PAGES[instance.resource];
+    if (formPage) {
+      goTo(`${formPage}?id=${encodeURIComponent(id)}`);
+      return;
+    }
     const record = await findRow(id);
     if (!record) {
       toast.warning('رکورد پیدا نشد', 'ممکن است پیش‌تر حذف شده باشد.');

@@ -34,6 +34,8 @@ import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './j
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
 import { enhanceTables, observeTables } from './js/core/tables.js';
+import { initRails, observeRails } from './js/core/rail.js';
+import { initDatePickers } from './js/core/datepicker.js';
 import { humanize, observeHumanize } from './js/core/humanize.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
@@ -514,6 +516,19 @@ async function boot() {
   observePageHeads(document.body);
   $$('[data-kanban]').forEach((node) => initKanban(node));
   $$('[data-calendar]').forEach((node) => initCalendar(node));
+  /**
+   * Horizontal scrollers (chat chip rows, conversation strip, mail folders) get
+   * arrow paging and edge fades, and every `<input type="date">` gets the
+   * locale-aware picker (Jalali in Persian, Gregorian in English). Both run in
+   * one guarded block, so a failure there can never take the page boot down.
+   */
+  try {
+    initRails(document);
+    observeRails(document.body);
+    initDatePickers(document.body);
+  } catch (error) {
+    console.warn('[nova:polish] rails/datepicker skipped', error);
+  }
 
   // Late panels (opened from the header) also need the small UI behaviours.
   /*

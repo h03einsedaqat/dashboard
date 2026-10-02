@@ -186,9 +186,26 @@ export const layout = {
     });
   },
 
+  /**
+   * The mobile drawer closes on every «dismiss» gesture a phone user expects:
+   * the backdrop, a tap anywhere on the page content, and Escape. The × button
+   * and swipe-to-close were the only ways out before, so a tap on the dimmed
+   * page felt broken.
+   */
   initBackdrop() {
     on(document, 'click', (event) => {
-      if (event.target.closest('[data-sidebar-backdrop]')) layout.closeDrawer();
+      if (!state.open) return;
+      if (event.target.closest('[data-sidebar-backdrop]')) {
+        layout.closeDrawer();
+        return;
+      }
+      // Anything inside the drawer (or the control that opens it) stays put.
+      if (event.target.closest('[data-app-sidebar], [data-sidebar-toggle], [data-sidebar-open], .app-sidebar')) return;
+      layout.closeDrawer();
+    });
+
+    on(document, 'keydown', (event) => {
+      if (event.key === 'Escape' && state.open) layout.closeDrawer();
     });
   },
 
@@ -531,9 +548,9 @@ export const layout = {
     applySidebar();
     layout.highlightActive();
     layout.initNav();
-    layout.initBackdrop();
     layout.initSwipe();
     layout.initScrollEffects();
+    layout.initBackdrop();
     layout.initStickyTables();
     layout.initSecondaryNav();
     layout.initTopNav();

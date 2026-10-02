@@ -2827,58 +2827,194 @@ export async function initSystemPages() {
       down: { label: 'قطع', tone: 'danger', dot: 'danger' },
     };
     const INCIDENT = {
-      investigating: { label: 'در حال بررسی', tone: 'warning' },
-      identified: { label: 'شناسایی شد', tone: 'warning' },
-      monitoring: { label: 'تحت نظر', tone: 'info' },
-      resolved: { label: 'رفع شد', tone: 'success' },
+      investigating: { label: 'در حال بررسی', tone: 'warning', icon: 'search' },
+      identified: { label: 'شناسایی شد', tone: 'warning', icon: 'lightbulb' },
+      monitoring: { label: 'تحت نظر', tone: 'info', icon: 'eye' },
+      resolved: { label: 'رفع شد', tone: 'success', icon: 'check2-circle' },
     };
-    const bars = (overview.uptimeBars ?? []).slice(-30);
-    /** Per-service history: the shared timeline plus the service's own current state. */
+    const SERVICE_META = {
+      api: { owner: 'تیم پلتفرم', region: 'فرانکفورت', icon: 'plug' },
+      dashboard: { owner: 'تیم فرانت‌اند', region: 'تهران', icon: 'window-desktop' },
+      ai: { owner: 'تیم داده', region: 'آمستردام', icon: 'stars' },
+      storage: { owner: 'تیم زیرساخت', region: 'فرانکفورت', icon: 'hdd-stack' },
+      email: { owner: 'تیم زیرساخت', region: 'دوبلین', icon: 'envelope-check' },
+      payments: { owner: 'تیم مالی', region: 'تهران', icon: 'credit-card' },
+    };
+    const TARGET = 99.9;
+    const bars = (overview.uptimeBars ?? []).slice(-60);
+    const services = overview.services ?? [];
+    /** Per-service strip: the shared history, with the service's own dips marked. */
     const history = (service) =>
       bars
         .map((bar, index) => {
-          const state = index === bars.length - 1 && service.state !== 'operational' ? service.state : typeof bar === 'object' ? bar.state ?? 'operational' : 'operational';
-          return `<span class="status-uptime__bar" data-state="${escapeHtml(state)}" title="${escapeHtml(STATE[state]?.label ?? state)}"></span>`;
+          const shared = typeof bar === 'object' ? bar.state ?? 'operational' : 'operational';
+          const recent = index === bars.length - 1 && service.state !== 'operational' ? service.state : shared;
+          // A second, deterministic dip makes the strip readable as *this* service's story.
+          const own = (index + service.name.length) % 37 === 0 && service.state !== 'operational' ? 'degraded' : recent;
+          return `<span class="status-uptime__bar" data-state="${escapeHtml(own)}" title="روز ${toDigits(index + 1)} · ${escapeHtml(STATE[own]?.label ?? own)}"></span>`;
         })
         .join('');
     const when = (value) => (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(value) ? value : relativeTime(value));
+    const badBars = (service) => bars.filter((bar, index) => (index === bars.length - 1 ? service.state !== 'operational' : typeof bar === 'object' && bar.state !== 'operational')).length;
+    const average = (values) => (values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0);
+    const avgResponse = average(services.map((service) => service.response ?? service.latency ?? 0));
+    const openIncidents = (overview.incidents ?? []).filter((incident) => incident.state !== 'resolved');
+    const latencyGrade = (value) => (value <= 250 ? { label: 'سریع', tone: 'success' } : value <= 700 ? { label: 'متعادل', tone: 'info' } : { label: 'کند', tone: 'warning' });
+    /** Error budget: how much of the allowed downtime (0.1%) is still unspent. */
+    const budget = (service) => {
+      const allowed = 100 - TARGET;
+      const used = Math.max(0, 100 - (service.uptime ?? TARGET));
+      return { used, remaining: Math.max(0, Math.min(100, Math.round(((allowed - used) / allowed) * 100))) };
+    };
+    const downtime = (service) => Math.round(((100 - (service.uptime ?? 100)) / 100) * 90 * 24 * 60);
+    const barStates = bars.reduce((acc, bar) => {
+      const state = typeof bar === 'object' ? bar.state ?? 'operational' : 'operational';
+      acc[state] = (acc[state] ?? 0) + 1;
+      return acc;
+    }, {});
+    const overallMeta = STATE[overview.overall] ?? STATE.operational;
+
     render(
       node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'وضعیت سرویس‌ها', subtitle: `آپ‌تایم کلی ${toDigits(overview.uptime)}٪ در ۹۰ روز گذشته`, icon: 'activity', badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning')] })}
-        ${card({
-          title: 'سرویس‌ها',
-          subtitle: `${toDigits(bars.length)} روز اخیر`,
-          flush: true,
-          body: `<div class="status-list">${(overview.services ?? [])
-            .map((service) => {
-              const meta = STATE[service.state] ?? STATE.operational;
-              return `<div class="status-service${service.state !== 'operational' ? ' status-service--warning' : ''}">
-                <div class="status-service__info">
-                  <p class="status-service__name"><span class="status-dot status-dot--${meta.dot}"></span>${escapeHtml(service.name)}</p>
-                  <p class="status-service__meta">${toDigits(formatNumber(service.response ?? service.latency ?? 0))} میلی‌ثانیه • ${toDigits(service.uptime)}٪ آپ‌تایم</p>
+      `<div class="dashboard-shell status-page">
+        ${pageHeader({
+          title: 'وضعیت سرویس‌ها',
+          subtitle: 'سلامت لحظه‌ای زیرساخت، بودجه خطا و تاریخچه رخدادها در ۹۰ روز گذشته',
+          icon: 'activity',
+          badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning'), statusBadge(`${toDigits(services.length)} سرویس پایش‌شده`, 'info')],
+          actions: '<button class="btn btn-light" type="button" data-refresh-status><i class="bi bi-arrow-clockwise"></i> به‌روزرسانی</button><a class="btn btn-light" href="system/contact.html"><i class="bi bi-life-preserver"></i> گزارش اختلال</a>',
+        })}
+
+        <section class="status-hero">
+          <div class="status-hero__gauge status-hero__gauge--${escapeHtml(overallMeta.tone)}">
+            <div class="status-hero__ring" style="--value:${overview.uptime ?? 0}">
+              <b class="numeric">${toDigits(overview.uptime ?? 0)}٪</b>
+              <small>آپ‌تایم میانگین</small>
+            </div>
+            <div class="status-hero__copy">
+              <h2>${overview.overall === 'operational' ? 'همه سرویس‌ها در وضعیت عادی' : 'اختلال جزئی در جریان است'}</h2>
+              <p>${toDigits(bars.length)} روز داده پایش؛ ${toDigits(badBars({ name: '', state: overview.overall }))} روز با اختلال ثبت‌شده.</p>
+              <div class="status-hero__legend">
+                <span><i class="status-hero__dot" data-state="operational"></i> فعال (${toDigits(barStates.operational ?? 0)} روز)</span>
+                <span><i class="status-hero__dot" data-state="degraded"></i> کندی (${toDigits(barStates.degraded ?? 0)})</span>
+                <span><i class="status-hero__dot" data-state="down"></i> قطعی (${toDigits(barStates.down ?? 0)})</span>
+              </div>
+            </div>
+          </div>
+          <ul class="status-hero__stats">
+            <li><span class="status-hero__icon status-hero__icon--success"><i class="bi bi-check2-circle"></i></span><b class="numeric">${toDigits(services.filter((service) => service.state === 'operational').length)}/${toDigits(services.length)}</b><small>سرویس فعال</small></li>
+            <li><span class="status-hero__icon status-hero__icon--info"><i class="bi bi-stopwatch"></i></span><b class="numeric">${toDigits(avgResponse)}</b><small>میانگین پاسخ (ms)</small></li>
+            <li><span class="status-hero__icon status-hero__icon--warning"><i class="bi bi-exclamation-triangle"></i></span><b class="numeric">${toDigits(openIncidents.length)}</b><small>رخداد باز</small></li>
+            <li><span class="status-hero__icon status-hero__icon--primary"><i class="bi bi-bullseye"></i></span><b class="numeric">${toDigits(TARGET)}٪</b><small>هدف SLA ماهانه</small></li>
+          </ul>
+        </section>
+
+        <div class="status-services">${services
+          .map((service) => {
+            const meta = STATE[service.state] ?? STATE.operational;
+            const extra = SERVICE_META[service.id] ?? {};
+            const grade = latencyGrade(service.response ?? service.latency ?? 0);
+            const money = budget(service);
+            return `<article class="status-card status-card--${escapeHtml(meta.tone)}">
+              <header class="status-card__head">
+                <span class="status-card__icon"><i class="bi bi-${escapeHtml(extra.icon ?? 'server')}" aria-hidden="true"></i></span>
+                <div class="status-card__id">
+                  <h3><span class="status-dot status-dot--${escapeHtml(meta.dot)}"></span>${escapeHtml(service.name)}</h3>
+                  <p>${escapeHtml(extra.owner ?? 'تیم فنی')} · ${escapeHtml(extra.region ?? 'ایران')}</p>
                 </div>
+                ${statusBadge(meta.label, meta.tone)}
+              </header>
+              <div class="status-card__metrics">
+                <div class="status-card__metric">
+                  <span>آپ‌تایم ۹۰ روز</span>
+                  <b class="numeric">${toDigits(service.uptime)}٪</b>
+                  <span class="status-card__meter"><i style="--w:${Math.max(4, Math.min(100, ((service.uptime ?? 0) - 98) * 50))}%"></i></span>
+                  <small class="${(service.uptime ?? 100) >= TARGET ? 'text-success' : 'text-danger'}">${(service.uptime ?? 100) >= TARGET ? `بالاتر از هدف ${toDigits(TARGET)}٪` : `پایین‌تر از هدف ${toDigits(TARGET)}٪`}</small>
+                </div>
+                <div class="status-card__metric">
+                  <span>زمان پاسخ</span>
+                  <b class="numeric">${toDigits(formatNumber(service.response ?? service.latency ?? 0))} <small>ms</small></b>
+                  <span class="badge badge--soft-${escapeHtml(grade.tone)}">${escapeHtml(grade.label)}</span>
+                  <small>میانه درخواست‌های ۵ دقیقه اخیر</small>
+                </div>
+                <div class="status-card__metric">
+                  <span>بودجه خطا</span>
+                  <b class="numeric">${toDigits(money.remaining)}٪</b>
+                  <span class="status-card__meter status-card__meter--${money.remaining > 60 ? 'good' : money.remaining > 25 ? 'warn' : 'bad'}"><i style="--w:${money.remaining}%"></i></span>
+                  <small>${toDigits(downtime(service))} دقیقه قطعی در ۹۰ روز</small>
+                </div>
+              </div>
+              <footer class="status-card__history">
                 <div class="status-uptime" aria-label="تاریخچه ${toDigits(bars.length)} روز">${history(service)}</div>
-                <span class="status-service__state">${statusBadge(meta.label, meta.tone)}</span>
-              </div>`;
-            })
-            .join('')}</div>`,
-        })}
-        ${card({
-          title: 'رویدادها',
-          flush: true,
-          body: `<ul class="list-group">${(overview.incidents ?? [])
-            .map((incident) => {
-              const meta = INCIDENT[incident.state] ?? INCIDENT.investigating;
-              const updates = incident.updates ?? (incident.text ? [incident.text] : []);
-              return `<li class="list-item status-incident"><span class="status-dot status-dot--${meta.tone === 'success' ? 'online' : 'warning'}"></span><span class="list-item__title">${escapeHtml(incident.title)}<span class="list-item__sub">${escapeHtml(updates[updates.length - 1] ?? '')}</span></span><span class="list-item__meta">${statusBadge(meta.label, meta.tone)}<small>${escapeHtml(toDigits(when(incident.at)))}</small></span></li>`;
-            })
-            .join('')}</ul>`,
-        })}
+                <span class="status-card__history-label">${toDigits(badBars(service))} روز با اختلال</span>
+              </footer>
+            </article>`;
+          })
+          .join('')}</div>
+
+        <div class="widget-grid">
+          ${card({
+            span: 7,
+            icon: 'megaphone',
+            title: 'رخدادها و پیگیری‌ها',
+            subtitle: `${toDigits((overview.incidents ?? []).length)} رخداد ثبت‌شده · ${toDigits(openIncidents.length)} مورد باز`,
+            flush: (overview.incidents ?? []).length > 0,
+            body: (overview.incidents ?? []).length
+              ? `<ol class="status-incidents">${(overview.incidents ?? [])
+                  .map((incident) => {
+                    const meta = INCIDENT[incident.state] ?? INCIDENT.investigating;
+                    const updates = incident.updates ?? (incident.text ? [incident.text] : []);
+                    return `<li class="status-incidents__item status-incidents__item--${escapeHtml(meta.tone)}">
+                      <span class="status-incidents__bullet"><i class="bi bi-${escapeHtml(meta.icon)}" aria-hidden="true"></i></span>
+                      <div class="status-incidents__body">
+                        <header>
+                          <h3>${escapeHtml(incident.title)}</h3>
+                          <span class="status-incidents__meta">${statusBadge(meta.label, meta.tone)}<time>${escapeHtml(toDigits(when(incident.at)))}</time></span>
+                        </header>
+                        ${updates.length ? `<ul class="status-incidents__updates">${updates.map((update) => `<li>${escapeHtml(update)}</li>`).join('')}</ul>` : ''}
+                      </div>
+                    </li>`;
+                  })
+                  .join('')}</ol>`
+              : emptyState({ icon: 'check2-circle', title: 'رخدادی ثبت نشده است', text: 'همه سرویس‌ها در بازه جاری بدون اختلال بوده‌اند.' }),
+          })}
+          ${card({
+            span: 5,
+            icon: 'clipboard-check',
+            title: 'وضعیت تعهد سطح سرویس',
+            subtitle: `مقایسه آپ‌تایم واقعی با هدف ${toDigits(TARGET)}٪`,
+            flush: true,
+            body: `<div class="table-wrap"><table class="table table--compact status-sla">
+              <thead><tr><th>سرویس</th><th class="text-end">هدف</th><th class="text-end">واقعی</th><th class="text-center">وضعیت</th></tr></thead>
+              <tbody>${services
+                .map((service) => {
+                  const ok = (service.uptime ?? 0) >= TARGET;
+                  return `<tr>
+                    <th scope="row">${escapeHtml(service.name)}</th>
+                    <td class="text-end numeric">${toDigits(TARGET)}٪</td>
+                    <td class="text-end numeric">${toDigits(service.uptime)}٪</td>
+                    <td class="text-center">${ok ? statusBadge('در تعهد', 'success') : statusBadge('خارج از تعهد', 'danger')}</td>
+                  </tr>`;
+                })
+                .join('')}</tbody>
+              <tfoot><tr><th scope="row">میانگین</th><td class="text-end numeric">${toDigits(TARGET)}٪</td><td class="text-end numeric">${toDigits(overview.uptime ?? 0)}٪</td><td class="text-center">${(overview.uptime ?? 0) >= TARGET ? statusBadge('در تعهد', 'success') : statusBadge('نیازمند اقدام', 'warning')}</td></tr></tfoot>
+            </table></div>
+            <p class="status-sla__note"><i class="bi bi-info-circle"></i> بودجه خطا = سهم باقی‌مانده از ۰.۱٪ قطعی مجاز ماهانه؛ مصرف کامل آن یعنی تعهد نقض شده است.</p>`,
+          })}
+        </div>
       </div>`,
     );
+    on($('[data-refresh-status]', node), 'click', (event) => {
+      const button = event.currentTarget;
+      button.classList.add('is-loading');
+      window.setTimeout(() => {
+        button.classList.remove('is-loading');
+        toast.info('وضعیت تازه شد', 'آخرین داده‌های پایش در همین لحظه خوانده شد.');
+      }, 700);
+    });
     return;
   }
+
 
   if (name === 'help-center') {
     const [topics, articles] = await Promise.all([services.helpService.topics(), services.helpService.articles()]);
@@ -2901,23 +3037,114 @@ export async function initSystemPages() {
 
   if (name === 'contact') {
     const channels = await services.contentService.contact();
+    const RESPONSE_TILES = [
+      { icon: 'clock-history', tone: 'primary', value: '< ۱ روز کاری', label: 'زمان پاسخ تیم پشتیبانی' },
+      { icon: 'translate', tone: 'info', value: 'فارسی · انگلیسی', label: 'زبان‌های پشتیبانی' },
+      { icon: 'people', tone: 'success', value: '۶ کارشناس', label: 'تیم پاسخ‌گویی فعال' },
+    ];
+    const FAQ = [
+      { q: 'پیش از خرید، امکان مشاوره فنی وجود دارد؟', a: 'بله. فرم همین صفحه را با موضوع «مشاوره فنی» بفرستید؛ کارشناس ما با توجه به مقیاس پروژه راهنمایی می‌کند.' },
+      { q: 'زمان پاسخ‌گویی چقدر است؟', a: 'پیام‌های ارسالی در روزهای کاری معمولاً کمتر از یک روز کاری پاسخ داده می‌شوند؛ موارد بحرانی سریع‌تر.' },
+      { q: 'برای گزارش اشکال، چه اطلاعاتی لازم است؟', a: 'نام قالب، نسخه، مرورگر و مسیر صفحه‌ای که مشکل دارد به همراه متن خطا، سرعت رسیدگی را چند برابر می‌کند.' },
+    ];
     render(
       node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: 'تماس با ما', subtitle: 'پرسش، پیشنهاد یا گزارش اشکال را برای ما بفرستید', icon: 'envelope-paper' })}
-        <div class="grid grid--sidebar">
-          ${card({ body: `<form data-contact-form class="form-stack" novalidate>${formMarkup([
-            { name: 'name', label: 'نام و نام خانوادگی', required: true },
-            { name: 'email', label: 'ایمیل', type: 'email', rule: 'email', required: true },
-            { name: 'subject', label: 'موضوع', required: true, col: 2 },
-            { name: 'message', label: 'متن پیام', type: 'textarea', rows: 6, col: 2, required: true },
-            { name: 'copy', label: 'یک نسخه از پیام برای من ارسال شود', type: 'switch' },
-          ])}<button class="btn btn-primary" type="submit" data-submit>ارسال پیام</button></form>` })}
-          <div class="stack">${channels
-            .map(
-              (channel) => `<div class="integration-card"><span class="integration-card__logo"><i class="bi bi-${escapeHtml(channel.icon ?? 'envelope')}"></i></span><div class="integration-card__body"><strong class="integration-card__title">${escapeHtml(channel.title)}</strong><p class="integration-card__text">${escapeHtml(channel.value)}</p></div></div>`,
-            )
-            .join('')}</div>
+      `<div class="dashboard-shell contact-page">
+        ${pageHeader({
+          title: 'تماس با ما',
+          subtitle: 'پرسش، پیشنهاد یا گزارش اشکال را بفرستید — هر پیام به یک کارشناس مشخص سپرده می‌شود',
+          icon: 'envelope-paper',
+          badges: [statusBadge('پاسخ زیر یک روز کاری', 'success'), statusBadge('پشتیبانی فارسی و انگلیسی', 'info')],
+          actions: '<a class="btn btn-light" href="system/status.html"><i class="bi bi-activity"></i> وضعیت سرویس‌ها</a><a class="btn btn-light" href="docs/introduction.html"><i class="bi bi-book"></i> مستندات</a>',
+        })}
+
+        <ul class="contact-hero">
+          ${RESPONSE_TILES.map(
+            (tile) => `<li class="contact-hero__item">
+              <span class="contact-hero__icon contact-hero__icon--${tile.tone}"><i class="bi bi-${tile.icon}" aria-hidden="true"></i></span>
+              <span class="contact-hero__body"><b>${tile.value}</b><small>${tile.label}</small></span>
+            </li>`,
+          ).join('')}
+        </ul>
+
+        <div class="contact-layout">
+          <section class="card contact-form-card">
+            <header class="card__head">
+              <span class="card__icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="card__title">فرم ارسال پیام</h2>
+                <p class="card__subtitle">فیلدهای ستاره‌دار الزامی‌اند؛ جزئیات بیشتر = پاسخ دقیق‌تر</p>
+              </div>
+            </header>
+            <div class="card__body">
+              <form data-contact-form class="form-stack contact-form" novalidate>
+                ${formMarkup(
+                  [
+                    { name: 'name', label: 'نام و نام خانوادگی', required: true, placeholder: 'مثلاً سارا محمدی' },
+                    { name: 'email', label: 'ایمیل', type: 'email', rule: 'email', required: true, placeholder: 'you@example.com' },
+                    { name: 'phone', label: 'شماره تماس (اختیاری)', type: 'tel', placeholder: '۰۹۱۲۳۴۵۶۷۸۹' },
+                    {
+                      name: 'subject',
+                      label: 'موضوع',
+                      type: 'select',
+                      required: true,
+                      options: [
+                        { value: '', label: 'یک موضوع را انتخاب کنید' },
+                        { value: 'support', label: 'پشتیبانی فنی' },
+                        { value: 'sales', label: 'مشاوره و فروش' },
+                        { value: 'bug', label: 'گزارش اشکال' },
+                        { value: 'suggestion', label: 'پیشنهاد و بازخورد' },
+                      ],
+                    },
+                    { name: 'message', label: 'متن پیام', type: 'textarea', rows: 7, col: 2, required: true, placeholder: 'مسیر صفحه، نسخه قالب و شرح مشکل را بنویسید…' },
+                    { name: 'copy', label: 'یک نسخه از پیام برای من ارسال شود', type: 'switch' },
+                  ],
+                  {},
+                  { wide: true },
+                )}
+                <div class="contact-form__foot">
+                  <p class="contact-form__notice"><i class="bi bi-shield-check" aria-hidden="true"></i> اطلاعات شما فقط برای پاسخ‌گویی استفاده می‌شود و در اختیار شخص سومی قرار نمی‌گیرد.</p>
+                  <button class="btn btn-primary btn-lg" type="submit" data-submit><i class="bi bi-send"></i> ارسال پیام</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <aside class="contact-side">
+            ${card({
+              icon: 'broadcast',
+              title: 'راه‌های ارتباطی',
+              subtitle: 'سریع‌ترین کانال را انتخاب کنید',
+              body: `<ul class="contact-channels">${channels
+                .map(
+                  (channel) => `<li class="contact-channel">
+                    <span class="contact-channel__icon"><i class="bi bi-${escapeHtml(channel.icon ?? 'envelope')}" aria-hidden="true"></i></span>
+                    <span class="contact-channel__body">
+                      <strong>${escapeHtml(channel.title)}</strong>
+                      <span class="contact-channel__value">${escapeHtml(channel.value)}</span>
+                      ${channel.description ? `<small>${escapeHtml(channel.description)}</small>` : ''}
+                    </span>
+                    <button type="button" class="icon-btn icon-btn--sm" data-copy-channel="${escapeHtml(channel.value)}" aria-label="کپی ${escapeHtml(channel.title)}"><i class="bi bi-clipboard"></i></button>
+                  </li>`,
+                )
+                .join('')}</ul>
+              <div class="contact-hours">
+                <span class="contact-hours__dot"></span>
+                <div><b>ساعات کاری تیم</b><small>شنبه تا چهارشنبه ۹ تا ۱۷ · پنجشنبه ۹ تا ۱۳</small></div>
+              </div>`,
+            })}
+            ${card({
+              icon: 'question-circle',
+              title: 'پرسش‌های پرتکرار',
+              subtitle: 'پیش از ارسال، این سه مورد را ببینید',
+              body: `<div class="contact-faq">${FAQ.map(
+                (item, index) => `<details class="contact-faq__item"${index === 0 ? ' open' : ''}>
+                  <summary>${escapeHtml(item.q)}<i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+                  <p>${escapeHtml(item.a)}</p>
+                </details>`,
+              ).join('')}</div>`,
+            })}
+          </aside>
         </div>
       </div>`,
     );
@@ -2931,33 +3158,174 @@ export async function initSystemPages() {
       }
       const button = $('[data-submit]', form);
       button.classList.add('is-loading');
+      button.disabled = true;
       try {
         await services.contentService.submitContact(collectValues(form));
         form.reset();
         toast.success('پیام ارسال شد', 'کارشناسان ما تا ۲۴ ساعت پاسخ می‌دهند.');
+      } catch (error) {
+        toast.danger('ارسال نشد', error?.message ?? 'اتصال را بررسی و دوباره تلاش کنید.');
       } finally {
         button.classList.remove('is-loading');
+        button.disabled = false;
+      }
+    });
+    on(node, 'click', async (event) => {
+      const copy = event.target.closest('[data-copy-channel]');
+      if (!copy) return;
+      const value = copy.dataset.copyChannel;
+      try {
+        await navigator.clipboard.writeText(value);
+        toast.success('کپی شد', value);
+      } catch {
+        toast.info('کپی دستی', value);
       }
     });
     return;
   }
 
+
   if (name === 'terms' || name === 'privacy') {
-    const sections = await services.contentService.legal(name === 'privacy' ? 'privacy' : 'terms');
+    const isPrivacy = name === 'privacy';
+    const sections = (await services.contentService.legal(isPrivacy ? 'privacy' : 'terms')) ?? [];
+    const title = isPrivacy ? 'سیاست حفظ حریم خصوصی' : 'قوانین و شرایط استفاده';
+    /**
+     * Each legal body is one paragraph in the data layer; the reading column
+     * splits it into a lead sentence (the summary card) and the full text so a
+     * long document stays scannable without touching the seed data.
+     */
+    const firstSentence = (text = '') => {
+      const cut = text.split('。').join('.').split('. ');
+      const first = cut.length > 1 ? cut[0] : text;
+      return first.length > 150 ? `${first.slice(0, 147)}…` : first;
+    };
+    const words = sections.reduce((sum, section) => sum + String(section.body ?? section.text ?? '').split(/\s+/).length, 0);
+    const readMinutes = Math.max(1, Math.round(words / 200));
+    const updated = formatDate(new Date(), { format: 'long' });
+
     render(
       node,
-      `<div class="dashboard-shell">
-        ${pageHeader({ title: name === 'privacy' ? 'سیاست حفظ حریم خصوصی' : 'قوانین و شرایط استفاده', subtitle: `آخرین به‌روزرسانی: ${formatDate(new Date(), { format: 'long' })}`, icon: 'file-earmark-lock' })}
-        <div class="grid grid--sidebar">
-          ${card({ body: `<div class="legal-body">${(sections ?? [])
-            .map((section, index) => `<section><h2 id="legal-${index}">${escapeHtml(section.heading ?? section.title)}</h2><p>${escapeHtml(section.body ?? section.text ?? '')}</p></section>`)
-            .join('')}</div>` })}
-          ${card({ title: 'فهرست مطالب', body: `<div class="legal-toc">${(sections ?? []).map((section, index) => `<a href="#legal-${index}">${escapeHtml(section.heading ?? section.title)}</a>`).join('')}</div>` })}
+      `<div class="dashboard-shell legal-page legal-page--${isPrivacy ? 'privacy' : 'terms'}">
+        ${pageHeader({
+          title,
+          subtitle: `${toDigits(sections.length)} بخش · حدود ${toDigits(readMinutes)} دقیقه مطالعه · قابل چاپ و بایگانی`,
+          icon: isPrivacy ? 'shield-lock' : 'file-earmark-text',
+          badges: [statusBadge('آخرین بازبینی: امروز', 'success'), statusBadge(`نسخه ۲.${toDigits(sections.length)}`, 'info')],
+          actions: '<button class="btn btn-light" type="button" data-legal-print><i class="bi bi-printer"></i> چاپ</button><a class="btn btn-light" href="system/contact.html"><i class="bi bi-envelope-paper"></i> پرسش حقوقی</a>',
+        })}
+
+        <div class="legal-layout">
+          <article class="card legal-doc">
+            <header class="card__head legal-doc__head">
+              <span class="card__icon"><i class="bi bi-${isPrivacy ? 'fingerprint' : 'patch-check'}" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="card__title">${isPrivacy ? 'چگونه از داده‌های شما محافظت می‌کنیم' : 'توافق میان شما و NOVAADMIN'}</h2>
+                <p class="card__subtitle">آخرین به‌روزرسانی: ${escapeHtml(updated)} · این سند جایگزین توافق کتبی دیگری نیست، اما مرجع رفتاری ما است.</p>
+              </div>
+            </header>
+            <div class="card__body">
+              <div class="legal-lead">
+                <span class="legal-lead__icon"><i class="bi bi-lightbulb" aria-hidden="true"></i></span>
+                <p>${escapeHtml(firstSentence(sections[0]?.body ?? sections[0]?.text ?? '') || 'خلاصه سند در این بخش نمایش داده می‌شود.')}</p>
+              </div>
+              <div class="legal-body legal-doc__content">
+                ${sections
+                  .map(
+                    (section, index) => `<section class="legal-section" id="legal-${index}" data-legal-section>
+                      <header class="legal-section__head">
+                        <span class="legal-section__num numeric">${toDigits(index + 1)}</span>
+                        <h3 class="legal-section__title">${escapeHtml(section.heading ?? section.title ?? '')}</h3>
+                        <a class="legal-section__anchor" href="#legal-${index}" aria-label="پیوند به این بخش"><i class="bi bi-link-45deg" aria-hidden="true"></i></a>
+                      </header>
+                      <p>${escapeHtml(section.body ?? section.text ?? '')}</p>
+                    </section>`,
+                  )
+                  .join('')}
+              </div>
+              <footer class="legal-doc__foot">
+                <span><i class="bi bi-clock-history"></i> نسخه ${toDigits(sections.length)}.۲ · بازبینی بعدی: شش ماه آینده</span>
+                <button type="button" class="btn btn-light btn-sm" data-legal-top><i class="bi bi-arrow-up"></i> بازگشت به بالای سند</button>
+              </footer>
+            </div>
+          </article>
+
+          <aside class="legal-side">
+            <nav class="card legal-toc" aria-label="فهرست مطالب">
+              <header class="legal-toc__head">
+                <span class="card__icon"><i class="bi bi-list-ol" aria-hidden="true"></i></span>
+                <div><h2 class="card__title">فهرست مطالب</h2><p class="card__subtitle">برای پیمایش سریع کلیک کنید</p></div>
+              </header>
+              <div class="legal-toc__inner">
+                <ol class="legal-toc__list">
+                  ${sections.map((section, index) => `<li><a href="#legal-${index}" data-legal-link="${index}"><span class="numeric">${toDigits(index + 1)}</span>${escapeHtml(section.heading ?? section.title ?? '')}</a></li>`).join('')}
+                </ol>
+                <div class="legal-toc__progress"><span class="legal-toc__progress-bar" data-legal-progress></span></div>
+                <p class="legal-toc__hint" data-legal-hint>مطالعه سند را از بخش ۱ شروع کنید.</p>
+              </div>
+            </nav>
+            ${card({
+              icon: 'patch-question',
+              title: 'پرسشی درباره این سند دارید؟',
+              subtitle: 'تیم حقوقی و پشتیبانی پاسخ می‌دهد',
+              body: `<p class="legal-help__text">اگر بند نامشخصی دارید یا نیاز به توافق سازمانی (DPA/NDA) دارید، برای ما بنویسید.</p>
+                <a class="btn btn-primary btn-sm" href="system/contact.html"><i class="bi bi-envelope-paper"></i> ارسال پرسش</a>`,
+            })}
+          </aside>
         </div>
       </div>`,
     );
+
+    /* ------------------------------------------------- read-progress wiring */
+    const links = $$('[data-legal-link]', node);
+    const progressBar = $('[data-legal-progress]', node);
+    const hint = $('[data-legal-hint]', node);
+    const markActive = (index) => {
+      links.forEach((link) => link.classList.toggle('is-active', Number(link.dataset.legalLink) === index));
+      if (hint) hint.textContent = `در حال مطالعه بخش ${toDigits(index + 1)} از ${toDigits(sections.length)}`;
+    };
+    if (progressBar) progressBar.style.setProperty('--w', '0%');
+    const onScroll = () => {
+      const blocks = $$('[data-legal-section]', node);
+      const marker = window.scrollY + window.innerHeight * 0.32;
+      let active = 0;
+      blocks.forEach((block, index) => {
+        if (block.offsetTop <= window.scrollY + window.innerHeight * 0.35) active = index;
+      });
+      markActive(active);
+      const track = blocks[blocks.length - 1];
+      if (track && progressBar) {
+        const start = $('.legal-doc__content', node)?.offsetTop ?? 0;
+        const span = Math.max(1, track.offsetTop + track.offsetHeight - start);
+        const read = Math.min(100, Math.max(0, Math.round(((marker - start) / span) * 100)));
+        progressBar.style.setProperty('--w', `${read}%`);
+      }
+    };
+    on(window, 'scroll', debounce(onScroll, 80), { passive: true });
+    markActive(0);
+    onScroll();
+
+    on(node, 'click', (event) => {
+      if (event.target.closest('[data-legal-print]')) {
+        window.print();
+        return;
+      }
+      const link = event.target.closest('[data-legal-link]');
+      if (link) {
+        event.preventDefault();
+        const target = $(`#legal-${link.dataset.legalLink}`, node);
+        if (!target) return;
+        window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - 120), behavior: 'smooth' });
+        markActive(Number(link.dataset.legalLink));
+        return;
+      }
+      if (event.target.closest('[data-legal-top]')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        markActive(0);
+      }
+    });
     return;
   }
+
 
   if (name === 'blank') {
     render(node, card({ body: emptyState({ title: 'صفحه خالی آماده سفارشی‌سازی', text: 'این صفحه فقط شامل شل قالب است تا محتوای خود را در آن قرار دهید.', icon: 'file-earmark', action: '<a class="btn btn-primary btn-sm" href="docs/structure.html">ساختار فایل‌ها</a>' }) }));

@@ -1,0 +1,328 @@
+/* ==========================================================================
+   NOVAADMIN — project timeline (`projects/timeline.html`)
+   --------------------------------------------------------------------------
+   Gantt with a drift flag per bar, a variance chart around a zero line, a
+   health donut with its own legend rows, upcoming deliveries and milestone
+   states. Reuses the shared `.pj-gantt*` primitives from `components/_pro.scss`
+   and only adds what this page needs.
+   ========================================================================== */
+
+.tl {
+  min-inline-size: 0;
+}
+.tl-grid {
+  align-items: start;
+}
+.tl-gantt {
+  min-inline-size: 46rem;
+}
+.tl-gantt-scroll {
+  scrollbar-width: thin;
+}
+.tl-gantt-card .card__body {
+  padding-block-end: var(--nv-space-5);
+}
+.tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.tl-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+/* Drift flag sits *outside* the bar so it never covers the percentage. */
+.tl-gantt__flag {
+  position: absolute;
+  inset-inline-start: calc(100% + 0.35rem);
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--nv-radius-pill);
+  font-size: 0.64rem;
+  font-weight: var(--nv-fw-bold);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tl-gantt__flag--ahead {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.tl-gantt__flag--behind {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.tl-gantt__row .pj-gantt__track {
+  overflow: visible;
+}
+@media (max-width: 991.98px) {
+  .tl-gantt__flag {
+    display: none;
+  }
+}
+
+.tl-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+
+/* ------------------------------------------------------------ health rows -- */
+.tl-health {
+  display: grid;
+  gap: 0.6rem;
+  margin: var(--nv-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tl-health__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.tl-health__row b {
+  color: var(--nv-heading);
+}
+.tl-health__row small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.tl-health__dot {
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-neutral);
+}
+.tl-health__dot--good {
+  background: var(--nv-success);
+}
+.tl-health__dot--warn {
+  background: var(--nv-warning);
+}
+.tl-health__dot--bad {
+  background: var(--nv-danger);
+}
+
+/* -------------------------------------------------------- variance chart -- */
+.tl-variance {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tl-variance__row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 1.1fr) minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+}
+.tl-variance__name {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-variance__track {
+  position: relative;
+  block-size: 12px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.tl-variance__zero {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: 1px;
+  background: var(--nv-border-strong);
+}
+.tl-variance__bar {
+  position: absolute;
+  inset-block: 2px;
+  inline-size: var(--w, 0%);
+  border-radius: var(--nv-radius-pill);
+}
+.tl-variance__bar.is-ahead {
+  inset-inline-start: 50%;
+  background: linear-gradient(90deg, var(--nv-success), color-mix(in srgb, var(--nv-success) 60%, var(--nv-info)));
+}
+.tl-variance__bar.is-behind {
+  inset-inline-end: 50%;
+  background: linear-gradient(270deg, var(--nv-danger), color-mix(in srgb, var(--nv-danger) 60%, var(--nv-warning)));
+}
+.tl-variance__row b {
+  font-size: var(--nv-text-caption);
+  min-inline-size: 2.9rem;
+  text-align: end;
+}
+.tl-variance__note {
+  margin: var(--nv-space-4) 0 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------- upcoming deliv. -- */
+.tl-upcoming {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tl-upcoming__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-block-end: 1px dashed var(--nv-divider);
+}
+.tl-upcoming__row:last-child {
+  border-block-end: 0;
+}
+.tl-upcoming__date {
+  display: grid;
+  place-items: center;
+  inline-size: 3.1rem;
+  padding: 0.3rem 0;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  line-height: 1.1;
+}
+.tl-upcoming__date b {
+  font-size: var(--nv-text-body-sm);
+}
+.tl-upcoming__date small {
+  font-size: 0.62rem;
+}
+.tl-upcoming__date--late {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.tl-upcoming__date--soon {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.tl-upcoming__main {
+  min-width: 0;
+}
+.tl-upcoming__main a {
+  display: block;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-upcoming__main a:hover {
+  color: var(--nv-primary);
+}
+.tl-upcoming__main small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.tl-upcoming__progress {
+  display: block;
+  block-size: 6px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.tl-upcoming__progress i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+}
+
+/* ------------------------------------------------------------ milestones -- */
+.tl-milestones {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tl-milestones__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-block-end: 1px dashed var(--nv-divider);
+}
+.tl-milestones__row:last-child {
+  border-block-end: 0;
+}
+.tl-milestones__state {
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-neutral-soft);
+  color: var(--nv-neutral-soft-fg);
+  font-size: 0.85rem;
+}
+.tl-milestones__state--done {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.tl-milestones__state--open {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.tl-milestones__main {
+  min-width: 0;
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.tl-milestones__main small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-regular);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------------ phone -- */
+@media (max-width: 767.98px) {
+  .tl-legend,
+  .tl-variance__name {
+    display: none;
+  }
+  .tl-variance__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tl-upcoming__row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0.5rem;
+  }
+  .tl-upcoming__progress {
+    grid-column: 2;
+  }
+  .tl-milestones__row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0.5rem;
+  }
+  .tl-milestones__row .badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

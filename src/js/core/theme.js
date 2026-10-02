@@ -64,6 +64,37 @@ function resolveTheme(value = state.theme) {
   return value === 'dark' ? 'dark' : 'light';
 }
 
+/**
+ * Keeps the browser chrome in step with the resolved theme: the `theme-color`
+ * meta (mobile address bar) and `color-scheme` (native scrollbars, form
+ * controls and the iOS status bar). A stale `theme-color` was one of the
+ * reasons a «light» page could still *look* dark on a phone after the toggle.
+ */
+function paintBrowserChrome(resolved = state.resolved) {
+  const dark = resolved === 'dark';
+  if (root.style) root.style.colorScheme = dark ? 'dark' : 'light';
+  const head = document.head ?? document.documentElement;
+  let metas = [...document.querySelectorAll('meta[name="theme-color"]')];
+  if (!metas.length && head?.append) {
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    head.append(meta);
+    metas = [meta];
+  }
+  /**
+   * A meta *without* `media` is the one the browser actually uses, so it always
+   * follows the resolved theme; `media`-scoped pair (light/dark) is updated
+   * only when the app is in that mode, which keeps the OS-level choice intact
+   * for the inactive one.
+   */
+  metas.forEach((node) => {
+    const media = node.getAttribute('media') ?? '';
+    if (/dark/.test(media) && !dark) return;
+    if (/light/.test(media) && dark) return;
+    node.setAttribute('content', dark ? '#0f1117' : '#4f46e5');
+  });
+}
+
 function apply(persist = false) {
   state.resolved = resolveTheme();
   root.setAttribute('data-theme', state.resolved);
@@ -76,6 +107,7 @@ function apply(persist = false) {
   root.setAttribute('data-sidebar-style', state.sidebarStyle);
   root.setAttribute('data-calendar', state.calendar);
   root.style.setProperty('--nv-radius-scale', String(state.radius));
+  paintBrowserChrome(state.resolved);
   applyRadius();
 
   if (persist) {
@@ -146,13 +178,16 @@ function syncControls() {
   $$('[data-fontsize-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.fontsizeOption === state.fontSize));
   $$('[data-sidebar-style-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.sidebarStyleOption === state.sidebarStyle));
   $$('[data-calendar-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.calendarOption === state.calendar));
-  const toggle = $('[data-theme-toggle]');
-  if (toggle) {
-    const isDark = state.resolved === 'dark';
+  /* Every toggle on the page — header, landing header, footer, customizer. */
+  $$('[data-theme-toggle]').forEach((toggle) => {
+    const isDark = appliedTheme() === 'dark';
     toggle.setAttribute('aria-pressed', String(isDark));
+    toggle.setAttribute('title', isDark ? 'حالت روشن' : 'حالت تاریک');
     const icon = toggle.querySelector('i');
     if (icon) icon.className = `bi bi-${isDark ? 'sun' : 'moon-stars'}`;
-  }
+    const label = toggle.querySelector('[data-theme-label-text]');
+    if (label) label.textContent = isDark ? 'حالت روشن' : 'حالت تاریک';
+  });
   $$('[data-theme-label]').forEach((node) => {
     node.textContent = state.theme === 'system' ? 'system' : state.theme;
   });
@@ -227,6 +262,53 @@ export function toggleTheme() {
 }
 
 /** Cycles light → dark → system (used by the header long-press demo). */
+/**
+ * Toggles read *this* — not `state.theme` — because the two can drift apart:
+ * a bfcache restore, another tab, or an interrupted repaint can leave the DOM
+ * showing one mode while the module still believes the other. That drift is
+ * what made the switch feel dead: it kept setting `dark` while the page was
+ * already dark.
+ */
+export function appliedTheme() {
+  return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+
+/**
+ * Re-aligns state, DOM and storage after the document was restored from the
+ * back/forward cache, re-shown after being hidden for a long time, or edited in
+ * another tab. Cheap, guarded and silent — it never fights a live user action.
+ */
+function reconcileTheme() {
+  const stored = storage.get(KEYS.theme, state.theme);
+  if (THEMES.includes(stored) && stored !== state.theme) {
+    set('theme', stored, { silent: true });
+    return;
+  }
+  if (!root.hasAttribute('data-theme')) apply(false);
+  paintBrowserChrome(state.resolved);
+  syncControls();
+}
+
+if (typeof window !== 'undefined') {
+  // Back/forward cache restore — the page resumes exactly as it was left.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) reconcileTheme();
+  });
+  // Returning to a long-idle tab: toggles issued just before the sleep can be
+  // lost, and the OS may have switched appearance while we were hidden.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reconcileTheme();
+  });
+  // Another tab changed the preference — adopt it instead of overwriting it.
+  window.addEventListener('storage', (event) => {
+    if (!event.key || event.key !== `nova:${KEYS.theme}`) return;
+    const value = String(event.newValue ?? '').replace(/^"|"$/g, '');
+    if (THEMES.includes(value) && value !== state.theme) set('theme', value, { silent: true });
+  });
+  // The OS appearance changed while we are open (theme = «system»).
+  media?.addEventListener?.('change', () => reconcileTheme());
+}
+
 export function cycleTheme() {
   const order = ['light', 'dark', 'system'];
   return set('theme', order[(order.indexOf(state.theme) + 1) % order.length]);

@@ -8,7 +8,7 @@
     </button>
 
     <a class="app-header__brand d-lg-none" href="{{ROOT}}index.html" aria-label="{{APP_NAME}}">
-      <img src="{{ROOT}}assets/logo-mark.svg" alt="" width="28" height="28">
+      <span class="brand__mark brand__mark--sm"><i class="bi bi-hexagon-fill" aria-hidden="true"></i></span>
     </a>
 
     <button class="search-trigger" type="button" data-command-open aria-label="جستجوی سراسری" data-i18n-title="ui.search">
@@ -53,6 +53,7 @@
         <span class="icon-btn__dot" data-notif-count hidden>0</span>
       </button>
       <div class="dropdown-menu notif-panel" data-dropdown-menu>
+        <span class="notif-panel__grabber" aria-hidden="true"></span>
         <div class="notif-panel__head">
           <div class="notif-panel__head-top">
             <div class="notif-panel__brand">

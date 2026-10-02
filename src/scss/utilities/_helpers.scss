@@ -302,7 +302,8 @@
 }
 
 /* ------------------------------------------------------------ back to top */
-[data-back-to-top] {
+[data-back-to-top],
+.back-to-top {
   position: fixed;
   inset-block-end: var(--nv-space-6);
   inset-inline-end: var(--nv-space-6);
@@ -322,19 +323,22 @@
   transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease), visibility var(--nv-dur);
 }
 
-[data-back-to-top].is-visible {
+[data-back-to-top].is-visible,
+.back-to-top.is-visible {
   opacity: 1;
   visibility: visible;
   transform: none;
 }
 
-[data-back-to-top]:hover {
+[data-back-to-top]:hover,
+.back-to-top:hover {
   color: var(--nv-primary);
   border-color: var(--nv-primary);
 }
 
 @media print {
-  [data-back-to-top] {
+  [data-back-to-top],
+  .back-to-top {
     display: none !important;
   }
 }

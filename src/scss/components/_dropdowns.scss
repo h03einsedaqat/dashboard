@@ -692,3 +692,126 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* ==========================================================================
+   v1.1 — the notification centre scrolls exactly once
+   --------------------------------------------------------------------------
+   The generic menu rule above gives every open dropdown `max-height +
+   overflow-y`, and the notification list brought its own scroller as well:
+   opening the bell showed *two* nested scrollbars (head and footer sliding out
+   of view) and, on phones, dragging the list scrolled the page behind the
+   sheet. Below 768px the panel is now a proper bottom sheet: grabber, sticky
+   head, one scrollable list, pinned footer.
+   ========================================================================== */
+.dropdown-menu.notif-panel.is-open,
+.dropdown-menu.notif-panel[data-open='true'] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: min(38rem, calc(100dvh - 5.5rem));
+  overscroll-behavior: contain;
+}
+
+.notif-panel .notif-panel__head {
+  flex: 0 0 auto;
+}
+.notif-panel .notif-panel__foot {
+  flex: 0 0 auto;
+}
+/* The only scroll container in the panel. */
+.notif-panel .notification-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nv-border-strong) transparent;
+}
+.notif-panel .notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+.notif-panel .notification-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--nv-border-strong) 80%, transparent);
+  border-radius: 999px;
+}
+
+/* A grabber bar is only meaningful on the phone sheet. */
+.notif-panel__grabber {
+  display: none;
+}
+
+@keyframes nv-sheet-up {
+  from {
+    opacity: 0.4;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dropdown-menu.notif-panel.is-open,
+  .dropdown-menu.notif-panel[data-open='true'] {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    translate: none;
+    border-radius: 1.35rem 1.35rem 0 0;
+    border-block-end: 0;
+    max-height: min(86dvh, 46rem);
+    box-shadow: 0 -22px 48px -24px rgba(15, 23, 42, 0.5);
+    animation: nv-sheet-up 0.3s var(--nv-ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+    padding-block-end: env(safe-area-inset-bottom, 0);
+  }
+  .notif-panel__grabber {
+    display: block;
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 4px;
+    margin: 0.6rem auto 0.15rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--nv-text-muted) 35%, transparent);
+  }
+  .notif-panel .notif-panel__head {
+    padding: 0.6rem 1rem 0.75rem;
+  }
+  .notif-panel .notif-panel__brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    font-size: 0.95rem;
+  }
+  .notif-panel .notif-panel__title {
+    font-size: 0.9rem;
+  }
+  .notif-panel .notif-panel__read-all span {
+    display: none;
+  }
+  .notif-panel .notif-panel__tabs {
+    gap: 3px;
+    margin-top: 10px;
+  }
+  .notif-panel .notif-tab {
+    font-size: 0.7rem;
+    padding: 6px 2px;
+  }
+  .notif-panel .notification-item {
+    padding-inline: 1rem;
+  }
+  .notif-panel .notification-list {
+    padding-block-end: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-menu.notif-panel.is-open,
+  .dropdown-menu.notif-panel[data-open='true'] {
+    animation: none;
+  }
+}

@@ -13,7 +13,7 @@
  * navigation (arrows, Home/End, Enter), submenu support, viewport-aware
  * alignment for RTL, and auto-close when a menu item triggers navigation.
  */
-import { $, $$, on } from './dom.js';
+import { $, $$, on, lockScroll } from './dom.js';
 
 const openMenus = new Set();
 
@@ -31,12 +31,24 @@ function close(trigger, { focus = false } = {}) {
   trigger.setAttribute('aria-expanded', 'false');
   openMenus.delete(trigger);
   if (focus) trigger.focus();
+  syncSheetLock();
+}
+
+/**
+ * The notification centre becomes a bottom sheet on phones, so the page behind
+ * it must not scroll (the single biggest «اعلان‌ها رو اسکرول می‌کنم صفحه می‌ره»
+ * complaint). One shared lock from `dom.js` — never a per-module body class.
+ */
+function syncSheetLock() {
+  const anyNotif = [...openMenus].some((trigger) => menuOf(trigger)?.classList.contains('notif-panel'));
+  lockScroll(anyNotif && window.innerWidth <= 767);
 }
 
 export function closeAll(except = null) {
   [...openMenus].forEach((trigger) => {
     if (trigger !== except) close(trigger);
   });
+  syncSheetLock();
 }
 
 function open(trigger, { focusFirst = false } = {}) {
@@ -47,7 +59,9 @@ function open(trigger, { focusFirst = false } = {}) {
   menu.dataset.open = 'true';
   trigger.setAttribute('aria-expanded', 'true');
   openMenus.add(trigger);
-  align(menu, trigger);
+  /* The sheet handles its own placement on phones — no viewport nudging. */
+  if (!(menu.classList.contains('notif-panel') && window.innerWidth <= 767)) align(menu, trigger);
+  syncSheetLock();
   if (focusFirst) {
     const first = menu.querySelector('.dropdown-item, a, button');
     first?.focus({ preventScroll: true });

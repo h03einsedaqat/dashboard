@@ -1,0 +1,183 @@
+/* ==========================================================================
+   NOVAADMIN — horizontal rails (see core/rail.js)
+   --------------------------------------------------------------------------
+   A rail is any inline scroller (chip rows, tab strips, conversation lists,
+   folder bars). `core/rail.js` adds `.rail` + two arrow buttons and toggles
+   `.rail--overflow` / `.rail--at-start` / `.rail--at-end`, so the arrows only
+   appear while there is something left to see in that direction.
+
+   The buttons are sticky flex items of the scroller — pinned to the scrollport
+   edges, never part of the scroll width — and each one carries its own edge
+   fade, so the veil can never scroll out of view.
+   ========================================================================== */
+
+.rail {
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  /* The inline axis belongs to the rail; vertical panning still scrolls the page. */
+  touch-action: pan-x pan-y;
+  /* Room for the fade so the last chip is never half-hidden behind it. */
+  scroll-padding-inline: 1.75rem;
+}
+
+/* Without overflow there is nothing to page to — and a page that fits must
+   never show a "there is more" hint. */
+.rail:not(.rail--overflow) .rail__btn {
+  display: none;
+}
+/* At either end the arrow has done its job: it fades out instead of staying
+   clickable and moving nothing. */
+.rail--at-start .rail__btn--start,
+.rail--at-end .rail__btn--end {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rail__btn {
+  position: sticky;
+  z-index: 3;
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  inline-size: 2.4rem;
+  min-block-size: 2.2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nv-text-2);
+  cursor: pointer;
+  opacity: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--nv-dur-fast) var(--nv-ease);
+}
+
+/* The fade the arrow sits on: opaque at the scrollport edge, clear inwards. */
+.rail__btn::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inline-size: 100%;
+  background: linear-gradient(var(--rail-fade-dir, to right), var(--rail-fade-color, var(--nv-surface)) 46%, transparent);
+  pointer-events: none;
+}
+.rail__btn--start {
+  inset-inline-start: 0;
+  /* Net zero width: the arrow overlays the first chips instead of shifting them. */
+  margin-inline-end: -2.4rem;
+}
+.rail__btn--end {
+  inset-inline-end: 0;
+  margin-inline-start: -2.4rem;
+}
+.rail__btn--end::before {
+  background: linear-gradient(var(--rail-fade-dir-end, to left), var(--rail-fade-color, var(--nv-surface)) 46%, transparent);
+}
+
+.rail__btn i {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  inline-size: 1.8rem;
+  block-size: 1.8rem;
+  border: 1px solid var(--nv-border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--nv-surface) 92%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1;
+  box-shadow: var(--nv-shadow-sm);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease),
+    transform var(--nv-dur-fast) var(--nv-ease);
+}
+
+.rail__btn:hover {
+  color: var(--nv-primary);
+}
+.rail__btn:hover i {
+  background: var(--nv-primary);
+  border-color: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  transform: scale(1.06);
+}
+.rail__btn:focus-visible {
+  outline: none;
+}
+.rail__btn:focus-visible i {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+}
+.rail__btn[disabled] {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* The icon set is authored for RTL (start = ›, end = ‹); mirror in LTR — the
+   same convention as the pagination chevrons. */
+[dir='ltr'] .rail {
+  --rail-fade-dir: to left;
+  --rail-fade-dir-end: to right;
+}
+[dir='ltr'] .rail__btn i {
+  transform: scaleX(-1);
+}
+
+/* Fade colour matches whatever the rail sits on. */
+.rail[data-rail-surface='card'],
+.card .rail {
+  --rail-fade-color: var(--nv-surface);
+}
+.rail[data-rail-surface='muted'] {
+  --rail-fade-color: var(--nv-surface-2);
+}
+
+/* Block-level scrollers (no sticky flex item possible): keep the polish but
+   make the scroll affordance visible instead of cut off. */
+.rail--flow {
+  scrollbar-width: thin;
+  scrollbar-color: var(--nv-border-strong, var(--nv-border)) transparent;
+}
+.rail--flow::-webkit-scrollbar {
+  height: 6px;
+}
+.rail--flow::-webkit-scrollbar-thumb {
+  background: var(--nv-border-strong, var(--nv-border));
+  border-radius: 999px;
+}
+
+/* Touch devices: the swipe is the primary gesture, so the arrows stay slim and
+   the hidden side is simply not rendered. */
+@media (hover: none) {
+  .rail__btn {
+    inline-size: 2.1rem;
+  }
+  .rail__btn--start {
+    margin-inline-end: -2.1rem;
+  }
+  .rail__btn--end {
+    margin-inline-start: -2.1rem;
+  }
+  .rail__btn i {
+    inline-size: 1.65rem;
+    block-size: 1.65rem;
+    font-size: 0.76rem;
+  }
+  .rail.rail--at-start .rail__btn--start,
+  .rail.rail--at-end .rail__btn--end {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail {
+    scroll-behavior: auto;
+  }
+  .rail__btn i {
+    transition: none;
+  }
+}

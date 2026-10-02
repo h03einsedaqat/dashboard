@@ -27,12 +27,24 @@
   gap: var(--nv-space-3);
 }
 
-/* Four-up stat strip used by page controllers before the KPI row exists. */
+/* Four-up stat strip used by page controllers before the KPI row exists.
+   `minmax(0, …)` (instead of a fixed track) lets a long currency value shrink
+   the column instead of overflowing the card on narrow phones. */
 .stat-grid {
   display: grid;
   gap: var(--nv-card-gap);
   align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+/* Grid/flex children default to `min-width: auto`, which lets a long
+   unbreakable number stretch the card past the viewport. */
+.stat-grid > *,
+.stat-card,
+.stat-card__head,
+.stat-card__label,
+.stat-card__value,
+.stat-card__meta {
+  min-width: 0;
 }
 
 .stat-card__label {
@@ -114,13 +126,18 @@
 }
 
 .stat-card__value {
-  font-size: 1.75rem;
+  /* Fluid so a 12-digit Rial amount still fits a 2-up phone card. */
+  font-size: clamp(1.15rem, 1.35rem + 0.6vw, 1.75rem);
   font-weight: var(--nv-fw-black);
   letter-spacing: -0.02em;
   color: var(--nv-heading);
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
   margin: 0;
+  /* Rial amounts are grouped with `٬` (U+066C): without an explicit break
+     opportunity the whole string pushed the card wider than the viewport. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .stat-card__value small {
   font-size: 0.95rem;
@@ -306,4 +323,64 @@
   }
   .kpi-row > .stat-card .stat-card__value small { font-size: 0.72rem; }
   .kpi-row > .stat-card .stat-card__meta { font-size: 0.68rem; line-height: 1.55; }
+}
+
+/* ---------------------------------------------------------- v1.1 phone strips
+   In «مدیریت و صدور فاکتورها» the four KPI cards each hold a full Rial amount
+   (۱۲٬۳۴۵٬۶۷۸ ریال). A single-column strip wasted the whole screen and a
+   four-column one overflowed, so phones get a balanced 2-up grid (1-up under
+   360px, where even half a card is too narrow for the amount). */
+@media (min-width: 340px) and (max-width: 639.98px) {
+  .stat-grid,
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--nv-space-3);
+  }
+  .stat-grid > .stat-card,
+  .kpi-row > .stat-card {
+    padding: 0.9rem 0.8rem;
+    gap: 0.55rem;
+    border-radius: var(--nv-radius-md);
+  }
+  .stat-grid > .stat-card .stat-card__head,
+  .kpi-row > .stat-card .stat-card__head {
+    gap: 0.4rem;
+  }
+  .stat-grid > .stat-card .stat-card__label,
+  .kpi-row > .stat-card .stat-card__label {
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+  .stat-grid > .stat-card .stat-card__icon,
+  .kpi-row > .stat-card .stat-card__icon {
+    inline-size: 2rem;
+    block-size: 2rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+  }
+  .stat-grid > .stat-card .stat-card__value,
+  .kpi-row > .stat-card .stat-card__value {
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+  .stat-grid > .stat-card .stat-card__value small,
+  .kpi-row > .stat-card .stat-card__value small {
+    font-size: 0.68rem;
+  }
+  .stat-grid > .stat-card .stat-card__meta,
+  .kpi-row > .stat-card .stat-card__meta,
+  .stat-grid > .stat-card .stat-card__foot {
+    font-size: 0.66rem;
+    line-height: 1.55;
+    gap: 0.3rem;
+  }
+  .stat-grid > .stat-card .stat-card__spark {
+    display: none;
+  }
+}
+@media (max-width: 359.98px) {
+  .stat-grid,
+  .kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

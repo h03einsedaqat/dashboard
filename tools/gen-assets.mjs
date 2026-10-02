@@ -35,22 +35,30 @@ const write = (relative, content) => {
 
 /* ------------------------------------------------------------------- brand */
 
-const sparkMark = (from, to, size = 40) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="${size}" height="${size}" role="img" aria-label="${config.appName}">
+/**
+ * Brand glyph — a flat-top white hexagon on the rounded-square gradient tile the
+ * landing header uses, i.e. visually identical to `<i class="bi bi-hexagon-fill">`
+ * on the same gradient. Sidebar, header, auth screens, invoices, the favicon and
+ * the PWA icon are all generated from this one shape so the mark can never drift
+ * between the marketing page and the dashboard again.
+ */
+const HEX_PATH = 'M30.6 20 25.3 10.8H14.7L9.4 20l5.3 9.2h10.6z';
+
+const brandMark = (from, to, size = 40) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="${size}" height="${size}" role="img" aria-label="${config.appName}">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>
   <rect width="40" height="40" rx="11" fill="url(#g)"/>
-  <path d="M20 8.5l2.9 6.4 6.9.8-5.1 4.7 1.4 6.9-6.1-3.4-6.1 3.4 1.4-6.9-5.1-4.7 6.9-.8z" fill="#fff" fill-opacity=".95"/>
-  <path d="M11 30.5h18" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/>
+  <path d="${HEX_PATH}" fill="#fff"/>
 </svg>`;
 
 function writeBrand() {
-  write('assets/logo-mark.svg', sparkMark(PALETTES[0][0], PALETTES[0][1]));
+  write('assets/logo-mark.svg', brandMark(PALETTES[0][0], PALETTES[0][1]));
 
   write(
     'assets/logo.svg',
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 40" width="190" height="40" role="img" aria-label="${config.appName}">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${PALETTES[0][0]}"/><stop offset="1" stop-color="${PALETTES[0][1]}"/></linearGradient></defs>
   <rect width="40" height="40" rx="11" fill="url(#g)"/>
-  <path d="M20 8.5l2.9 6.4 6.9.8-5.1 4.7 1.4 6.9-6.1-3.4-6.1 3.4 1.4-6.9-5.1-4.7 6.9-.8z" fill="#fff" fill-opacity=".95"/>
+  <path d="M30.6 20 25.3 10.8H14.7L9.4 20l5.3 9.2h10.6z" fill="#fff"/>
   <text x="52" y="26" font-family="Vazirmatn, Inter, system-ui, sans-serif" font-size="17" font-weight="700" fill="currentColor">${config.appName}</text>
 </svg>`,
   );
@@ -60,7 +68,7 @@ function writeBrand() {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 40" width="190" height="40" role="img" aria-label="${config.appName}">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${PALETTES[0][1]}"/><stop offset="1" stop-color="${PALETTES[3][1]}"/></linearGradient></defs>
   <rect width="40" height="40" rx="11" fill="url(#g)"/>
-  <path d="M20 8.5l2.9 6.4 6.9.8-5.1 4.7 1.4 6.9-6.1-3.4-6.1 3.4 1.4-6.9-5.1-4.7 6.9-.8z" fill="#fff" fill-opacity=".95"/>
+  <path d="M30.6 20 25.3 10.8H14.7L9.4 20l5.3 9.2h10.6z" fill="#fff"/>
   <text x="52" y="26" font-family="Vazirmatn, Inter, system-ui, sans-serif" font-size="17" font-weight="700" fill="#f8fafc">${config.appName}</text>
 </svg>`,
   );
@@ -70,7 +78,7 @@ function writeBrand() {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${PALETTES[0][0]}"/><stop offset="1" stop-color="${PALETTES[0][1]}"/></linearGradient></defs>
   <rect width="32" height="32" rx="9" fill="url(#g)"/>
-  <path d="M16 6.5l2.4 5.3 5.8.7-4.3 3.9 1.2 5.8-5.1-2.9-5.1 2.9 1.2-5.8-4.3-3.9 5.8-.7z" fill="#fff"/>
+  <path d="M24.5 16 20.3 8.7h-8.6L7.5 16l4.2 7.3h8.6z" fill="#fff"/>
 </svg>`,
   );
 }

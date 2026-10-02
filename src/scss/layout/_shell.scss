@@ -1045,7 +1045,6 @@
 [data-sidebar-style='compact'] .app-sidebar .nav__badge,
 [data-sidebar-style='compact'] .app-sidebar .app-sidebar__search,
 [data-sidebar-style='compact'] .app-sidebar .app-sidebar__promo,
-[data-sidebar-style='compact'] .app-sidebar .sidebar-user__meta,
 [data-sidebar-style='compact'] .app-sidebar .nav__section {
   opacity: 0;
   visibility: hidden;
@@ -1056,7 +1055,6 @@
 [data-sidebar-style='compact'] .app-sidebar:hover .nav__caret,
 [data-sidebar-style='compact'] .app-sidebar:hover .nav__badge,
 [data-sidebar-style='compact'] .app-sidebar:hover .app-sidebar__search,
-[data-sidebar-style='compact'] .app-sidebar:hover .sidebar-user__meta,
 [data-sidebar-style='compact'] .app-sidebar:hover .nav__section {
   opacity: 1;
   visibility: visible;

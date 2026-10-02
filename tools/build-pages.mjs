@@ -210,15 +210,20 @@ function shell(page, body) {
     <aside class="app-sidebar" id="app-sidebar" data-app-sidebar aria-label="منوی اصلی">
       <div class="app-sidebar__head">
         <a class="brand" href="${href('index.html')}" aria-label="{{APP_NAME}}">
-          <img class="brand__mark" src="${href('assets/logo-mark.svg')}" alt="" width="34" height="34">
+          <span class="brand__mark"><i class="bi bi-hexagon-fill" aria-hidden="true"></i></span>
           <span class="brand__text">
             <span class="brand__name">{{APP_NAME}}</span>
             <span class="brand__tag">{{TAGLINE}}</span>
           </span>
         </a>
-        <button class="icon-btn app-sidebar__close" type="button" data-sidebar-close aria-label="بستن منو" data-i18n-title="ui.close">
-          <i class="bi bi-x-lg" aria-hidden="true"></i>
-        </button>
+        <div class="app-sidebar__head-actions">
+          <button class="icon-btn d-none d-lg-inline-flex" type="button" data-sidebar-collapse aria-label="جمع کردن منو" data-i18n-title="ui.collapseSidebar">
+            <i class="bi bi-layout-sidebar-inset" data-collapse-icon aria-hidden="true"></i>
+          </button>
+          <button class="icon-btn app-sidebar__close" type="button" data-sidebar-close aria-label="بستن منو" data-i18n-title="ui.close">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
 
       <div class="app-sidebar__body">
@@ -243,18 +248,6 @@ function shell(page, body) {
         </div>
       </div>
 
-      <div class="app-sidebar__foot">
-        <div class="sidebar-user">
-          <img class="avatar avatar--sm" src="${href('assets/img/avatars/avatar-08.svg')}" alt="" width="36" height="36">
-          <div class="sidebar-user__meta">
-            <span class="sidebar-user__name">سارا محمدی</span>
-            <span class="sidebar-user__mail">sara@novaadmin.dev</span>
-          </div>
-          <button class="icon-btn icon-btn--sm" type="button" data-sidebar-collapse aria-label="جمع کردن" data-i18n-title="ui.collapseSidebar">
-            <i class="bi bi-chevron-double-left" data-collapse-icon aria-hidden="true"></i>
-          </button>
-        </div>
-      </div>
     </aside>
 
     <div class="app-main">

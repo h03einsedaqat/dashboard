@@ -1,0 +1,368 @@
+/* ==========================================================================
+   NOVAADMIN — shipments (`logistics/shipments.html`)
+   --------------------------------------------------------------------------
+   Tracking table (delayed first) with a five-step pipeline indicator, ETA
+   chips, carrier performance ranking and a status mix. The table scrolls
+   inside its card on small screens and the wrapper keeps the Persian
+   right-to-left reading order intact.
+   ========================================================================== */
+
+.ship .widget-grid {
+  align-items: start;
+}
+.ship-table {
+  min-inline-size: 48rem;
+}
+.ship-table tbody tr {
+  cursor: pointer;
+}
+.ship-table tbody tr[data-status='delayed'] {
+  background: linear-gradient(to left, rgba(var(--nv-warning-rgb), 0.07), transparent 45%);
+}
+
+.ship-code {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nv-primary);
+  font-family: var(--nv-font-mono);
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+.ship-code:hover {
+  text-decoration: underline;
+}
+.ship-code__sub {
+  display: block;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-route b {
+  display: block;
+  font-size: var(--nv-text-body-sm);
+  color: var(--nv-heading);
+}
+.ship-route small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-text-2);
+  white-space: nowrap;
+}
+.ship-status__dot {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-neutral);
+  flex: 0 0 auto;
+}
+.ship-status__dot--primary,
+.ship-status--primary .ship-status__dot {
+  background: var(--nv-primary);
+}
+.ship-status__dot--info,
+.ship-status--info .ship-status__dot {
+  background: var(--nv-info);
+}
+.ship-status__dot--success,
+.ship-status--success .ship-status__dot {
+  background: var(--nv-success);
+}
+.ship-status__dot--warning,
+.ship-status--warning .ship-status__dot {
+  background: var(--nv-warning);
+}
+.ship-status__dot--danger,
+.ship-status--danger .ship-status__dot {
+  background: var(--nv-danger);
+}
+.ship-status--warning {
+  color: var(--nv-warning-soft-fg);
+}
+.ship-status--danger {
+  color: var(--nv-danger-soft-fg);
+}
+.ship-status--success {
+  color: var(--nv-success-soft-fg);
+}
+.ship-carrier {
+  display: block;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-steps {
+  display: flex;
+  gap: 0.2rem;
+  max-inline-size: 9rem;
+}
+.ship-steps i {
+  flex: 1 1 0;
+  block-size: 6px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+}
+.ship-steps i.is-done {
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+}
+.ship-steps__label {
+  display: block;
+  margin-block-start: 0.25rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-eta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--nv-radius-pill);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  white-space: nowrap;
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+}
+.ship-eta--late {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.ship-eta--soon {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.ship-eta--done {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.ship-eta__date {
+  display: block;
+  margin-block-start: 0.2rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-row-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+/* --------------------------------------------------------------- side rail -- */
+.ship-side {
+  display: grid;
+  gap: var(--nv-card-gap);
+}
+.ship-carriers {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ship-carriers__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+.ship-carriers__name {
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ship-carriers__name small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-regular);
+  color: var(--nv-text-muted);
+}
+.ship-carriers__bar {
+  display: block;
+  block-size: 7px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.ship-carriers__bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+}
+.ship-carriers__perf {
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-bold);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--nv-radius-pill);
+  text-align: center;
+  white-space: nowrap;
+}
+.ship-carriers__perf--good {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.ship-carriers__perf--warn {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.ship-carriers__perf--bad {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.ship-carriers__note {
+  margin: var(--nv-space-4) 0 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.ship-status-mix {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ship-status-mix__row {
+  display: grid;
+  grid-template-columns: 8rem minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+.ship-status-mix__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-2);
+  white-space: nowrap;
+}
+.ship-status-mix__bar {
+  display: block;
+  block-size: 6px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.ship-status-mix__bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: var(--nv-text-2);
+}
+.ship-status-mix__row b {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-heading);
+}
+.ship-cost {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-block-start: var(--nv-space-4);
+  padding-block-start: var(--nv-space-3);
+  border-block-start: 1px dashed var(--nv-divider);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.ship-cost strong {
+  font-size: var(--nv-text-body);
+  color: var(--nv-heading);
+}
+
+/* ------------------------------------------------------------- track modal -- */
+.ship-track {
+  display: grid;
+  gap: var(--nv-space-5);
+}
+.ship-track__meta {
+  display: grid;
+  gap: 0.4rem;
+  margin-block-end: var(--nv-space-5);
+}
+.ship-track__timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ship-track__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding-block-end: var(--nv-space-5);
+}
+.ship-track__step::before {
+  content: '';
+  position: absolute;
+  inset-block: 1.6rem auto;
+  inset-block-end: 0;
+  inset-inline-start: 0.75rem;
+  inline-size: 1px;
+  background: var(--nv-border);
+}
+.ship-track__step:last-child::before {
+  display: none;
+}
+.ship-track__bullet {
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-muted);
+  font-size: 0.75rem;
+  z-index: 1;
+}
+.ship-track__step.is-done .ship-track__bullet {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.ship-track__step.is-current .ship-track__bullet {
+  box-shadow: 0 0 0 4px rgba(var(--nv-success-rgb), 0.16);
+}
+.ship-track__body b {
+  display: block;
+  font-size: var(--nv-text-body-sm);
+  color: var(--nv-heading);
+}
+.ship-track__body small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ------------------------------------------------------------------ phone -- */
+@media (max-width: 767.98px) {
+  .ship-status-mix__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ship-status-mix__bar {
+    grid-column: 1 / -1;
+  }
+  .ship-carriers__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ship-carriers__bar {
+    grid-column: 1 / -1;
+  }
+}
