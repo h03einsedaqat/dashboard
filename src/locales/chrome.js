@@ -10,6 +10,8 @@ export const chromeStrings = {
     nav: { home: 'خانه' },
     ui: {
       skipToContent: 'پرش به محتوای اصلی',
+      backToTop: 'بازگشت به بالا',
+      backToTopAria: 'بازگشت به بالای صفحه',
       toggleSidebar: 'نمایش/پنهان کردن منو',
       collapseSidebar: 'جمع کردن منو',
       compactSidebar: 'منوی فشرده',
@@ -115,6 +117,8 @@ export const chromeStrings = {
     nav: { home: 'Home' },
     ui: {
       skipToContent: 'Skip to main content',
+      backToTop: 'Back to top',
+      backToTopAria: 'Back to the top of the page',
       toggleSidebar: 'Toggle sidebar',
       collapseSidebar: 'Collapse sidebar',
       compactSidebar: 'Compact sidebar',
@@ -213,6 +217,8 @@ export const chromeStrings = {
     nav: { home: 'الرئيسية' },
     ui: {
       skipToContent: 'الانتقال إلى المحتوى الرئيسي',
+      backToTop: 'العودة إلى الأعلى',
+      backToTopAria: 'العودة إلى أعلى الصفحة',
       toggleSidebar: 'إظهار/إخفاء القائمة',
       collapseSidebar: 'طي القائمة',
       compactSidebar: 'قائمة مضغوطة',

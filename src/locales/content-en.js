@@ -958,6 +958,8 @@ export default {
   "بازطراحی فروشگاه سازمانی": "Enterprise store redesign",
   "بازگردانی اطلاعات حذف‌شده": "Restore deleted data",
   "بازگشت": "Back",
+  "بازگشت به بالا": "Back to top",
+  "بازگشت به بالای صفحه": "Back to the top of the page",
   "بازگشت به داشبورد": "Back to dashboard",
   "بازگشت به صفحه اصلی": "Back to home",
   "بازگشت به فهرست": "Back to list",

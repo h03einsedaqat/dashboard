@@ -245,8 +245,6 @@ export const layout = {
            control is informative instead of decorative. */
         const ratio = max > 0 ? Math.min(1, scrollY / max) : 0;
         toTop.style.setProperty('--nv-progress', ratio.toFixed(4));
-        const percent = $('[data-scroll-percent]', toTop);
-        if (percent) percent.textContent = `${Math.round(ratio * 100)}٪`;
       }
     };
     on(window, 'scroll', debounce(update, 40), { passive: true });

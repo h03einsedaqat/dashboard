@@ -304,50 +304,54 @@
 /* ------------------------------------------------------------ back to top */
 /* --------------------------------------------------------- back to top ----- */
 /*
- * Landing-only control. The base state is a quiet disc with a live reading
- * progress hoop; hovering (or focusing) expands it into a polished pill:
- *   • `grid-template-columns` drives the expansion so the width animates
- *     smoothly — `inline-size: auto` would snap, which looked broken.
- *   • a light sheen sweeps across the pill (clipped with `clip-path`, so the
- *     progress hoop outside the button keeps rendering).
- *   • the hoop turns white, the copy turns white and the shadow grows a
- *     primary-tinted halo — the dressed-up state.
+ * Landing-only control. Resting state: a soft disc with a hairline reading
+ * progress ring. Hover / focus: the disc grows into a pill with the primary
+ * gradient, an icon set into a glass well and the label sliding in.
+ *
+ * Notes on the geometry:
+ *   • `grid-template-columns` animates the expansion (0fr → 1fr). Animating
+ *     `inline-size: auto` snaps, which is what made the old hover feel broken.
+ *   • The icon always occupies column 2, and that column is the one touching
+ *     the screen edge (`inset-inline-end`), so the glyph stays put and the pill
+ *     opens toward the page in both RTL and LTR.
+ *   • The ring is masked to a 2.5px hairline *inside* the button, so it reads as
+ *     a border instead of a floating capsule.
  */
 [data-back-to-top],
 .back-to-top {
   --nv-progress: 0;
-  --bt-size: 3.25rem;
+  --bt-size: 3.2rem;
   position: fixed;
   inset-block-end: clamp(1rem, 3vw, 2rem);
   inset-inline-end: clamp(1rem, 3vw, 2rem);
   z-index: var(--nv-z-header);
   display: grid;
-  /* The button is pinned by `inset-inline-end`, so the icon column is the one
-     that must touch the screen corner and the label opens toward the page. */
-  grid-template-columns: 0fr var(--bt-size);
+  /* `auto` lets the label's own width drive the track, so the pill grows to fit
+     the copy and the transition on `max-inline-size` animates it smoothly. */
+  grid-template-columns: auto var(--bt-size);
   align-items: center;
   block-size: var(--bt-size);
   padding: 0;
   border: 0;
   border-radius: var(--nv-radius-pill);
-  background: linear-gradient(168deg, color-mix(in srgb, var(--nv-primary) 9%, var(--nv-surface)), var(--nv-surface) 62%);
-  color: var(--nv-text-2);
+  background: radial-gradient(130% 130% at 50% 0%, color-mix(in srgb, var(--nv-primary) 7%, var(--nv-surface)), var(--nv-surface) 72%);
+  color: var(--nv-heading);
   box-shadow:
-    var(--nv-shadow-lg),
-    0 0 0 1px color-mix(in srgb, var(--nv-primary) 15%, var(--nv-border)),
-    inset 0 1px 0 color-mix(in srgb, #fff 60%, transparent);
+    0 12px 26px -14px rgba(18, 18, 48, 0.42),
+    0 3px 8px -4px rgba(18, 18, 48, 0.2),
+    0 0 0 1px color-mix(in srgb, var(--nv-border) 85%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent);
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(18px) scale(0.86);
+  transform: translateY(14px) scale(0.9);
   transition:
-    grid-template-columns 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.35s ease,
-    transform 0.55s cubic-bezier(0.34, 1.4, 0.64, 1),
-    box-shadow 0.42s ease,
-    background 0.42s ease,
-    color 0.3s ease,
-    visibility 0.35s;
+    opacity 0.32s ease,
+    transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.4s ease,
+    background 0.4s ease,
+    color 0.28s ease,
+    visibility 0.32s;
 }
 
 [data-back-to-top].is-visible,
@@ -357,36 +361,25 @@
   transform: none;
 }
 
-/* Sheen: a single diagonal highlight that glides across the pill on hover. */
-[data-back-to-top]::before,
-.back-to-top::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(105deg, transparent 28%, rgba(255, 255, 255, 0.46) 47%, transparent 64%);
-  background-size: 240% 100%;
-  background-position: 175% 0;
-  clip-path: inset(0 round var(--nv-radius-pill));
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease, background-position 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Progress hoop — masked to a 3px ring; `--nv-progress` is written by core/layout. */
+/* Reading progress: a hairline hoop drawn inside the button edge. */
 [data-back-to-top] .back-to-top__progress,
 .back-to-top .back-to-top__progress {
   position: absolute;
-  inset: -3px;
-  border-radius: inherit;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: var(--bt-size);
+  block-size: var(--bt-size);
+  border-radius: 50%;
   background: conic-gradient(
+    from -90deg,
     var(--nv-primary) calc(var(--nv-progress) * 360deg),
-    color-mix(in srgb, var(--nv-border) 70%, transparent) 0
+    color-mix(in srgb, var(--nv-primary) 10%, var(--nv-border)) 0
   );
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  opacity: 0.9;
   pointer-events: none;
-  transition: background 0.35s ease;
+  transition: background 0.35s ease, opacity 0.35s ease;
 }
 
 [data-back-to-top] .back-to-top__icon,
@@ -399,12 +392,23 @@
   inline-size: var(--bt-size);
   block-size: var(--bt-size);
   border-radius: inherit;
-  font-size: 1.05rem;
-  transition: transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1), color 0.3s ease;
+  font-size: 1.1rem;
+  transition: color 0.28s ease;
+}
+/* Glass well behind the glyph — invisible at rest, lit on hover. */
+[data-back-to-top] .back-to-top__icon::before,
+.back-to-top .back-to-top__icon::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: var(--nv-radius-pill);
+  background: transparent;
+  transition: background 0.35s ease, box-shadow 0.35s ease;
 }
 [data-back-to-top] .back-to-top__icon i,
 .back-to-top .back-to-top__icon i {
-  transition: transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1);
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 [data-back-to-top] .back-to-top__label,
@@ -416,54 +420,22 @@
   max-inline-size: 0;
   overflow: hidden;
   white-space: nowrap;
+  /* `text-align: end` points at the icon in both writing directions. */
   text-align: end;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
   font-size: var(--nv-text-caption);
   font-weight: 700;
   letter-spacing: 0.01em;
   opacity: 0;
-  transform: translateX(-0.35rem);
+  transform: translateX(-0.4rem);
   transition:
-    max-inline-size 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.3s ease 0.08s,
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s,
-    padding 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    max-inline-size 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.26s ease 0.06s,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+    padding 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* The label slides out from under the icon — the icon is on the right in LTR
-   and on the left in RTL, so the offset flips with the direction. */
 [dir='ltr'] [data-back-to-top] .back-to-top__label,
 [dir='ltr'] .back-to-top .back-to-top__label {
-  transform: translateX(0.35rem);
-}
-
-[data-back-to-top] .back-to-top__hint,
-.back-to-top .back-to-top__hint {
-  position: absolute;
-  inset-block-start: -0.4rem;
-  inset-inline-start: -0.4rem;
-  min-inline-size: 1.55rem;
-  padding: 0.05rem 0.38rem;
-  border-radius: var(--nv-radius-pill);
-  background: var(--nv-primary);
-  color: #fff;
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1.6;
-  text-align: center;
-  box-shadow: var(--nv-shadow-sm);
-  opacity: 0;
-  transform: scale(0.6);
-  transition:
-    opacity 0.24s ease 0.05s,
-    transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) 0.05s,
-    background 0.3s ease,
-    color 0.3s ease;
-}
-
-[data-back-to-top].is-visible .back-to-top__hint,
-.back-to-top.is-visible .back-to-top__hint {
-  opacity: 1;
-  transform: none;
+  transform: translateX(0.4rem);
 }
 
 /* ------------------------------------------------------------ hover / focus */
@@ -471,121 +443,82 @@
 [data-back-to-top]:focus-visible,
 .back-to-top:hover,
 .back-to-top:focus-visible {
-  grid-template-columns: 1fr var(--bt-size);
   color: #fff;
   background:
-    radial-gradient(120% 160% at 12% 0%, color-mix(in srgb, #fff 26%, transparent), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--nv-primary) 86%, #fff) 0%, var(--nv-primary) 46%, color-mix(in srgb, var(--nv-primary) 58%, #171043) 100%);
+    radial-gradient(130% 150% at 50% 0%, rgba(255, 255, 255, 0.22), transparent 62%),
+    linear-gradient(135deg, color-mix(in srgb, var(--nv-primary) 84%, #fff) 0%, var(--nv-primary) 48%, color-mix(in srgb, var(--nv-primary) 60%, #171043) 100%);
   box-shadow:
-    0 22px 46px -18px color-mix(in srgb, var(--nv-primary) 85%, transparent),
-    0 10px 22px -14px rgba(0, 0, 0, 0.5),
-    0 0 0 1px color-mix(in srgb, var(--nv-primary) 45%, transparent),
-    0 0 0 7px color-mix(in srgb, var(--nv-primary) 9%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -16px 26px -20px rgba(0, 0, 0, 0.55);
-  transform: translateY(-4px);
-}
-[data-back-to-top]:hover::before,
-[data-back-to-top]:focus-visible::before,
-.back-to-top:hover::before,
-.back-to-top:focus-visible::before {
-  opacity: 1;
-  background-position: -70% 0;
+    0 20px 40px -18px color-mix(in srgb, var(--nv-primary) 78%, transparent),
+    0 8px 18px -10px rgba(0, 0, 0, 0.35),
+    0 0 32px -10px color-mix(in srgb, var(--nv-primary) 65%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--nv-primary) 42%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -14px 24px -18px rgba(0, 0, 0, 0.55);
+  transform: translateY(-3px) scale(1.015);
 }
 [data-back-to-top]:hover .back-to-top__progress,
 [data-back-to-top]:focus-visible .back-to-top__progress,
 .back-to-top:hover .back-to-top__progress,
 .back-to-top:focus-visible .back-to-top__progress {
-  background: conic-gradient(#fff calc(var(--nv-progress) * 360deg), rgba(255, 255, 255, 0.26) 0);
+  opacity: 0;
 }
-[data-back-to-top]:hover .back-to-top__icon,
-[data-back-to-top]:focus-visible .back-to-top__icon,
-.back-to-top:hover .back-to-top__icon,
-.back-to-top:focus-visible .back-to-top__icon {
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.32));
+[data-back-to-top]:hover .back-to-top__icon::before,
+[data-back-to-top]:focus-visible .back-to-top__icon::before,
+.back-to-top:hover .back-to-top__icon::before,
+.back-to-top:focus-visible .back-to-top__icon::before {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 [data-back-to-top]:hover .back-to-top__icon i,
 [data-back-to-top]:focus-visible .back-to-top__icon i,
 .back-to-top:hover .back-to-top__icon i,
 .back-to-top:focus-visible .back-to-top__icon i {
-  transform: translateY(-3px);
-  animation: nv-bt-lift 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform: translateY(-2px);
 }
 [data-back-to-top]:hover .back-to-top__label,
 [data-back-to-top]:focus-visible .back-to-top__label,
 .back-to-top:hover .back-to-top__label,
 .back-to-top:focus-visible .back-to-top__label {
   max-inline-size: 11rem;
-  padding-inline-start: 1.3rem;
+  /* `inline-end` = the pill's outer rim, `inline-start` = the gap to the glyph;
+     both are logical, so RTL and LTR stay symmetric. */
+  padding-inline: 1.15rem 0.9rem;
   opacity: 1;
   transform: none;
 }
-[data-back-to-top]:hover .back-to-top__hint,
-[data-back-to-top]:focus-visible .back-to-top__hint,
-.back-to-top:hover .back-to-top__hint,
-.back-to-top:focus-visible .back-to-top__hint {
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--nv-primary);
-  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.55);
-}
 [data-back-to-top]:focus-visible,
 .back-to-top:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--nv-primary) 45%, #fff);
-  outline-offset: 4px;
+  outline: 2px solid color-mix(in srgb, var(--nv-primary) 55%, #fff);
+  outline-offset: 3px;
 }
 [data-back-to-top]:active,
 .back-to-top:active {
-  transform: translateY(-1px) scale(0.975);
+  transform: translateY(-1px) scale(0.985);
   transition-duration: 0.12s;
 }
-@media (hover: none) {
-  /* Keep the pill open (and un-scaled) for the whole press on touch. */
-  [data-back-to-top]:active,
-  .back-to-top:active {
-    transform: translateY(-2px);
-    transition-duration: 0.2s;
-  }
-}
-
-@keyframes nv-bt-lift {
-  0% {
-    transform: translateY(2px);
-    opacity: 0.6;
-  }
-  60% {
-    transform: translateY(-4px);
-  }
-  100% {
-    transform: translateY(-3px);
-  }
-}
 
 @media (hover: none) {
-  /* Touch screens have no hover: the pill stays a disc and opens while pressed,
-     so it never sits expanded on top of the page content. */
+  /* Touch has no hover: the pill opens while pressed and closes afterwards. */
   [data-back-to-top]:active,
   .back-to-top:active {
-    grid-template-columns: 1fr var(--bt-size);
+    transform: translateY(-2px) scale(1);
   }
   [data-back-to-top]:active .back-to-top__label,
   .back-to-top:active .back-to-top__label {
     max-inline-size: 11rem;
-    padding-inline-start: 1.3rem;
+    padding-inline: 1.15rem 0.9rem;
     opacity: 1;
     transform: none;
   }
-  [data-back-to-top]::before,
-  .back-to-top::before {
-    opacity: 0.45;
-    background-position: -20% 0;
+  [data-back-to-top]:active .back-to-top__icon::before,
+  .back-to-top:active .back-to-top__icon::before {
+    background: rgba(255, 255, 255, 0.16);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-back-to-top],
   .back-to-top,
-  [data-back-to-top]::before,
-  .back-to-top::before,
   [data-back-to-top] .back-to-top__icon,
   [data-back-to-top] .back-to-top__icon i,
   [data-back-to-top] .back-to-top__label,
@@ -594,14 +527,14 @@
   .back-to-top .back-to-top__label {
     transition-duration: 0.01ms;
   }
-  [data-back-to-top]:hover .back-to-top__icon i,
-  [data-back-to-top]:focus-visible .back-to-top__icon i,
-  .back-to-top:hover .back-to-top__icon i,
-  .back-to-top:focus-visible .back-to-top__icon i {
-    animation: none;
-  }
   [data-back-to-top],
   .back-to-top {
+    transform: none;
+  }
+  [data-back-to-top]:hover,
+  [data-back-to-top]:focus-visible,
+  .back-to-top:hover,
+  .back-to-top:focus-visible {
     transform: none;
   }
 }
