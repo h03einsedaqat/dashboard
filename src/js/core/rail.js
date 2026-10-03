@@ -75,10 +75,19 @@ function isHorizontal(node) {
   return node.scrollWidth - node.clientWidth > 8;
 }
 
+/**
+ * How far the content has travelled from the inline start, normalised to
+ * `0 … max` for both writing directions. RTL scrollers report negative
+ * `scrollLeft` offsets, so the raw value is never usable on its own.
+ */
+function travelled(node, max = node.scrollWidth - node.clientWidth) {
+  return Math.min(max, Math.max(0, Math.abs(node.scrollLeft)));
+}
+
 function paint(node) {
   const max = node.scrollWidth - node.clientWidth;
   const overflowing = max > 8;
-  const pos = Math.abs(node.scrollLeft);
+  const pos = travelled(node, max);
   node.classList.toggle('rail--overflow', overflowing);
   node.classList.toggle('rail--at-start', !overflowing || pos < 6);
   node.classList.toggle('rail--at-end', !overflowing || pos > max - 6);
@@ -86,22 +95,36 @@ function paint(node) {
   const end = node.querySelector('[data-rail-end]');
   if (start) start.disabled = !overflowing || pos < 6;
   if (end) end.disabled = !overflowing || pos > max - 6;
+  /**
+   * The arrows are absolutely positioned *inside* the scroller and translated
+   * by the scroll offset (see `_rail.scss`). A sticky flex item was pinned to
+   * the wrong edge by the browser as soon as the rail was RTL — the left arrow
+   * then hung half outside the card and off the screen.
+   */
+  node.style.setProperty('--rail-pin', `${Math.round(node.scrollLeft)}px`);
   // Content appended after mount (a new chat message, a re-rendered list) must
   // not push the end arrow out of the last slot.
   if (end && node.lastElementChild !== end) node.append(end);
 }
 
+/**
+ * Pages the rail one screen towards `start` or `end` — reading order, not
+ * physical direction, so the same handler works for fa / en / ar.
+ */
 function page(node, direction) {
   const rtl = getComputedStyle(node).direction === 'rtl';
   const amount = Math.max(160, Math.round(node.clientWidth * 0.82));
-  // In RTL the inline start lives on the right, so the spec-model scrollLeft is
-  // negative towards the end of the content. `direction` is reading order.
-  const delta = direction === 'start' ? (rtl ? amount : -amount) : rtl ? -amount : amount;
-  const next = Math.abs(node.scrollLeft) + delta;
+  const max = node.scrollWidth - node.clientWidth;
+  const current = travelled(node, max);
+  // Clamping inside `0 … max` is what makes the two ends idempotent: the old
+  // arithmetic added to `|scrollLeft|` and then wrote the sum with a *positive*
+  // sign in RTL, which the browser clamps straight back to 0 — a dead arrow.
+  const target = Math.max(0, Math.min(max, direction === 'start' ? current - amount : current + amount));
+  const left = rtl ? -target : target;
   try {
-    node.scrollTo({ left: (rtl ? -1 : 1) * next, behavior: 'smooth' });
+    node.scrollTo({ left, behavior: 'smooth' });
   } catch {
-    node.scrollLeft = (rtl ? -1 : 1) * next;
+    node.scrollLeft = left;
   }
 }
 
@@ -111,10 +134,11 @@ function mount(node) {
   node.classList.add('rail');
 
   /**
-   * The arrows are sticky *flex items*: that only works when the rail lays its
-   * children out in a row. Block- and grid-level scrollers would take a whole
-   * line/cell per button, so those keep the momentum/over-scroll polish and a
-   * visible (thin) scrollbar instead.
+   * The arrows are absolutely positioned children of the scroller (pinned by
+   * `--rail-pin`, see `paint()`), so they need the rail to be their containing
+   * block. Block- and grid-level scrollers would not be able to host them at
+   * all, so those keep the momentum/over-scroll polish and a visible (thin)
+   * scrollbar instead.
    */
   const display = getComputedStyle(node).display;
   if (!/flex/.test(display)) {
@@ -124,6 +148,7 @@ function mount(node) {
     return;
   }
 
+  node.classList.add('rail--arrows');
   node.insertAdjacentHTML('afterbegin', START_BTN);
   node.insertAdjacentHTML('beforeend', END_BTN);
 

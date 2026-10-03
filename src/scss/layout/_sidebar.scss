@@ -549,13 +549,20 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
 
 /* ------------------------------------------------------------ mobile drawer */
 @media (max-width: 991.98px) {
+  /**
+   * The drawer hangs *below* the app bar instead of covering it. Covering the
+   * header buried the notification bell, the theme switch and the search under
+   * the panel — so a tap aimed at the bell landed on whatever sat at the same
+   * spot inside the drawer (the brand link) and navigated the whole app away
+   * from the page the visitor was reading.
+   */
   .app-sidebar {
     position: fixed;
-    inset-block: 0;
+    inset-block: var(--nv-header-h) 0;
     inset-inline-start: 0;
     width: min(20rem, 86vw);
-    height: 100vh;
-    max-height: 100vh;
+    height: calc(100dvh - var(--nv-header-h));
+    max-height: calc(100dvh - var(--nv-header-h));
     transform: translateX(var(--nv-drawer-offset, -100%));
     box-shadow: none;
     border-inline-end: 1px solid var(--nv-border);
@@ -572,6 +579,16 @@ html[data-font-size='lg'] .app-sidebar .brand__tag {
   }
   .app-sidebar__close {
     display: inline-flex;
+  }
+  /* The header stays *above* the dim so its own controls (bell, theme,
+     language, search) keep working while the menu is open. */
+  .sidebar-open .app-header {
+    z-index: calc(var(--nv-z-drawer) + 5);
+  }
+  /* `floating` is the only style that pins the drawer with `!important`. */
+  [data-sidebar-style='floating'] .app-sidebar {
+    inset-block-start: var(--nv-header-h) !important;
+    max-block-size: calc(100dvh - var(--nv-header-h)) !important;
   }
 }
 

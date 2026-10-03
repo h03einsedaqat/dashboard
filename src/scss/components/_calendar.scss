@@ -455,11 +455,12 @@
   }
 }
 
-/* ---------------------------------------------------------------- datepicker */
+/* ---------------------------------------------------------------- datepicker
+   The popup is skinned here, positioned above with `position: fixed`: the
+   controller writes viewport coordinates (`getBoundingClientRect`), so an
+   `absolute` box would land thousands of pixels above a scrolled page and the
+   calendar simply never appeared on a phone. */
 .dp {
-  position: absolute;
-  z-index: var(--nv-z-command);
-  width: min(19rem, 92vw);
   padding: var(--nv-space-4);
   background: var(--nv-surface);
   border: 1px solid var(--nv-border);

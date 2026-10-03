@@ -3557,7 +3557,7 @@ export async function initWidgetsPage() {
         actions: `${toolButtons({})}<button class="btn btn-light" type="button" data-widget-edit><i class="bi bi-sliders"></i> شخصی‌سازی چیدمان</button>`,
       })}
       <div data-widget-editor hidden></div>
-      <div class="kpi-row">${kpiCards(kpis)}</div>
+      ${kpiCards(kpis)}
 
       <div class="widget-grid" id="widget-grid" data-widget-grid>
         <section class="card" data-widget="revenue-chart" data-widget-title="نمودار درآمد">

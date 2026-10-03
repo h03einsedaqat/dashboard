@@ -53,6 +53,46 @@ export function chartColors(count = 6) {
   return Array.from({ length: count }, (_, index) => cached.palettes[index % cached.palettes.length]);
 }
 
+/**
+ * Phone-sized charts used to be drawn with their desktop gutters: on a 288px
+ * card a y-axis full of «۱۰.۰ میلیارد» ticks eats a third of the plot, the
+ * columns land on top of the labels and the net line runs through the month
+ * names. ApexCharts' own `responsive` block re-lays the chart out whenever the
+ * container crosses the breakpoint, so the same page stays correct after a
+ * rotation — no JavaScript media query to keep in sync.
+ */
+const numberOr = (value, fallback) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+
+function phoneOptions({ chartType, dense, height }) {
+  /**
+   * `formatCompact` writes Persian units after a space («۱۰.۰ میلیارد»); the
+   * number is what the phone gutter has room for, and the unit is still in the
+   * tooltip, the legend and the card copy right above the chart. Latin builds
+   * suffix the unit without a space (`1.2M`) and already fit, so they are kept.
+   */
+  const tick = (value) => {
+    if (typeof value !== 'number') return String(value ?? '');
+    const parts = formatCompact(value, { decimals: 0 }).split(' ');
+    return parts.length > 1 ? parts[0] : parts.join(' ');
+  };
+  return {
+    breakpoint: 640,
+    options: {
+      chart: { height: Math.max(210, Math.round(numberOr(height, 300) * 0.82)) },
+      grid: { padding: { left: 0, right: 0, top: 0, bottom: 0 }, strokeDashArray: 3 },
+      legend: { position: 'bottom', fontSize: '11px', markers: { width: 7, height: 7, radius: 2 }, itemMargin: { horizontal: 6, vertical: 1 } },
+      xaxis: { labels: { style: { fontSize: '10px' }, rotate: 0, hideOverlappingLabels: true, trim: false } },
+      yaxis: { labels: { style: { fontSize: '10px' }, minWidth: 22, maxWidth: 52, formatter: tick } },
+      ...(dense
+        ? {
+            stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+            plotOptions: { bar: { columnWidth: '62%', borderRadius: 3 } },
+          }
+        : {}),
+    },
+  };
+}
+
 function baseOptions() {
   const styles = getStyleTokens();
   return {
@@ -197,6 +237,7 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
   const labels2 = normalizeLabels(labels, series2, chartType);
   const { type: _ignored, ...safeExtra } = extra ?? {};
   const dense = chartType === 'area' || chartType === 'line' || chartType === 'bar';
+  const phone = phoneOptions({ chartType, dense, height });
   const palette = colors ?? chartColors(series2.length || 3);
   const localised = localiseSeries(series2);
   const localisedLabels = localiseLabels(labels2);
@@ -205,6 +246,7 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
     series: localised,
     labels: localisedLabels,
     colors: palette,
+    ...(phone ? { responsive: [phone] } : {}),
     noData: { text: t('common.noData'), align: 'center', verticalAlign: 'middle', style: { fontSize: '13px', color: styles.textMuted } },
     chart: { ...base.chart, type: chartType, height },
     stroke: { curve: 'smooth', width: chartType === 'line' || chartType === 'area' ? 2.5 : 0 },

@@ -34,11 +34,15 @@
   pointer-events: none;
 }
 
+/* A rail that carries arrows becomes the containing block for them. */
+.rail--arrows {
+  position: relative;
+}
+
 .rail__btn {
-  position: sticky;
+  position: absolute;
+  inset-block: 0;
   z-index: 3;
-  flex: 0 0 auto;
-  align-self: stretch;
   display: grid;
   place-items: center;
   inline-size: 2.4rem;
@@ -50,6 +54,10 @@
   cursor: pointer;
   opacity: 1;
   -webkit-tap-highlight-color: transparent;
+  /* Pinned to the scrollport: `--rail-pin` is the rail's own scroll offset, so
+     the arrow scrolls with the content and is translated straight back to the
+     edge. Works in RTL and LTR alike — no sticky, no flex-order surprises. */
+  transform: translateX(var(--rail-pin, 0px));
   transition: opacity var(--nv-dur-fast) var(--nv-ease);
 }
 
@@ -64,12 +72,9 @@
 }
 .rail__btn--start {
   inset-inline-start: 0;
-  /* Net zero width: the arrow overlays the first chips instead of shifting them. */
-  margin-inline-end: -2.4rem;
 }
 .rail__btn--end {
   inset-inline-end: 0;
-  margin-inline-start: -2.4rem;
 }
 .rail__btn--end::before {
   background: linear-gradient(var(--rail-fade-dir-end, to left), var(--rail-fade-color, var(--nv-surface)) 46%, transparent);
@@ -150,26 +155,40 @@
   border-radius: 999px;
 }
 
-/* Touch devices: the swipe is the primary gesture, so the arrows stay slim and
-   the hidden side is simply not rendered. */
+/* Touch devices: the swipe is the primary gesture, so the arrows stay slim, the
+   hidden side is simply not rendered — and the rail grows the same slim bottom
+   scrollbar the permission matrix uses, which is what makes a phone user see
+   that there is more to the side. */
 @media (hover: none) {
   .rail__btn {
     inline-size: 2.1rem;
-  }
-  .rail__btn--start {
-    margin-inline-end: -2.1rem;
-  }
-  .rail__btn--end {
-    margin-inline-start: -2.1rem;
   }
   .rail__btn i {
     inline-size: 1.65rem;
     block-size: 1.65rem;
     font-size: 0.76rem;
+    /* The blurred glass is the single most expensive paint on a phone rail. */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--nv-surface);
   }
   .rail.rail--at-start .rail__btn--start,
   .rail.rail--at-end .rail__btn--end {
     display: none;
+  }
+  .rail--overflow {
+    scrollbar-width: thin;
+    scrollbar-color: var(--nv-border-strong, var(--nv-border)) transparent;
+  }
+  .rail--overflow::-webkit-scrollbar {
+    height: 5px;
+  }
+  .rail--overflow::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .rail--overflow::-webkit-scrollbar-thumb {
+    background: var(--nv-border-strong, var(--nv-border));
+    border-radius: 999px;
   }
 }
 

@@ -199,8 +199,13 @@ export const layout = {
         layout.closeDrawer();
         return;
       }
-      // Anything inside the drawer (or the control that opens it) stays put.
-      if (event.target.closest('[data-app-sidebar], [data-sidebar-toggle], [data-sidebar-open], .app-sidebar')) return;
+      /**
+       * Anything inside the drawer, the control that opens it, or the app bar
+       * itself stays put. The header is chrome, not page content: tapping the
+       * notification bell while the menu is open has to open the panel — it
+       * used to close the menu *and* follow whatever link sat underneath.
+       */
+      if (event.target.closest('[data-app-sidebar], [data-sidebar-toggle], [data-sidebar-open], .app-sidebar, .app-header')) return;
       layout.closeDrawer();
     });
 

@@ -16,10 +16,24 @@
   gap: var(--nv-space-4);
   min-height: var(--nv-header-h);
   padding-inline: var(--nv-content-pad);
+  border-block-end: 1px solid var(--nv-border);
+}
+
+/**
+ * The frosted glass lives on a pseudo-element, never on the header itself.
+ * A `backdrop-filter` makes its element the *containing block* for every
+ * fixed-position descendant — which dragged the notification bottom sheet up
+ * behind the header (it rendered at `top: -655px`, i.e. invisible) and would
+ * do the same to any full-screen panel hosted in the app bar.
+ */
+.app-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--nv-header-bg);
   backdrop-filter: saturate(180%) blur(14px);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-block-end: 1px solid var(--nv-border);
 }
 
 .app-header__left,
