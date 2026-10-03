@@ -1287,6 +1287,13 @@ async function initFinance() {
        * half-over-half deltas, the runway, the current ratio and the cover
        * meter are computed here, never hard-coded.
        */
+      /**
+       * The chart is drawn from `onData` (after the shell is in the DOM), while
+       * the series are computed inside `paint` — so the payload is handed over
+       * through this variable instead of being closed over.
+       */
+      let cashflowChart = null;
+
       const paint = async () => {
         const [cashFlow, balance, aging, profit] = await Promise.all([
           services.financeReportsService.cashFlow(),
@@ -1326,6 +1333,15 @@ async function initFinance() {
         const worstMonth = months.reduce((worst, row, index) => (row.inflow - row.outflow < (months[worst]?.inflow ?? 0) - (months[worst]?.outflow ?? 0) ? index : worst), 0);
         const bestMonth = months.reduce((best, row, index) => (row.inflow - row.outflow > (months[best]?.inflow ?? 0) - (months[best]?.outflow ?? 0) ? index : best), 0);
         const meter = (value, max) => Math.max(3, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
+
+        cashflowChart = {
+          labels,
+          series: [
+            { name: 'ورودی', data: months.map((row) => row.inflow), type: 'column' },
+            { name: 'خروجی', data: months.map((row) => row.outflow), type: 'column' },
+            { name: 'خالص', data: netSeries, type: 'line', dashed: true },
+          ],
+        };
 
         return `<div class="dashboard-shell fin">
           ${pageHeader({
@@ -1480,18 +1496,16 @@ async function initFinance() {
         onData: (target) => {
           /* Drawn through the controller API so the series colours match the
              legend dots exactly (green in, red out, slate net). */
-          chart($('[data-chart-key="cashflow"]', target), {
-            type: 'bar',
-            mixed: true,
-            height: 330,
-            labels,
-            series: [
-              { name: 'ورودی', data: months.map((row) => row.inflow), type: 'column' },
-              { name: 'خروجی', data: months.map((row) => row.outflow), type: 'column' },
-              { name: 'خالص', data: netSeries, type: 'line', dashed: true },
-            ],
-            colors: ['#10b981', '#ef4444', '#64748b'],
-          });
+          if (cashflowChart) {
+            chart($('[data-chart-key="cashflow"]', target), {
+              type: 'bar',
+              mixed: true,
+              height: 330,
+              labels: cashflowChart.labels,
+              series: cashflowChart.series,
+              colors: ['#10b981', '#ef4444', '#64748b'],
+            });
+          }
           initCharts(target);
           exportable(target, 'transactions');
         },
@@ -4440,6 +4454,27 @@ async function initLogistics() {
       return;
     }
 
+  }
+}
+
+/* =================================================================== Reports */
+
+const REPORT_RANGES = [
+  { value: '7d', label: '۷ روز' },
+  { value: '30d', label: '۳۰ روز' },
+  { value: '90d', label: '۹۰ روز' },
+  { value: '12m', label: '۱۲ ماه' },
+];
+
+/** Charts have to be (re)drawn every time a report paints — including retries. */
+function paintCharts(target) {
+  initCharts(target);
+}
+
+/** Cell renderer for a report table: types come from the service contract. */
+function reportCell(value, type) {
+  if (value === null || value === undefined || value === '') return '<span class="text-muted">—</span>';
+  switch (type) {
     case 'currency':
       return `<span class="numeric">${escapeHtml(formatCurrency(value, 'IRR', { compact: true }))}</span>`;
     case 'percent':
@@ -4468,6 +4503,7 @@ function badgeToneFor(label) {
   if (/refund|cancel|overdue|lost|breach|delayed|terminated|unpaid|مرجوع|لغو|معوق|تأخیر|اخذ/.test(text)) return 'danger';
   return 'neutral';
 }
+
 
 async function initReports() {
   const page = kit.pageId();
