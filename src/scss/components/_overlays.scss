@@ -240,6 +240,15 @@
   font-weight: var(--nv-fw-semibold);
   color: var(--nv-heading);
 }
+/* The calendar follows the interface language; the hint explains why the
+   segmented control is inert outside Persian (see `core/chrome.js`). */
+.customizer__hint {
+  margin: 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-3);
+  line-height: 1.7;
+}
+
 .customizer__foot {
   padding: var(--nv-space-4) var(--nv-space-5);
   border-block-start: 1px solid var(--nv-divider);

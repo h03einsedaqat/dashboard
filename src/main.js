@@ -420,6 +420,7 @@ async function boot() {
   }
   /** The language this document was rendered in; a switch away from it reloads. */
   const bootLanguage = i18n.lang;
+  const bootCalendar = document.documentElement.getAttribute('data-calendar');
   setPhraseLanguage(i18n.lang);
   applyPhrases(document.body);
   observePhrases(document.body);
@@ -550,8 +551,7 @@ async function boot() {
    * instantly because `theme-boot.js` applies the stored language before the
    * first paint (no flash of Persian).
    */
-  bus.on(EVENTS.language, ({ lang } = {}) => {
-    if (!lang || lang === bootLanguage) return;
+  const reloadForPreference = (lang) => {
     if (window.__novaLanguageReload) return;
     window.__novaLanguageReload = true;
     document.documentElement.classList.add('is-switching-language');
@@ -565,13 +565,29 @@ async function boot() {
        */
       try {
         const url = new URL(window.location.href);
-        url.searchParams.set('lang', lang);
+        if (lang) url.searchParams.set('lang', lang);
         window.location.assign(url.toString());
       } catch {
         if (typeof window.location.reload === 'function') window.location.reload();
         else window.location.assign(window.location.href);
       }
     }, 80);
+  };
+
+  bus.on(EVENTS.language, ({ lang } = {}) => {
+    if (!lang || lang === bootLanguage) return;
+    reloadForPreference(lang);
+  });
+
+  /**
+   * The customizer's calendar preference (Jalali ↔ Gregorian, Persian only)
+   * repaints every date, chart axis and grid exactly like a language switch, so
+   * it takes the same one clean reload — otherwise half the page would still be
+   * showing the previous calendar.
+   */
+  bus.on(EVENTS.calendarDate, ({ value } = {}) => {
+    if (!value || value === bootCalendar) return;
+    reloadForPreference(bootLanguage);
   });
   document.documentElement.classList.add('app-ready');
   bus.emit('app:ready', { page: document.body.dataset.page });

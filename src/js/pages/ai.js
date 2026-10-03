@@ -17,7 +17,7 @@ import { $, $$, on, render, escapeHtml } from '../core/dom.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { modal } from '../core/modal.js';
-import { formatCurrency, formatNumber, formatCompact, toDigits } from '../core/numbers.js';
+import { formatCurrency, formatNumber, formatCompact, toDigits, activeLang } from '../core/numbers.js';
 import { relativeTime, formatDate } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
@@ -465,7 +465,7 @@ async function aiChat() {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance($('.aic-msg__text', msg).textContent);
-        u.lang = 'fa-IR';
+        u.lang = activeLang() === 'fa' ? 'fa-IR' : activeLang() === 'ar' ? 'ar-SA' : 'en-US';
         window.speechSynthesis.speak(u);
       }
       toast.info('خواندن متن', 'پخش صوتی پاسخ آغاز شد.');

@@ -24,6 +24,7 @@
 import { $, on, create, debounce, escapeHtml } from './dom.js';
 import { bus, EVENTS } from './bus.js';
 import { toDigits, toLatinDigits, activeLang } from './numbers.js';
+import { t } from './i18n.js';
 import { calendar, monthNames, jalaliMonthLength, toGregorian, toJalali, weekDayIndex } from './jalali.js';
 
 const MOUNTED = 'dpReady';
@@ -31,13 +32,24 @@ const OPEN_CLASS = 'dp--open';
 
 /* --------------------------------------------------------------- utilities */
 
-/** The calendar system this document should display right now. */
+/**
+ * The calendar system this document should display right now.
+ *
+ * `core/jalali.js` owns the rule — Persian reads Jalali, English and Arabic read
+ * Gregorian — so the picker and the formatted dates can never disagree.
+ */
 export function activeSystem() {
-  const lang = document.documentElement.lang || activeLang();
-  // Non-Persian interfaces read Gregorian months (and Latin digits).
-  if (lang === 'en') return 'gregorian';
   return calendar.isJalali() ? 'jalali' : 'gregorian';
 }
+
+/** Localised chrome for the popup (the grid itself is language-aware above). */
+const labels = () => ({
+  today: t('ui.today', 'امروز'),
+  clear: t('ui.dateClear', 'پاک کردن'),
+  prev: t('ui.prevMonth', 'ماه قبل'),
+  next: t('ui.nextMonth', 'ماه بعد'),
+  pick: t('ui.pickDate', 'انتخاب تاریخ از تقویم'),
+});
 
 const pad = (value) => String(value).padStart(2, '0');
 const isoFromParts = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
@@ -222,7 +234,8 @@ function buildPopup(field) {
 
   const grid = () => {
     const parts = gridParts(cursor, system);
-    const labels = dayLabels();
+    const weekdays = dayLabels();
+    const l10n = labels();
     const today = todayIso();
     const cells = [];
     for (let i = 0; i < parts.startIndex; i += 1) {
@@ -244,14 +257,14 @@ function buildPopup(field) {
     }
     return `
       <div class="dp__head">
-        <button type="button" class="dp__nav" data-dp-move="-1" aria-label="ماه قبل"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+        <button type="button" class="dp__nav" data-dp-move="-1" aria-label="${escapeHtml(l10n.prev)}"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
         <span class="dp__title" aria-live="polite">${escapeHtml(toDigits(parts.label, lang))}</span>
-        <button type="button" class="dp__nav" data-dp-move="1" aria-label="ماه بعد"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+        <button type="button" class="dp__nav" data-dp-move="1" aria-label="${escapeHtml(l10n.next)}"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
       </div>
-      <div class="dp__grid" role="grid">${labels.map((label) => `<span class="dp__dow">${escapeHtml(toDigits(label, lang))}</span>`).join('')}${cells.join('')}</div>
+      <div class="dp__grid" role="grid">${weekdays.map((label) => `<span class="dp__dow">${escapeHtml(toDigits(label, lang))}</span>`).join('')}${cells.join('')}</div>
       <div class="dp__foot">
-        <button type="button" class="dp__preset" data-dp-today ${inRange(today) ? '' : 'disabled'}>امروز</button>
-        <button type="button" class="dp__preset" data-dp-clear>پاک کردن</button>
+        <button type="button" class="dp__preset" data-dp-today ${inRange(today) ? '' : 'disabled'}>${escapeHtml(l10n.today)}</button>
+        <button type="button" class="dp__preset" data-dp-clear>${escapeHtml(l10n.clear)}</button>
       </div>`;
   };
 
@@ -421,7 +434,7 @@ function enhance(input) {
   const toggle = create('button', {
     type: 'button',
     class: 'dp-toggle',
-    'aria-label': 'انتخاب تاریخ از تقویم',
+    'aria-label': labels().pick,
     html: '<i class="bi bi-calendar3" aria-hidden="true"></i>',
   });
 

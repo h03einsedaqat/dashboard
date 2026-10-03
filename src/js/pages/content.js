@@ -15,7 +15,7 @@ import { storage, KEYS } from '../core/storage.js';
 import { theme } from '../core/theme.js';
 import { setLanguage } from '../core/i18n.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
-import { formatDate, relativeTime } from '../core/jalali.js';
+import { formatDate, relativeTime, monthNames12, parts } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { withState } from '../core/load.js';
 import { SHOWCASE, FEATURES, FAQ, STEPS, RELEASE_HEADLINE, CODE_SAMPLE } from '../../data/landing.js';
@@ -230,11 +230,8 @@ export function wireLandingHeader(node = document) {
 
   const yearNode = $('[data-year]', node);
   if (yearNode) {
-    try {
-      yearNode.textContent = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric' }).format(new Date());
-    } catch {
-      yearNode.textContent = toDigits(new Date().getFullYear());
-    }
+    /* The year in the active calendar: ۱۴۰۵ in Persian, 2026 in English/Arabic. */
+    yearNode.textContent = toDigits(parts().year);
   }
 
   const newsletter = $('[data-newsletter]', node);
@@ -3545,7 +3542,9 @@ export async function initWidgetsPage() {
     services.ticketService.list({ perPage: 4 }),
   ]);
 
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+  /* Axis labels follow the active calendar: Jalali months in Persian,
+     Gregorian months in English and Arabic. */
+  const months = monthNames12();
 
   render(
     node,

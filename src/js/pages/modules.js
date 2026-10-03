@@ -16,7 +16,8 @@ import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { modal } from '../core/modal.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
-import { formatDate, relativeTime, monthNames } from '../core/jalali.js';
+import { formatDate, relativeTime, monthNameOf, monthNames12 } from '../core/jalali.js';
+import { activeLang } from '../core/numbers.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
@@ -1904,8 +1905,10 @@ async function initFinance() {
           services.financeReportsService.profitAndLoss(),
         ]);
         const months = cashFlow.series ?? [];
-        const JALALI = monthNames().jalali;
-        const labels = months.map((row) => JALALI[row.month % 12] ?? `ماه ${row.month + 1}`);
+        /* Axis labels read in the interface's own calendar — Jalali under a
+           Persian UI, Gregorian under English/Arabic (see `core/jalali.js`). */
+        const NAMES = monthNames12();
+        const labels = months.map((row) => NAMES[row.month % 12] ?? `ماه ${row.month + 1}`);
         const buckets = Array.isArray(aging) ? aging : (aging?.buckets ?? []);
         const outstanding = buckets.reduce((sum, bucket) => sum + (bucket.amount ?? 0), 0);
         const outstandingCount = buckets.reduce((sum, bucket) => sum + (bucket.count ?? 0), 0);
@@ -2152,7 +2155,7 @@ async function initFinance() {
       const overdueAmount = items.filter((inv) => inv.status === 'overdue').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
       const pendingAmount = items.filter((inv) => inv.status === 'pending').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
 
-      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+      const months = monthNames12();
       const invoicedSeries = [1850, 2120, 2480, 2310, 2890, 3240, 3050, 3620, 3940, 3780, 4320, 4850];
       const collectedSeries = [1680, 1940, 2290, 2180, 2690, 3080, 2920, 3450, 3760, 3610, 4150, 4690];
       const chartTrendSeries = JSON.stringify([
@@ -2534,7 +2537,7 @@ async function initProjects() {
         if (t > passed / totalDays + 0.001) return null;
         return Math.round(project.tasksTotal * (1 - doneRatio * Math.pow(t / Math.max(0.05, passed / totalDays), 1.15)));
       });
-      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+      const months = monthNames12().slice(0, 6);
       const planned = months.map((_, i) => Math.round((project.budget / 6 / 1_000_000) * (0.8 + ((i * 37) % 5) / 10)));
       const real = planned.map((v, i) => Math.round(v * (spentPct / 100) * (0.85 + ((i * 53) % 4) / 10)));
       const workload = members.map((m, i) => ({ name: m.name, open: 3 + ((i * 7) % 6), done: 4 + ((i * 5) % 9) }));
@@ -2639,7 +2642,7 @@ async function initProjects() {
       const monthTicks = [];
       const cursor = new Date(min);
       while (cursor.getTime() < min.getTime() + range) {
-        monthTicks.push({ left: pos(cursor.getTime()), label: monthNames().jalali[cursor.getMonth()] ?? '' });
+        monthTicks.push({ left: pos(cursor.getTime()), label: monthNameOf(cursor) });
         cursor.setMonth(cursor.getMonth() + 1);
       }
       const today = pos(Date.now());
@@ -3476,7 +3479,7 @@ async function initSupport() {
       const byViews = [...topics].sort((a, b) => b.views - a.views);
       await Promise.all([
         chart($('[data-kb-chart="share"]', node), { type: 'donut', height: 260, series: byViews.map((t) => t.views), labels: byViews.map((t) => t.category) }),
-        chart($('[data-kb-chart="csat"]', node), { type: 'area', height: 200, series: [{ name: 'رضایت ٪', data: satisfaction.series.map((r) => r.csat) }], labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'], colors: ['#10b981'] }),
+        chart($('[data-kb-chart="csat"]', node), { type: 'area', height: 200, series: [{ name: 'رضایت ٪', data: satisfaction.series.map((r) => r.csat) }], labels: monthNames12(), colors: ['#10b981'] }),
       ]);
 
       const list = $('[data-kb-list]', node);
@@ -3611,7 +3614,7 @@ async function initHr() {
         </div>`,
       );
       initCharts(node);
-      const clock = () => new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+      const clock = () => new Intl.DateTimeFormat(activeLang() === 'fa' ? 'fa-IR' : activeLang() === 'ar' ? 'ar-AE' : 'en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date());
       on($('[data-check-in]', node), 'click', async () => {
         await services.attendanceService.checkIn();
         toast.success('ورود ثبت شد', `ساعت ${clock()} ثبت گردید.`);

@@ -141,8 +141,12 @@
   --rail-fade-color: var(--nv-surface-2);
 }
 
-/* Block-level scrollers (no sticky flex item possible): keep the polish but
-   make the scroll affordance visible instead of cut off. */
+/**
+ * Block-level scrollers (no sticky flex item possible): keep the polish but
+ * make the scroll affordance visible instead of cut off. A desktop pointer
+ * cannot swipe, so these keep the native bar — the touch layout below swaps it
+ * for the painted track (exactly one affordance per platform).
+ */
 .rail--flow {
   scrollbar-width: thin;
   scrollbar-color: var(--nv-border-strong, var(--nv-border)) transparent;
@@ -225,32 +229,26 @@
 /**
  * Phone rails advertise themselves with the same slim bottom overflow bar the
  * permission matrix uses — a visible track under the strip, not a hidden
- * scroller plus a mystery arrow. It is drawn for *every* rail, including the
- * pages that switch the native bar off for their own reasons (mail folders,
- * the chat conversation strip), because a phone user cannot hover to discover
- * that there is more to the side.
+ * scroller plus a mystery arrow.
+ *
+ * **One affordance, always.** The painted track is the only bar on touch and
+ * narrow screens: the engine's own scrollbar is switched off here so a rail
+ * never shows two bars stacked on top of each other (Android Chrome paints the
+ * native one on top of the painted one). On a desktop pointer it is the other
+ * way round — the track hides itself and the native bar stays, because a mouse
+ * can drag a real scrollbar and every desktop browser keeps it on screen.
  */
 @media (hover: none), (max-width: 767.98px) {
-  .rail--overflow {
-    /* The painted track is the primary affordance; the native bar (where the
-       engine paints one) is a bonus, so it is left thin and un-intrusive. */
-    scrollbar-width: thin !important;
-    scrollbar-color: var(--nv-border-strong, var(--nv-border)) transparent;
+  .rail--overflow,
+  .rail--flow {
+    scrollbar-width: none !important;
     padding-block-end: 0.55rem;
   }
-  .rail--overflow::-webkit-scrollbar {
-    display: block !important;
-    height: 6px !important;
-  }
-  .rail--overflow::-webkit-scrollbar-track {
-    background: color-mix(in srgb, var(--nv-border) 55%, transparent);
-    border-radius: 999px;
-    margin-inline: 0.75rem;
-  }
-  .rail--overflow::-webkit-scrollbar-thumb {
-    background: var(--nv-primary);
-    border-radius: 999px;
-    box-shadow: 0 0 0 1px var(--nv-surface) inset;
+  .rail--overflow::-webkit-scrollbar,
+  .rail--flow::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 

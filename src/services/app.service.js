@@ -3,6 +3,7 @@
  * (email, chat, calendar, file manager, media library, notes)
  */
 import { createResourceService } from './resource.js';
+import { activeLang } from '../js/core/numbers.js';
 import { call } from './client.js';
 import {
   emails, MAIL_FOLDERS, MAIL_LABELS, conversations, calendarEvents, CALENDAR_CATEGORIES,
@@ -85,7 +86,7 @@ export const chatAppService = {
         avatar: 'assets/img/avatars/avatar-08.svg',
         text,
         attachments,
-        time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toLocaleTimeString(activeLang() === 'fa' ? 'fa-IR' : activeLang() === 'ar' ? 'ar-AE' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
       }),
       latency: [220, 700],
     });

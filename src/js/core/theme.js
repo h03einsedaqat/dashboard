@@ -22,6 +22,8 @@ import { bus, EVENTS } from './bus.js';
 import { storage, KEYS } from './storage.js';
 import { config } from '../../config/config.js';
 import { setLanguage } from './i18n.js';
+import { system as calendarSystem, calendar as calendarPreference } from './jalali.js';
+import { activeLang } from './numbers.js';
 
 export const PALETTES = ['indigo', 'blue', 'emerald', 'violet', 'orange', 'rose'];
 export const LAYOUTS = ['default', 'mini', 'collapse', 'horizontal', 'twocol', 'boxed'];
@@ -50,7 +52,9 @@ const state = {
   density: 'comfortable',
   fontSize: storage.get(KEYS.fontSize, config.defaultFontSize ?? 'md'),
   sidebarStyle: 'fixed',
-  calendar: storage.pref('calendar'),
+  /* Derived from the engine so the customizer and the pickers can never
+     disagree about which calendar is in effect. */
+  calendar: calendarPreference.system,
   radius: Number(storage.get('radius', 1)),
   resolved: 'light',
 };
@@ -105,7 +109,9 @@ function apply(persist = false) {
   root.setAttribute('data-density', state.density);
   root.setAttribute('data-font-size', state.fontSize);
   root.setAttribute('data-sidebar-style', state.sidebarStyle);
-  root.setAttribute('data-calendar', state.calendar);
+  /* The attribute carries the *effective* calendar (language-driven), not the
+     stored preference: English and Arabic documents are always Gregorian. */
+  root.setAttribute('data-calendar', calendarSystem());
   root.style.setProperty('--nv-radius-scale', String(state.radius));
   paintBrowserChrome(state.resolved);
   applyRadius();
@@ -114,7 +120,7 @@ function apply(persist = false) {
     storage.set(KEYS.theme, state.theme);
     storage.set(KEYS.primary, state.primary);
     storage.set(KEYS.fontSize, state.fontSize);
-    storage.set(KEYS.calendar, state.calendar);
+    storage.set(KEYS.calendar, calendarPreference.system);
     storage.set('radius', state.radius);
   }
 }
@@ -177,7 +183,7 @@ function syncControls() {
   $$('[data-density-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.densityOption === state.density));
   $$('[data-fontsize-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.fontsizeOption === state.fontSize));
   $$('[data-sidebar-style-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.sidebarStyleOption === state.sidebarStyle));
-  $$('[data-calendar-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.calendarOption === state.calendar));
+  $$('[data-calendar-option]').forEach((node) => node.classList.toggle('is-active', node.dataset.calendarOption === calendarSystem()));
   /* Every toggle on the page — header, landing header, footer, customizer. */
   $$('[data-theme-toggle]').forEach((toggle) => {
     const isDark = appliedTheme() === 'dark';
@@ -220,7 +226,12 @@ export function set(key, value, { persist = true, silent = false } = {}) {
       state.fontSize = FONT_SIZES.includes(value) ? value : 'md';
       break;
     case 'calendar':
-      state.calendar = value === 'gregorian' ? 'gregorian' : 'jalali';
+      /* The calendar follows the interface language (see `core/jalali.js`): only
+         a Persian reader owns this preference, so an inert control on the
+         English/Arabic UI can never move the stored value. */
+      if (activeLang() !== 'fa') return state.calendar;
+      calendarPreference.set(value === 'gregorian' ? 'gregorian' : 'jalali');
+      state.calendar = calendarPreference.system;
       break;
     case 'radius':
       state.radius = Math.min(1.6, Math.max(0.4, Number(value) || 1));
@@ -326,7 +337,10 @@ export function reset({ silent = false } = {}) {
   state.density = 'comfortable';
   state.fontSize = config.defaultFontSize ?? 'md';
   state.sidebarStyle = 'fixed';
-  state.calendar = 'jalali';
+  /* Reset means the *effective* calendar too, not just the snapshot: without
+     this the engine would keep a stored میلادی while the control showed شمسی. */
+  calendarPreference.set('jalali');
+  state.calendar = calendarPreference.system;
   state.radius = 1;
   apply(true);
   syncControls();
@@ -353,6 +367,18 @@ export function bindThemeToggles(rootNode = document) {
 
 /** Wires every declarative appearance control on the page. */
 export function initThemeControls(rootNode = document) {
+  /**
+   * `initI18n()` applies the stored language *silently* (no bus event), so this
+   * is the first moment the effective calendar is known: write the derived
+   * attribute before anything can read it, otherwise an English page would keep
+   * claiming `data-calendar="jalali"` from theme-boot.js.
+   */
+  apply(false);
+  syncControls();
+  bus.on(EVENTS.language, () => {
+    apply(false);
+    syncControls();
+  });
   on(rootNode, 'click', (event) => {
     // Two declarative contracts are supported:
     //   • [data-<key>-option="value"]                       (landing configurator)
@@ -376,7 +402,9 @@ export function initThemeControls(rootNode = document) {
     else if (target.dataset.densityOption) set('density', target.dataset.densityOption);
     else if (target.dataset.fontsizeOption) set('fontSize', target.dataset.fontsizeOption);
     else if (target.dataset.sidebarStyleOption) set('sidebarStyle', target.dataset.sidebarStyleOption);
-    else if (target.dataset.calendarOption) set('calendar', target.dataset.calendarOption);
+    /* Only a Persian reader owns the calendar choice; elsewhere it follows the
+       language (see `core/jalali.js`), so a stale click must do nothing. */
+    else if (target.dataset.calendarOption && activeLang() === 'fa') set('calendar', target.dataset.calendarOption);
     else if (target.dataset.radiusOption) set('radius', target.dataset.radiusOption);
   });
 
@@ -405,6 +433,11 @@ if (media) {
 }
 
 /** Keeps the language switcher and the direction control in step. */
+/**
+ * Direction follows the language; the calendar attribute is refreshed by the
+ * listener in `initThemeControls()` (registered earlier, so a switch during
+ * boot is covered too).
+ */
 bus.on(EVENTS.language, ({ lang }) => {
   const dir = lang === 'fa' || lang === 'ar' ? 'rtl' : 'ltr';
   if (state.direction !== dir) set('direction', dir, { persist: true, silent: true });

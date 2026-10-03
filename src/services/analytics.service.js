@@ -6,7 +6,8 @@
  * so the header range-picker works identically on every chart.
  */
 import { call } from './client.js';
-import { kpis, makeSeries, makeMultiSeries, trafficSources, devices, browsingBrowsers, topPages, funnel, geo, cohorts, goals, planDistribution, churnReasons, aiUsageByModel, TIME_RANGES, jalaliMonths, weekDays } from '../data/analytics.js';
+import { kpis, makeSeries, makeMultiSeries, trafficSources, devices, browsingBrowsers, topPages, funnel, geo, cohorts, goals, planDistribution, churnReasons, aiUsageByModel, TIME_RANGES, weekDays } from '../data/analytics.js';
+import { system, monthNames12, weekdayLabels } from '../js/core/jalali.js';
 import { orders, products, categories } from '../data/commerce.js';
 import { customers } from '../data/people.js';
 import { tickets } from '../data/support.js';
@@ -143,7 +144,11 @@ export const analyticsService = {
   },
 
   /** Shared calendar helpers so charts never hard-code Persian month names. */
-  meta: () => ({ months: jalaliMonths, weekDays, ranges: TIME_RANGES }),
+  meta: () => ({
+    months: monthNames12(),
+    weekDays: weekdayLabels({ short: false }),
+    ranges: TIME_RANGES,
+  }),
 };
 
 /* ------------------------------------------------------------------- reports */
@@ -179,11 +184,24 @@ function jalaliMonthIndex(value) {
   }
 }
 
-/** Sums `items` into the 12 Jalali months — real buckets, no invented curve. */
+/**
+ * Month number (1-12) of a date in the **active** calendar — Jalali under a
+ * Persian interface, Gregorian under English/Arabic (see `core/jalali.js`).
+ */
+function monthIndex(value) {
+  if (system() === 'gregorian') {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.getMonth() + 1;
+  }
+  return jalaliMonthIndex(value);
+}
+
+/** Sums `items` into the twelve months of the active calendar — real buckets. */
 function byJalaliMonth(items, dateKey, valueKey) {
-  const buckets = jalaliMonths.map((label) => ({ label, value: 0 }));
+  const buckets = monthNames12().map((label) => ({ label, value: 0 }));
   items.forEach((item) => {
-    const index = jalaliMonthIndex(item?.[dateKey]);
+    const index = monthIndex(item?.[dateKey]);
     if (!index) return;
     buckets[index - 1].value += Number(item?.[valueKey] ?? 1) || 0;
   });

@@ -24,6 +24,8 @@
  * a page with twenty rails still costs one observer and one resize listener.
  */
 import { on, debounce } from './dom.js';
+import { t } from './i18n.js';
+import { bus, EVENTS } from './bus.js';
 
 const SELECTOR = [
   '[data-rail]',
@@ -37,8 +39,8 @@ const SELECTOR = [
   '.mail-layout .mail-nav__list[data-mail-folders]',
 ].join(', ');
 
-const START_BTN = `<button type="button" class="rail__btn rail__btn--start" data-rail-start aria-label="نمایش موارد قبلی"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>`;
-const END_BTN = `<button type="button" class="rail__btn rail__btn--end" data-rail-end aria-label="نمایش موارد بعدی"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>`;
+const START_BTN = `<button type="button" class="rail__btn rail__btn--start" data-rail-start aria-label="${t('ui.railPrev', 'نمایش موارد قبلی')}"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>`;
+const END_BTN = `<button type="button" class="rail__btn rail__btn--end" data-rail-end aria-label="${t('ui.railNext', 'نمایش موارد بعدی')}"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>`;
 /**
  * The rail's own overflow track (the permission-matrix affordance, guaranteed
  * to be on screen). A real scrollbar is an *overlay* on every phone browser —
@@ -310,7 +312,25 @@ function recheck() {
 
 const refresh = debounce(() => schedule(recheck), 120);
 
+/**
+ * A language switch must relabel the arrows the rails injected (they are built
+ * once, outside the `data-i18n` pipeline), so the two labels are re-applied to
+ * every mounted rail's buttons.
+ */
+function relabelArrows() {
+  tracking.forEach((node) => {
+    const start = node.querySelector('[data-rail-start]');
+    const end = node.querySelector('[data-rail-end]');
+    if (start) start.setAttribute('aria-label', t('ui.railPrev', 'نمایش موارد قبلی'));
+    if (end) end.setAttribute('aria-label', t('ui.railNext', 'نمایش موارد بعدی'));
+  });
+}
+
 export function initRails(root = document) {
+  if (!initRails._wired) {
+    initRails._wired = true;
+    bus.on(EVENTS.language, relabelArrows);
+  }
   const scan = (scope) => {
     if (!scope || scope.nodeType !== 1) return;
     if (scope.matches?.(SELECTOR)) mount(scope);

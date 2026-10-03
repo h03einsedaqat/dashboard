@@ -112,7 +112,9 @@ export const storage = {
       density: config.density,
       fontSize: config.fontSize,
       sidebarStyle: config.sidebarStyle,
-      calendar: config.features.calendar === 'jalali' ? 'jalali' : 'gregorian',
+      /* The engine (`core/jalali.js`) defaults to Jalali; the customizer reads
+         this same preference, so the two defaults must not drift apart. */
+      calendar: config.features?.calendar === 'gregorian' ? 'gregorian' : 'jalali',
       currency: config.currency,
     }[name];
     return storage.get(key, fallback) ?? fallback;
