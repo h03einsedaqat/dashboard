@@ -2842,7 +2842,7 @@ export async function initSystemPages() {
     };
     const TARGET = 99.9;
     const bars = (overview.uptimeBars ?? []).slice(-60);
-    const services = overview.services ?? [];
+    const serviceList = overview.services ?? [];
     /** Per-service strip: the shared history, with the service's own dips marked. */
     const history = (service) =>
       bars
@@ -2857,7 +2857,7 @@ export async function initSystemPages() {
     const when = (value) => (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(value) ? value : relativeTime(value));
     const badBars = (service) => bars.filter((bar, index) => (index === bars.length - 1 ? service.state !== 'operational' : typeof bar === 'object' && bar.state !== 'operational')).length;
     const average = (values) => (values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0);
-    const avgResponse = average(services.map((service) => service.response ?? service.latency ?? 0));
+    const avgResponse = average(serviceList.map((service) => service.response ?? service.latency ?? 0));
     const openIncidents = (overview.incidents ?? []).filter((incident) => incident.state !== 'resolved');
     const latencyGrade = (value) => (value <= 250 ? { label: 'سریع', tone: 'success' } : value <= 700 ? { label: 'متعادل', tone: 'info' } : { label: 'کند', tone: 'warning' });
     /** Error budget: how much of the allowed downtime (0.1%) is still unspent. */
@@ -2881,7 +2881,7 @@ export async function initSystemPages() {
           title: 'وضعیت سرویس‌ها',
           subtitle: 'سلامت لحظه‌ای زیرساخت، بودجه خطا و تاریخچه رخدادها در ۹۰ روز گذشته',
           icon: 'activity',
-          badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning'), statusBadge(`${toDigits(services.length)} سرویس پایش‌شده`, 'info')],
+          badges: [statusBadge(overview.overall === 'operational' ? 'همه سرویس‌ها فعال' : 'اختلال جزئی', overview.overall === 'operational' ? 'success' : 'warning'), statusBadge(`${toDigits(serviceList.length)} سرویس پایش‌شده`, 'info')],
           actions: '<button class="btn btn-light" type="button" data-refresh-status><i class="bi bi-arrow-clockwise"></i> به‌روزرسانی</button><a class="btn btn-light" href="system/contact.html"><i class="bi bi-life-preserver"></i> گزارش اختلال</a>',
         })}
 
@@ -2902,14 +2902,14 @@ export async function initSystemPages() {
             </div>
           </div>
           <ul class="status-hero__stats">
-            <li><span class="status-hero__icon status-hero__icon--success"><i class="bi bi-check2-circle"></i></span><b class="numeric">${toDigits(services.filter((service) => service.state === 'operational').length)}/${toDigits(services.length)}</b><small>سرویس فعال</small></li>
+            <li><span class="status-hero__icon status-hero__icon--success"><i class="bi bi-check2-circle"></i></span><b class="numeric">${toDigits(serviceList.filter((service) => service.state === 'operational').length)}/${toDigits(serviceList.length)}</b><small>سرویس فعال</small></li>
             <li><span class="status-hero__icon status-hero__icon--info"><i class="bi bi-stopwatch"></i></span><b class="numeric">${toDigits(avgResponse)}</b><small>میانگین پاسخ (ms)</small></li>
             <li><span class="status-hero__icon status-hero__icon--warning"><i class="bi bi-exclamation-triangle"></i></span><b class="numeric">${toDigits(openIncidents.length)}</b><small>رخداد باز</small></li>
             <li><span class="status-hero__icon status-hero__icon--primary"><i class="bi bi-bullseye"></i></span><b class="numeric">${toDigits(TARGET)}٪</b><small>هدف SLA ماهانه</small></li>
           </ul>
         </section>
 
-        <div class="status-services">${services
+        <div class="status-services">${serviceList
           .map((service) => {
             const meta = STATE[service.state] ?? STATE.operational;
             const extra = SERVICE_META[service.id] ?? {};
@@ -2986,7 +2986,7 @@ export async function initSystemPages() {
             flush: true,
             body: `<div class="table-wrap"><table class="table table--compact status-sla">
               <thead><tr><th>سرویس</th><th class="text-end">هدف</th><th class="text-end">واقعی</th><th class="text-center">وضعیت</th></tr></thead>
-              <tbody>${services
+              <tbody>${serviceList
                 .map((service) => {
                   const ok = (service.uptime ?? 0) >= TARGET;
                   return `<tr>
