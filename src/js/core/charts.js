@@ -565,11 +565,26 @@ function payloadFromNode(node, override = {}) {
  * (idempotent). Placeholders that belong to a page controller are left alone
  * until the controller hands over their series, so nothing is drawn twice.
  */
+/**
+ * Hands the main thread back to the browser between charts. A dashboard with
+ * fourteen charts used to draw all of them inside one task — a 1.2 s block on
+ * a throttled phone, during which taps and scrolling were frozen. One chart per
+ * idle slot keeps the page interactive while the same charts fill in.
+ */
+const breathe = () =>
+  new Promise((resolve) => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => resolve(), { timeout: 120 });
+    else window.setTimeout(resolve, 0);
+  });
+
 export async function initCharts(root = document) {
   const nodes = $$('[data-chart]', root).filter(
     (node) => node.dataset.chartReady !== '1' && node.dataset.chartOwner !== 'controller' && !node.__novaChartToken,
   );
-  await Promise.all(nodes.map((node) => createChart(node)));
+  for (let index = 0; index < nodes.length; index += 1) {
+    if (index) await breathe();
+    await createChart(nodes[index]);
+  }
   return nodes.length;
 }
 
