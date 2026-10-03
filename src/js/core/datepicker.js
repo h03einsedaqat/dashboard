@@ -177,13 +177,22 @@ function positionPopup(popup, anchor) {
   const width = popup.offsetWidth || 272;
   const height = popup.offsetHeight || 320;
   const gutter = 8;
+  /**
+   * The soft keyboard shrinks the *visual* viewport without moving the layout
+   * one, so a calendar clamped to `innerHeight` opened behind the keyboard on a
+   * phone and read as "the calendar never opened". Where the browser exposes
+   * `visualViewport` those numbers win — and the popup is re-placed whenever
+   * that viewport changes (keyboard up/down, rotation, iOS toolbar).
+   */
+  const view = window.visualViewport;
+  const viewHeight = view ? Math.min(view.height + view.offsetTop, window.innerHeight) : window.innerHeight;
   const rtl = getComputedStyle(anchor).direction === 'rtl';
   let left = rtl ? rect.right - width : rect.left;
   left = Math.min(Math.max(gutter, left), window.innerWidth - width - gutter);
   let top = rect.bottom + 6;
-  if (top + height > window.innerHeight - gutter) {
+  if (top + height > viewHeight - gutter) {
     const above = rect.top - height - 6;
-    top = above > gutter ? above : Math.max(gutter, window.innerHeight - height - gutter);
+    top = above > gutter ? above : Math.max(gutter, viewHeight - height - gutter);
   }
   popup.style.left = `${Math.round(left)}px`;
   popup.style.top = `${Math.round(top)}px`;
@@ -303,6 +312,11 @@ function openFor(field) {
   document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onViewport, { passive: true });
   window.addEventListener('scroll', onViewport, { passive: true, capture: true });
+  /* Keyboard up/down and the iOS toolbar move the visual viewport without a
+     window resize: without these the popup stays where the keyboard is. */
+  const view = window.visualViewport;
+  view?.addEventListener('resize', onViewport, { passive: true });
+  view?.addEventListener('scroll', onViewport, { passive: true });
   openPopup = {
     popup,
     host: field,
@@ -311,6 +325,8 @@ function openFor(field) {
       document.removeEventListener('keydown', onKey, true);
       window.removeEventListener('resize', onViewport);
       window.removeEventListener('scroll', onViewport, true);
+      view?.removeEventListener('resize', onViewport);
+      view?.removeEventListener('scroll', onViewport);
     },
   };
 }
@@ -427,6 +443,16 @@ function enhance(input) {
     if (text.matches(':focus-visible')) openIfClosed();
   });
   on(text, 'click', openIfClosed);
+  /**
+   * Belt and braces for touch: on iOS a tap on a text input inside a scrolling
+   * sheet can be claimed as a scroll gesture and swallow the `click`, which
+   * left the calendar looking like it never opened on a phone. `pointerup`
+   * arrives either way, and `openIfClosed` makes the following `click` a no-op.
+   */
+  on(text, 'pointerup', (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    openIfClosed();
+  });
   on(text, 'input', () => {
     const iso = parseTyped(text.value, activeSystem());
     input.value = iso;

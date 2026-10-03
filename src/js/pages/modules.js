@@ -1892,6 +1892,9 @@ async function initFinance() {
        * through this variable instead of being closed over.
        */
       let cashflowChart = null;
+      /* Set inside `paint`, read by both the card copy and `onData` — a phone
+         gets six months, a wider screen the whole year. */
+      let cashflowPhone = false;
 
       const paint = async () => {
         const [cashFlow, balance, aging, profit] = await Promise.all([
@@ -1933,6 +1936,9 @@ async function initFinance() {
         const bestMonth = months.reduce((best, row, index) => (row.inflow - row.outflow > (months[best]?.inflow ?? 0) - (months[best]?.outflow ?? 0) ? index : best), 0);
         const meter = (value, max) => Math.max(3, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
 
+        /* Read once per render: the chart body is built after `paint()`, and a
+           phone should never receive the twelve-month combo in the first place. */
+        cashflowPhone = window.matchMedia('(max-width: 640px)').matches;
         cashflowChart = {
           labels,
           series: [
@@ -1966,8 +1972,10 @@ async function initFinance() {
               span: 8,
               className: 'fin-chart-card',
               icon: 'graph-up-arrow',
-              title: 'جریان نقدی دوازده ماه',
-              subtitle: 'ستون‌ها ورودی و خروجی، خط‌چین خالص هر ماه — همه از رکوردهای واقعی',
+              title: cashflowPhone ? 'جریان نقدی شش ماه اخیر' : 'جریان نقدی دوازده ماه',
+              subtitle: cashflowPhone
+                ? 'ستون‌ها ورودی و خروجی، خط‌چین خالص — شش ماه اخیر، خوانا روی صفحه کوچک'
+                : 'ستون‌ها ورودی و خروجی، خط‌چین خالص هر ماه — همه از رکوردهای واقعی',
               actions: `<div class="fin-chart-legend">
                 <span><i class="fin-dot fin-dot--in"></i> ورودی</span>
                 <span><i class="fin-dot fin-dot--out"></i> خروجی</span>
@@ -2096,13 +2104,37 @@ async function initFinance() {
           /* Drawn through the controller API so the series colours match the
              legend dots exactly (green in, red out, slate net). */
           if (cashflowChart) {
+            /* A twelve-month combo on a 288px card is unreadable: the columns
+               land on top of each other and ApexCharts drops half the month
+               names. Phones get the last six months with a slimmer column and
+               a compact axis; the responsive block keeps it true after a
+               rotation, and the card's own legend replaces the duplicated one. */
+            const phoneData = (row) => ({ ...row, data: cashflowPhone ? row.data.slice(-6) : row.data });
             chart($('[data-chart-key="cashflow"]', target), {
               type: 'bar',
               mixed: true,
-              height: 330,
-              labels: cashflowChart.labels,
-              series: cashflowChart.series,
+              height: cashflowPhone ? 280 : 330,
+              labels: cashflowPhone ? cashflowChart.labels.slice(-6) : cashflowChart.labels,
+              series: cashflowChart.series.map(phoneData),
               colors: ['#10b981', '#ef4444', '#64748b'],
+              extra: {
+                plotOptions: { bar: { columnWidth: '52%', borderRadius: 4 } },
+                responsive: [
+                  {
+                    breakpoint: 641,
+                    options: {
+                      chart: { height: 280 },
+                      legend: { show: false },
+                      series: cashflowChart.series.map(phoneData),
+                      labels: cashflowChart.labels.slice(-6),
+                      stroke: { width: cashflowChart.series.map((row) => (row.type === 'line' ? 2.5 : 0)), dashArray: cashflowChart.series.map((row) => (row.dashed ? 5 : 0)) },
+                      markers: { size: 0, hover: { size: 5 } },
+                      xaxis: { labels: { style: { fontSize: '9px' }, rotate: 0, hideOverlappingLabels: true } },
+                      plotOptions: { bar: { columnWidth: '58%', borderRadius: 3 } },
+                    },
+                  },
+                ],
+              },
             });
           }
           initCharts(target);

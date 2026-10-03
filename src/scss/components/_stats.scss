@@ -302,6 +302,22 @@
 /* v1.1 — phones: KPI strips go two-up with compact cards instead of four
    full-screen tiles. Values may wrap (never overflow) inside their card. */
 @media (min-width: 340px) and (max-width: 639.98px) {
+  /**
+   * «کتابخانه ابزارک‌ها» is a catalogue, not a dashboard strip: every card
+   * carries a chart or a full list, and two-up tiles squeezed them to ~178px —
+   * the «خیلی کوچیک» report. One widget per row means the card, and the chart
+   * inside it, cover the whole section width.
+   */
+  body[data-page='widgets.html'] .dashboard-shell > .kpi-row,
+  body[data-page='widgets.html'] .dashboard-shell .widget-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+  /* One explicit track: the cards asked for `span 12`, which would otherwise
+     make the grid invent eleven empty implicit tracks. */
+  body[data-page='widgets.html'] .dashboard-shell .widget-grid > * {
+    grid-column: 1 / -1;
+  }
   .kpi-row:has(> :nth-child(2):last-child),
   .kpi-row:has(> :nth-child(4):last-child),
   .kpi-row:has(> :nth-child(6):last-child),

@@ -322,8 +322,18 @@ export function buildOptions({ type = 'area', series = [], labels = [], height =
   };
   const variant = combo ? comboVariant : variants[variantKey] ?? variants[chartType] ?? {};
   const merged = deepMerge(deepMerge(base, common), variant);
+  /**
+   * `extra.responsive` *adds* a breakpoint instead of replacing the shared
+   * phone one: a page that wants fewer months (or a lighter legend) on a phone
+   * would otherwise silently lose the compact ticks, the smaller gutter and
+   * the height clamp every other chart keeps.
+   */
+  const extraReady = { ...safeExtra };
+  if (Array.isArray(safeExtra.responsive) && Array.isArray(merged.responsive)) {
+    extraReady.responsive = [...safeExtra.responsive, ...merged.responsive];
+  }
   /** `extra` never carries the chart kind any more (it was read above). */
-  return deepMerge(merged, { ...safeExtra, series: localised, labels: localisedLabels, colors: palette });
+  return deepMerge(merged, { ...extraReady, series: localised, labels: localisedLabels, colors: palette });
 }
 
 /**
@@ -370,6 +380,7 @@ function watchSize(node, chart) {
  * their cards without the visitor having to click or resize anything.
  */
 export function resyncCharts() {
+  resyncSparklines();
   instances.forEach((chart, node) => {
     if (!node.isConnected) {
       instances.delete(node);
@@ -443,6 +454,86 @@ async function getApex() {
   return mod.default ?? mod;
 }
 
+/* ============================================================== sparklines
+   A 46px trend strip inside a KPI card used to cost a full ApexCharts
+   instance: a canvas, an axis model, a tooltip engine, its own ResizeObserver
+   and a slice of a 630 KB library to parse. The widget library alone carries
+   eight of them, and every dashboard KPI row repeats that. They are drawn here
+   as one inline SVG path instead — a fraction of the work, no canvas, and it
+   re-themes with the same CSS tokens as the big charts.
+   ======================================================================== */
+/* A plain Map (not a WeakMap): these entries are walked on re-theme and on
+   resize, and a WeakMap has no iterator. Disconnected nodes are dropped on the
+   next pass, so nothing outlives its page. */
+const sparks = new Map();
+
+function sparkPoints(data, width, height, pad) {
+  let min = Infinity;
+  let max = -Infinity;
+  data.forEach((value) => {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  });
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
+  const span = max - min || 1;
+  const step = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0;
+  return data.map((value, index) => [pad + index * step, pad + (height - pad * 2) * (1 - (value - min) / span)]);
+}
+
+/** Quadratic smoothing — the same soft look as the area charts, no library. */
+function smoothPath(points) {
+  if (!points.length) return '';
+  if (points.length < 3) return points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  let path = `M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const [cx, cy] = points[i];
+    const [nx, ny] = points[i + 1];
+    path += ` Q${cx.toFixed(1)},${cy.toFixed(1)} ${((cx + nx) / 2).toFixed(1)},${((cy + ny) / 2).toFixed(1)}`;
+  }
+  const last = points.at(-1);
+  return `${path} L${last[0].toFixed(1)},${last[1].toFixed(1)}`;
+}
+
+function drawSparkline(node, payload) {
+  const data = (payload.series?.[0]?.data ?? []).map(Number).filter((value) => Number.isFinite(value));
+  if (!data.length) {
+    showState(node, 'chart--empty', '');
+    return null;
+  }
+  const width = Math.max(80, Math.round(node.clientWidth || 220));
+  const height = Math.max(24, Math.min(64, Number(payload.chart?.height) || 46));
+  const points = sparkPoints(data, width, height, 4);
+  const line = smoothPath(points);
+  const area = `${line} L${(width - 4).toFixed(1)},${height} L4,${height} Z`;
+  const colour = payload.colors?.[0] ?? '#6366f1';
+  const id = `spark-${Math.random().toString(36).slice(2, 8)}`;
+  const rtl = document.documentElement.getAttribute('dir') === 'rtl';
+  node.innerHTML = `<svg class="spark-svg" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true" focusable="false"${rtl ? ' style="transform:scaleX(-1)"' : ''}>
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${colour}" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="${colour}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${area}" fill="url(#${id})" stroke="none"/>
+      <path d="${line}" fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    </svg>`;
+  sparks.set(node, { payload, width });
+  node.dataset.chartReady = '1';
+  return node.querySelector('svg');
+}
+
+/** Sparklines are width-bound: redraw only when the card actually changed. */
+function resyncSparklines() {
+  sparks.forEach((entry, node) => {
+    if (!node.isConnected) {
+      sparks.delete(node);
+      return;
+    }
+    const width = Math.round(node.clientWidth || 0);
+    if (!width || Math.abs(width - entry.width) < 2) return;
+    drawSparkline(node, entry.payload);
+  });
+}
+
 /**
  * Creates (or replaces) a chart on `node`.
  * @returns {Promise<Object|null>} the ApexCharts instance
@@ -471,6 +562,8 @@ export async function createChart(node, options = {}) {
     showState(node, 'chart--empty', t('common.noData'));
     return null;
   }
+  /* Trend strips never touch the canvas library — see drawSparkline(). */
+  if (payload.chart?.sparkline?.enabled) return drawSparkline(node, payload);
   try {
     const ApexCharts = await getApex();
     if (node.__novaChartToken !== token) return instances.get(node) ?? null;
@@ -573,19 +666,108 @@ function payloadFromNode(node, override = {}) {
  */
 const breathe = () =>
   new Promise((resolve) => {
-    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => resolve(), { timeout: 120 });
-    else window.setTimeout(resolve, 0);
+    /* A frame *plus* an idle slot: the idle callback alone can fire back to
+       back while the browser is busy (that is what its `timeout` means), which
+       stacked four canvases into a single 800 ms task on a throttled phone.
+       Waiting for a frame first bounds the work to one chart per task. */
+    const idle = () => {
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => resolve(), { timeout: 200 });
+      else window.setTimeout(resolve, 0);
+    };
+    if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(idle);
+    else idle();
   });
 
+/**
+ * Charts are drawn nearest-first and off-screen ones wait for the scroll that
+ * brings them in. A phone used to pay for every chart on the page before the
+ * visitor saw the second card — the dashboard blocked for over a second while
+ * twelve canvases were laid out below the fold. One shared observer (not one
+ * per chart) hands a node over as soon as it is within a screen and a half.
+ */
+const queued = new Set();
+/** Nodes handed to the lazy path but not drawn yet — `settlePendingCharts`
+ *  must not declare them empty while they are still waiting for the scroll. */
+const scheduled = new Set();
+let draining = false;
+let chartObserver = null;
+
+function chartQueue() {
+  if (chartObserver || typeof IntersectionObserver === 'undefined') return chartObserver;
+  chartObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        chartObserver.unobserve(entry.target);
+        queued.add(entry.target);
+      });
+      drainQueue();
+    },
+    /* A screen and a half of slack: the chart is ready before it is centred. */
+    { rootMargin: '600px 0px' },
+  );
+  return chartObserver;
+}
+
+async function drainQueue() {
+  if (draining) return;
+  draining = true;
+  while (queued.size) {
+    const node = queued.values().next().value;
+    queued.delete(node);
+    if (!node.isConnected) {
+      scheduled.delete(node);
+      continue;
+    }
+    if (node.dataset.chartReady === '1' || node.__novaChartToken) {
+      scheduled.delete(node);
+      continue;
+    }
+    await createChart(node);
+    scheduled.delete(node);
+    if (queued.size) await breathe();
+  }
+  draining = false;
+}
+
 export async function initCharts(root = document) {
-  const nodes = $$('[data-chart]', root).filter(
+  const candidates = $$('[data-chart]', root).filter(
     (node) => node.dataset.chartReady !== '1' && node.dataset.chartOwner !== 'controller' && !node.__novaChartToken,
   );
-  for (let index = 0; index < nodes.length; index += 1) {
+  const viewportH = window.innerHeight || 800;
+  const near = (node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.bottom > -viewportH * 1.5 && rect.top < viewportH * 2;
+  };
+  const first = candidates.filter(near);
+  const rest = candidates.filter((node) => !first.includes(node));
+  for (let index = 0; index < first.length; index += 1) {
     if (index) await breathe();
-    await createChart(nodes[index]);
+    await createChart(first[index]);
   }
-  return nodes.length;
+  if (rest.length) {
+    rest.forEach((node) => scheduled.add(node));
+    const observer = chartQueue();
+    if (observer) {
+      rest.forEach((node) => observer.observe(node));
+      /* Nothing may stay blank forever: if the visitor never scrolls, the
+         remaining charts still arrive one idle slot at a time. */
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => {
+          rest.forEach((node) => observer.unobserve(node));
+          rest.forEach((node) => queued.add(node));
+          drainQueue();
+        }, { timeout: 4000 });
+      } else {
+        rest.forEach((node) => queued.add(node));
+        drainQueue();
+      }
+    } else {
+      rest.forEach((node) => queued.add(node));
+      drainQueue();
+    }
+  }
+  return candidates.length;
 }
 
 /**
@@ -595,7 +777,7 @@ export async function initCharts(root = document) {
  */
 export function settlePendingCharts(root = document) {
   $$('[data-chart-key]', root)
-    .filter((node) => node.dataset.chartReady !== '1' && !instances.has(node))
+    .filter((node) => node.dataset.chartReady !== '1' && !instances.has(node) && !scheduled.has(node))
     .forEach((node) => showState(node, 'chart--empty', t('common.noData')));
 }
 
@@ -608,6 +790,16 @@ export function refreshCharts() {
     } catch (error) {
       console.warn('[nova:charts] refresh failed', error);
     }
+  });
+  /* Sparklines read the palette from `payload.colors`, so a theme change (or a
+     dir flip) has to repaint them too. */
+  sparks.forEach((entry, node) => {
+    if (!node.isConnected) {
+      sparks.delete(node);
+      return;
+    }
+    const next = buildOptions(lastPayload.get(node) ?? entry.payload);
+    drawSparkline(node, next);
   });
 }
 
@@ -637,6 +829,7 @@ export const charts = {
     instances.get(node)?.destroy();
     instances.delete(node);
     lastPayload.delete(node);
+    sparks.delete(node);
   },
   instances,
 };

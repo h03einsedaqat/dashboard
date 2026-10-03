@@ -13,6 +13,13 @@
 .chart--sparkline {
   min-height: 2.5rem;
 }
+/* Drawn by `core/charts.js` as one inline SVG path (no canvas, no library):
+   a block-level box so the strip never adds baseline whitespace to the card. */
+.spark-svg {
+  display: block;
+  inline-size: 100%;
+  overflow: visible;
+}
 .chart-box {
   position: relative;
   min-height: 4rem;

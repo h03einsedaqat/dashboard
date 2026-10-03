@@ -159,36 +159,98 @@
    hidden side is simply not rendered — and the rail grows the same slim bottom
    scrollbar the permission matrix uses, which is what makes a phone user see
    that there is more to the side. */
+/**
+ * The rail's own overflow track — see `TRACK` in `core/rail.js`. It is a real
+ * element rather than a styled scrollbar because phone browsers paint their
+ * scrollbars as transient overlays that cannot be styled: a strip that only
+ * has a scrollbar looks like it simply ends. The track carries the same
+ * `--rail-pin` translation as the arrows, so it always sits in the scrollport
+ * while its thumb shows how far along the strip the reader is.
+ */
+.rail__track {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 4px;
+  transform: translateX(var(--rail-pin, 0px));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nv-border) 70%, transparent);
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+.rail__track i {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--rail-thumb-x, 0%);
+  inline-size: var(--rail-thumb-w, 30%);
+  min-inline-size: 1.5rem;
+  border-radius: 999px;
+  background: var(--nv-primary);
+  opacity: 0.75;
+}
+.rail:not(.rail--overflow) .rail__track {
+  display: none;
+}
+/* The track belongs to the phone experience: on a desktop the arrows plus the
+   visible scroll bar already do the job, and a second indicator would be noise. */
+@media (hover: hover) and (min-width: 768px) {
+  .rail__track {
+    display: none;
+  }
+}
+
 @media (hover: none) {
   .rail__btn {
-    inline-size: 2.1rem;
+    inline-size: 2.35rem;
+    /* A finger needs a real target: 44px tall, never a sliver. */
+    min-block-size: 2.75rem;
   }
   .rail__btn i {
-    inline-size: 1.65rem;
-    block-size: 1.65rem;
-    font-size: 0.76rem;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    font-size: 0.8rem;
     /* The blurred glass is the single most expensive paint on a phone rail. */
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: var(--nv-surface);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
   }
   .rail.rail--at-start .rail__btn--start,
   .rail.rail--at-end .rail__btn--end {
     display: none;
   }
+}
+
+/**
+ * Phone rails advertise themselves with the same slim bottom overflow bar the
+ * permission matrix uses — a visible track under the strip, not a hidden
+ * scroller plus a mystery arrow. It is drawn for *every* rail, including the
+ * pages that switch the native bar off for their own reasons (mail folders,
+ * the chat conversation strip), because a phone user cannot hover to discover
+ * that there is more to the side.
+ */
+@media (hover: none), (max-width: 767.98px) {
   .rail--overflow {
-    scrollbar-width: thin;
+    /* The painted track is the primary affordance; the native bar (where the
+       engine paints one) is a bonus, so it is left thin and un-intrusive. */
+    scrollbar-width: thin !important;
     scrollbar-color: var(--nv-border-strong, var(--nv-border)) transparent;
+    padding-block-end: 0.55rem;
   }
   .rail--overflow::-webkit-scrollbar {
-    height: 5px;
+    display: block !important;
+    height: 6px !important;
   }
   .rail--overflow::-webkit-scrollbar-track {
-    background: transparent;
+    background: color-mix(in srgb, var(--nv-border) 55%, transparent);
+    border-radius: 999px;
+    margin-inline: 0.75rem;
   }
   .rail--overflow::-webkit-scrollbar-thumb {
-    background: var(--nv-border-strong, var(--nv-border));
+    background: var(--nv-primary);
     border-radius: 999px;
+    box-shadow: 0 0 0 1px var(--nv-surface) inset;
   }
 }
 
