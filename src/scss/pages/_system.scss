@@ -519,17 +519,28 @@
   font-size: var(--nv-text-micro);
   color: var(--nv-text-muted);
 }
+/**
+ * Sixty bars with a hard 3px floor added up to more than a phone card could
+ * hold, so the whole page scrolled 3px sideways. The bars now share whatever
+ * room the card has (`min-inline-size: 0`), which can never overflow.
+ */
 .status-uptime {
   display: flex;
   gap: 2px;
   align-items: stretch;
   block-size: 1.6rem;
+  min-inline-size: 0;
 }
 .status-uptime__bar {
   flex: 1 1 0;
-  min-inline-size: 3px;
+  min-inline-size: 0;
   border-radius: 2px;
   background: var(--nv-success);
+}
+@media (max-width: 575.98px) {
+  .status-uptime {
+    gap: 1px;
+  }
 }
 .status-uptime__bar[data-state='degraded'] {
   background: var(--nv-warning);
