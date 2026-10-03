@@ -302,25 +302,47 @@
 }
 
 /* ------------------------------------------------------------ back to top */
+/* --------------------------------------------------------- back to top ----- */
+/*
+ * Landing-only control, now a composed element instead of a bare circle:
+ *   • the ring around the button is a live reading-progress gauge (`--nv-progress`)
+ *   • the label slides out from behind the button on hover / focus
+ *   • the surface is a soft gradient with a layered shadow and a top highlight
+ */
 [data-back-to-top],
 .back-to-top {
+  --nv-progress: 0;
   position: fixed;
-  inset-block-end: var(--nv-space-6);
-  inset-inline-end: var(--nv-space-6);
+  inset-block-end: clamp(1rem, 3vw, 2rem);
+  inset-inline-end: clamp(1rem, 3vw, 2rem);
   z-index: var(--nv-z-header);
-  display: grid;
-  place-items: center;
-  inline-size: 2.75rem;
-  block-size: 2.75rem;
-  border: 1px solid var(--nv-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  padding: 0;
+  border: 0;
   border-radius: var(--nv-radius-pill);
-  background: var(--nv-surface);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--nv-primary) 12%, var(--nv-surface)), var(--nv-surface) 55%);
   color: var(--nv-text-2);
-  box-shadow: var(--nv-shadow-md);
+  box-shadow:
+    var(--nv-shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--nv-primary) 18%, var(--nv-border)),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  cursor: pointer;
+  overflow: visible;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px);
-  transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease), visibility var(--nv-dur);
+  transform: translateY(14px) scale(0.82);
+  transition:
+    inline-size 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--nv-dur) var(--nv-ease),
+    transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow var(--nv-dur) var(--nv-ease),
+    color var(--nv-dur) var(--nv-ease),
+    visibility var(--nv-dur);
 }
 
 [data-back-to-top].is-visible,
@@ -330,10 +352,124 @@
   transform: none;
 }
 
+/* Progress ring: a conic gradient masked to a 3px hoop around the button. */
+[data-back-to-top] .back-to-top__progress,
+.back-to-top .back-to-top__progress {
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: conic-gradient(
+    var(--nv-primary) calc(var(--nv-progress) * 360deg),
+    color-mix(in srgb, var(--nv-border) 70%, transparent) 0
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  pointer-events: none;
+  transition: background 0.2s linear;
+}
+
+[data-back-to-top] .back-to-top__icon,
+.back-to-top .back-to-top__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  flex: 0 0 3.25rem;
+  border-radius: inherit;
+  font-size: 1.05rem;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color var(--nv-dur) var(--nv-ease);
+}
+
+[data-back-to-top] .back-to-top__label,
+.back-to-top .back-to-top__label {
+  max-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--nv-text-caption);
+  font-weight: 700;
+  opacity: 0;
+  transition: max-inline-size 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease, padding 0.34s ease;
+}
+
+[data-back-to-top] .back-to-top__hint,
+.back-to-top .back-to-top__hint {
+  position: absolute;
+  inset-block-start: -0.35rem;
+  inset-inline-start: -0.35rem;
+  min-inline-size: 1.5rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: var(--nv-shadow-sm);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.2s ease 0.05s, transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) 0.05s;
+}
+
+[data-back-to-top].is-visible .back-to-top__hint,
+.back-to-top.is-visible .back-to-top__hint {
+  opacity: 1;
+  transform: none;
+}
+
 [data-back-to-top]:hover,
-.back-to-top:hover {
-  color: var(--nv-primary);
-  border-color: var(--nv-primary);
+[data-back-to-top]:focus-visible,
+.back-to-top:hover,
+.back-to-top:focus-visible {
+  inline-size: auto;
+  color: #fff;
+  background: linear-gradient(140deg, var(--nv-primary), color-mix(in srgb, var(--nv-primary) 55%, var(--nv-info)));
+  box-shadow:
+    0 18px 40px -14px color-mix(in srgb, var(--nv-primary) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--nv-primary) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+[data-back-to-top]:hover .back-to-top__label,
+[data-back-to-top]:focus-visible .back-to-top__label,
+.back-to-top:hover .back-to-top__label,
+.back-to-top:focus-visible .back-to-top__label {
+  max-inline-size: 9rem;
+  padding-inline-end: 1.15rem;
+  opacity: 1;
+}
+[data-back-to-top]:hover .back-to-top__icon,
+[data-back-to-top]:focus-visible .back-to-top__icon,
+.back-to-top:hover .back-to-top__icon,
+.back-to-top:focus-visible .back-to-top__icon {
+  transform: translateY(-2px);
+}
+[data-back-to-top]:active,
+.back-to-top:active {
+  transform: scale(0.96);
+}
+[data-back-to-top]:focus-visible,
+.back-to-top:focus-visible {
+  outline: none;
+}
+
+[data-back-to-top] .back-to-top__progress,
+.back-to-top .back-to-top__progress {
+  transition: background 0.2s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-back-to-top],
+  .back-to-top,
+  [data-back-to-top] .back-to-top__icon,
+  [data-back-to-top] .back-to-top__label,
+  .back-to-top .back-to-top__icon,
+  .back-to-top .back-to-top__label {
+    transition-duration: 0.01ms;
+  }
+  [data-back-to-top],
+  .back-to-top {
+    transform: none;
+  }
 }
 
 @media print {

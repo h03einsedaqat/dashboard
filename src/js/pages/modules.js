@@ -147,6 +147,108 @@ async function loadRecord(resource, id) {
 
 /* ==================================================================== eCommerce */
 
+/* ============================================================ product media */
+
+/**
+ * Details-page gallery.
+ *
+ * Mirrors the product studio (same `pm-*` markup and interactions) but read
+ * only: stage with pointer-zoom, prev/next, dots, thumbnail rail, keyboard
+ * arrows (RTL-aware) and touch swipe. A product with a single image keeps the
+ * plain `<img>` from `.detail-split__media` — a carousel of one is noise.
+ */
+function initProductGallery(root, record) {
+  if (!root || !record) return;
+  const stored = Array.isArray(record.images) && record.images.length ? record.images.filter(Boolean) : [record.image];
+  const images = [...new Set([record.image, ...stored].filter(Boolean))].map((src, index) => ({
+    src,
+    label: index === 0 ? 'نمای اصلی محصول' : `نمای ${toDigits(index + 1)}`,
+  }));
+  if (images.length < 2) {
+    root.innerHTML = `<img class="detail-split__media" src="${escapeHtml(images[0]?.src ?? '')}" alt="${escapeHtml(record.name ?? '')}" loading="lazy" />`;
+    return;
+  }
+
+  let index = 0;
+  const paint = () => {
+    const current = images[index];
+    render(
+      root,
+      `<figure class="pm-stage" data-stage tabindex="0" role="group" aria-roledescription="اسلایدر" aria-label="تصویر ${toDigits(index + 1)} از ${toDigits(images.length)}">
+        <div class="pm-stage__frame" data-zoom-frame><img class="pm-stage__img" src="${escapeHtml(current.src)}" alt="${escapeHtml(record.name ?? '')} — ${escapeHtml(current.label)}" draggable="false" data-zoom-img /></div>
+        <div class="pm-stage__top"><span class="pm-chip pm-chip--count numeric">${toDigits(index + 1)} / ${toDigits(images.length)}</span></div>
+        <button type="button" class="pm-nav pm-nav--prev" data-detail-prev aria-label="تصویر قبلی"><i class="bi bi-chevron-right"></i></button>
+        <button type="button" class="pm-nav pm-nav--next" data-detail-next aria-label="تصویر بعدی"><i class="bi bi-chevron-left"></i></button>
+        <div class="pm-dots" aria-hidden="true">${images.map((_, i) => `<span class="${i === index ? 'is-active' : ''}"></span>`).join('')}</div>
+        <span class="pm-stage__hint"><i class="bi bi-zoom-in"></i> برای بزرگ‌نمایی نشانگر را حرکت دهید</span>
+      </figure>
+      <ol class="pm-rail" aria-label="تصاویر محصول">
+        ${images
+          .map(
+            (img, i) => `<li class="pm-thumb${i === index ? ' is-active' : ''}">
+              <button type="button" class="pm-thumb__btn" data-detail-thumb="${i}" aria-label="${escapeHtml(img.label)}" aria-current="${i === index}">
+                <img src="${escapeHtml(img.src)}" alt="" loading="lazy" />
+              </button>
+              <span class="pm-thumb__order numeric">${toDigits(i + 1)}</span>
+            </li>`,
+          )
+          .join('')}
+      </ol>`,
+    );
+  };
+
+  const go = (step) => {
+    index = (index + step + images.length) % images.length;
+    paint();
+    $('[data-stage]', root)?.focus({ preventScroll: true });
+  };
+
+  paint();
+
+  on(root, 'click', (event) => {
+    // RTL: the «previous» control sits on the right and steps backwards.
+    if (event.target.closest('[data-detail-prev]')) return go(-1);
+    if (event.target.closest('[data-detail-next]')) return go(1);
+    const thumb = event.target.closest('[data-detail-thumb]');
+    if (thumb) {
+      index = Number(thumb.dataset.detailThumb);
+      paint();
+    }
+  });
+
+  on(root, 'keydown', (event) => {
+    if (!event.target.closest('[data-stage]')) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); go(-1); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); go(1); }
+  });
+
+  let swipe = null;
+  on(root, 'pointerdown', (event) => {
+    if (event.pointerType === 'mouse' || !event.target.closest('[data-zoom-frame]')) return;
+    swipe = { x: event.clientX, y: event.clientY };
+  });
+  on(root, 'pointerup', (event) => {
+    if (!swipe) return;
+    const dx = event.clientX - swipe.x;
+    const dy = event.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx > 0 ? 1 : -1);
+  });
+  /* Pointer zoom on fine pointers — identical feel to the studio stage. */
+  on(root, 'pointermove', (event) => {
+    const frame = event.target.closest('[data-zoom-frame]');
+    if (!frame || event.pointerType !== 'mouse') return;
+    const rect = frame.getBoundingClientRect();
+    frame.style.setProperty('--zx', `${((event.clientX - rect.left) / Math.max(1, rect.width)) * 100}%`);
+    frame.style.setProperty('--zy', `${((event.clientY - rect.top) / Math.max(1, rect.height)) * 100}%`);
+    frame.classList.add('is-zooming');
+  });
+  on(root, 'pointerout', (event) => {
+    const frame = event.target.closest('[data-zoom-frame]');
+    if (frame && !frame.contains(event.relatedTarget)) frame.classList.remove('is-zooming');
+  });
+}
+
 async function initEcommerce() {
   const page = kit.pageId();
   switch (page) {
@@ -183,7 +285,7 @@ async function initEcommerce() {
 
     case 'ecommerce/product-details.html': {
       const id = queryParam('id');
-      await detailPage({
+      const detailRecord = await detailPage({
         resource: 'products',
         id,
         title: 'جزئیات محصول',
@@ -195,7 +297,7 @@ async function initEcommerce() {
           (p) => card({
             title: 'مشخصات',
             body: `<div class="detail-split">
-              <img class="detail-split__media" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />
+              <div class="pm pm--detail" data-detail-gallery aria-label="گالری تصاویر محصول"></div>
               <div>${infoRows([
                 ['قیمت پایه', formatCurrency(p.price, 'IRR')],
                 ['تخفیف', `${toDigits(p.discount ?? 0)}٪`],
@@ -220,6 +322,8 @@ async function initEcommerce() {
       });
       const duplicate = $('[data-duplicate]');
       if (duplicate) on(duplicate, 'click', () => toast.success('محصول کپی شد', 'نسخه کپی با شناسه جدید در فهرست محصولات قرار گرفت.'));
+      /* Called after `detailPage` rendered the tabs so the gallery can mount. */
+      initProductGallery($('[data-detail-gallery]'), detailRecord);
       return;
     }
 

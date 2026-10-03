@@ -239,7 +239,15 @@ export const layout = {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       header?.classList.toggle('is-scrolled', scrollY > 8);
       if (progress) progress.style.width = `${max > 0 ? Math.min(100, (scrollY / max) * 100) : 0}%`;
-      if (toTop) toTop.classList.toggle('is-visible', scrollY > 480);
+      if (toTop) {
+        toTop.classList.toggle('is-visible', scrollY > 480);
+        /* The ring around the button doubles as a reading-progress gauge, so the
+           control is informative instead of decorative. */
+        const ratio = max > 0 ? Math.min(1, scrollY / max) : 0;
+        toTop.style.setProperty('--nv-progress', ratio.toFixed(4));
+        const percent = $('[data-scroll-percent]', toTop);
+        if (percent) percent.textContent = `${Math.round(ratio * 100)}٪`;
+      }
     };
     on(window, 'scroll', debounce(update, 40), { passive: true });
     on(toTop, 'click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));

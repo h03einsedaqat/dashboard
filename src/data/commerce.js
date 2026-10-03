@@ -105,6 +105,10 @@ export const products = Array.from({ length: 48 }).map((_, i) => {
     sold: int(4, 1450),
     views: int(400, 32000),
     image: `assets/img/products/product-${String((i % 24) + 1).padStart(2, '0')}.svg`,
+    /* Four real views per product (cover first) so the details page can show the
+       same carousel as the product studio. Derived positionally — no RNG draws,
+       which keeps every dataset in this file byte-identical. */
+    images: [0, 7, 13, 19].map((offset) => `assets/img/products/product-${String(((i + offset) % 24) + 1).padStart(2, '0')}.svg`),
     createdAt: date(int(5, 700), int(9, 18)),
     description:
       'محصولی با کیفیت ساخت بالا، مناسب استفاده حرفه‌ای روزمره. دارای گارانتی رسمی ۱۸ ماهه و پشتیبانی فنی سراسر کشور. طراحی ارگونومیک و متریال مقاوم، عمر مفید دستگاه را افزایش می‌دهد.',
