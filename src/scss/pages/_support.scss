@@ -345,3 +345,20 @@
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------------ layout --
+   The roster card is the page: it takes the full width and the two summary
+   cards flow underneath it (the knowledge-base rhythm), instead of squeezing
+   the roster into half the viewport on large screens. */
+.sup-grid {
+  align-items: start;
+}
+.sup-roster-card .card__body {
+  padding: var(--nv-space-5);
+}
+.sup-roster-card .agent-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20.5rem), 1fr));
+}
+.sup-side {
+  align-items: start;
+}

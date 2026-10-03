@@ -366,3 +366,13 @@
     grid-column: 1 / -1;
   }
 }
+
+/* ------------------------------------------------------------------ layout --
+   Tracking is the page: the table card spans the full width and the carrier /
+   status cards sit below it in a responsive row. */
+.ship-table-card .table-wrap {
+  max-block-size: none;
+}
+.ship-side {
+  align-items: start;
+}

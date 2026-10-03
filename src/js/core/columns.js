@@ -279,7 +279,7 @@ export const COLUMNS = {
   contacts: [
     { key: 'name', label: 'مخاطب', type: 'primary', sub: 'title', avatar: 'avatar', sortable: true },
     { key: 'company', label: 'شرکت' },
-    { key: 'phone', label: 'تلفن' },
+    { key: 'phone', label: 'تلفن', type: 'phone' },
     { key: 'lastContact', label: 'آخرین تماس', type: 'relative', sortable: true },
     { key: 'value', label: 'ارزش', type: 'currency', align: 'end', sortable: true },
     { key: 'status', label: 'وضعیت', type: 'badge' },

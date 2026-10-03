@@ -422,3 +422,15 @@
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------------ layout --
+   The matrix owns the full width; the summary and legend cards flow below. */
+.perm-board {
+  min-inline-size: 0;
+}
+.perm-board .perm-table-wrap {
+  overflow-x: auto;
+}
+.perm-side {
+  align-items: start;
+}

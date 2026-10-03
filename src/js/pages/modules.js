@@ -37,7 +37,8 @@ function detailValue(key, value, record) {
   if (typeof value === 'number') return `<span class="numeric">${formatNumber(value)}</span>`;
   if (DATE_KEYS.test(key) && !Number.isNaN(Date.parse(value))) return escapeHtml(formatDate(value));
   if (/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/.test(value)) return escapeHtml(statusLabel(value));
-  if (/email|website|phone|url/i.test(key)) return `<span dir="ltr">${escapeHtml(/phone/i.test(key) ? toDigits(value) : value)}</span>`;
+  if (/email|website|phone|url/i.test(key))
+    return `<span class="text-ltr" dir="ltr">${escapeHtml(/phone/i.test(key) ? toDigits(value) : value)}</span>`;
   return escapeHtml(value);
 }
 
@@ -2143,6 +2144,7 @@ async function initProjects() {
 
             ${card({
               span: 5,
+              className: 'tl-list-card',
               icon: 'flag',
               title: 'تحویل‌های پیش‌رو',
               subtitle: 'پنج موعد نزدیک‌تر میان پروژه‌های باز',
@@ -2164,7 +2166,7 @@ async function initProjects() {
           </div>
 
           ${card({
-            className: 'mt-4',
+            className: 'mt-4 tl-list-card',
             icon: 'list-check',
             title: 'نقاط عطف پورتفوی',
             subtitle: 'ریزتحویل‌های ثبت‌شده و وضعیت هرکدام',
@@ -2696,9 +2698,10 @@ async function initSupport() {
             ${statCard({ label: 'کارشناسان فعال', value: `${toDigits(online)}/${toDigits(agents.length)}`, meta: `${toDigits(langCount.size)} زبان پشتیبانی`, tone: 'success', icon: 'people', id: 'sup-team' })}
           </div>
 
-          <div class="widget-grid">
+          <div class="widget-grid sup-grid">
             ${card({
-              span: 8,
+              span: 12,
+              className: 'sup-roster-card',
               icon: 'person-badge',
               title: 'ترکیب تیم و بار کاری',
               subtitle: 'کارشناسان بر اساس تعداد تیکت باز مرتب شده‌اند — میله پررنگ‌تر یعنی فشار بیشتر',
@@ -2739,7 +2742,7 @@ async function initSupport() {
                 .join('')}</div>`,
             })}
 
-            <aside class="sup-side">
+            <div class="grid grid--cards sup-side">
               ${card({
                 icon: 'speedometer2',
                 title: 'توزیع زمان پاسخ اولیه',
@@ -2778,7 +2781,7 @@ async function initSupport() {
                   </ul>
                 </div>`,
               })}
-            </aside>
+            </div>
           </div>
         </div>`,
       );
@@ -3221,7 +3224,7 @@ async function initHr() {
                           <tr><th style="color: var(--nv-text-muted);">تاریخ استخدام رسمی:</th><td class="numeric">${formatDate(employee.hiredAt, { format: 'long' })}</td></tr>
                           <tr><th style="color: var(--nv-text-muted);">نوع همکاری:</th><td><span class="badge badge--soft-primary">${escapeHtml(employee.type ?? 'تمام‌وقت')}</span> ${employee.remote ? '<span class="badge badge--soft-info ms-1">دورکاری</span>' : ''}</td></tr>
                           <tr><th style="color: var(--nv-text-muted);">پست الکترونیکی سازمانی:</th><td><a href="mailto:${escapeHtml(employee.email)}" class="text-primary">${escapeHtml(employee.email)}</a></td></tr>
-                          <tr><th style="color: var(--nv-text-muted);">شماره تماس همراه:</th><td class="numeric">${escapeHtml(employee.phone ?? '۰۹۱۲۳۴۵۶۷۸۹')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">شماره تماس همراه:</th><td><span class="text-ltr numeric" dir="ltr">${escapeHtml(employee.phone ?? '۰۹۱۲۳۴۵۶۷۸۹')}</span></td></tr>
                           <tr><th style="color: var(--nv-text-muted);">محل خدمت و سکونت:</th><td>${escapeHtml(employee.city ?? 'تهران')}، دفتر مرکزی</td></tr>
                         </tbody>
                       </table>
@@ -3867,7 +3870,7 @@ async function initLogistics() {
                   <img src="${v.avatar}" style="width:52px; height:52px; border-radius:50%; border:3px solid var(--nv-primary); object-fit:cover;">
                   <div>
                     <h4 style="margin:0; font-size:15px; font-weight:800;">${v.driver}</h4>
-                    <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">${v.phone} • گواهینامه پایه یک ترانزیت بین‌المللی</p>
+                    <p style="margin:0; font-size:12px; color:var(--nv-text-muted);"><span class="text-ltr" dir="ltr">${escapeHtml(v.phone)}</span> • گواهینامه پایه یک ترانزیت بین‌المللی</p>
                   </div>
                 </div>
                 <div style="text-align:end;">
@@ -3915,7 +3918,7 @@ async function initLogistics() {
           `,
           footer: `
             <div class="d-flex justify-content-between w-100">
-              <a class="btn btn-outline-primary btn-sm" href="tel:${v.phone}"><i class="bi bi-telephone me-1"></i> تماس با راننده</a>
+              <a class="btn btn-outline-primary btn-sm" href="tel:${escapeHtml(v.phone)}"><i class="bi bi-telephone me-1"></i> تماس با راننده</a>
               <button class="btn btn-primary btn-sm" type="button" data-modal-close>تأیید و بستن</button>
             </div>
           `,
@@ -4304,7 +4307,7 @@ async function initLogistics() {
 
           <div class="widget-grid">
             ${card({
-              span: 8,
+              span: 12,
               className: 'ship-table-card',
               icon: 'box-seam',
               title: 'پیگیری محموله‌ها',
@@ -4354,7 +4357,7 @@ async function initLogistics() {
               </div>`,
             })}
 
-            <aside class="ship-side">
+            <div class="grid grid--cards ship-side">
               ${card({
                 icon: 'building-up',
                 title: 'عملکرد حامل‌ها',
@@ -4388,7 +4391,7 @@ async function initLogistics() {
                   <strong class="numeric">${escapeHtml(formatCurrency(costTotal, 'IRR', { compact: true }))}</strong>
                 </div>`,
               })}
-            </aside>
+            </div>
           </div>
         </div>`,
       );
@@ -5264,7 +5267,7 @@ async function initUsers() {
 
           <div class="widget-grid">
             ${card({
-              span: 8,
+              span: 12,
               className: 'perm-board',
               icon: 'sliders',
               title: 'ماتریس دسترسی',
@@ -5302,7 +5305,7 @@ async function initUsers() {
                 <p class="perm-mobile-note"><i class="bi bi-arrows-move"></i> برای ویرایش، جدول را افقی بکشید.</p>`,
             })}
 
-            <aside class="perm-side">
+            <div class="grid grid--cards perm-side">
               ${card({
                 icon: 'people',
                 title: 'خلاصه نقش‌ها',
@@ -5332,7 +5335,7 @@ async function initUsers() {
                   )
                   .join('')}</ul>`,
               })}
-            </aside>
+            </div>
           </div>
         </div>`,
       );

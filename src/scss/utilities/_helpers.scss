@@ -427,3 +427,22 @@
 .nv-toast__progress.is-paused {
   animation-play-state: paused;
 }
+
+/* ------------------------------------------------------------------ LTR text */
+/* Phone numbers, e-mails and codes must not be re-ordered by the RTL flow.
+   `isolate` keeps the surrounding Persian sentence intact on both sides. */
+.text-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+  text-align: start;
+}
+a.text-ltr {
+  color: inherit;
+  text-decoration: none;
+}
+a.text-ltr:hover {
+  color: var(--nv-primary);
+}

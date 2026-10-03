@@ -168,12 +168,17 @@
   text-align: end;
 }
 .tl-variance__note {
-  margin: var(--nv-space-4) 0 0;
+  margin: var(--nv-space-5) 0 0;
   font-size: var(--nv-text-micro);
   color: var(--nv-text-muted);
 }
 
 /* ------------------------------------------------------- upcoming deliv. -- */
+/* Both list cards (تحویل‌های پیش‌رو / نقاط عطف) render `flush`, so the rows
+   need their own padding — previously they sat right on the card border. */
+.tl-list-card .card__body {
+  padding: var(--nv-space-4) var(--nv-card-pad) var(--nv-space-5);
+}
 .tl-upcoming {
   display: grid;
   gap: 0.25rem;
@@ -186,7 +191,7 @@
   grid-template-columns: auto minmax(0, 1fr) 3.5rem;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.65rem 0;
+  padding: 0.9rem 0.35rem;
   border-block-end: 1px dashed var(--nv-divider);
 }
 .tl-upcoming__row:last-child {
@@ -233,6 +238,7 @@
 }
 .tl-upcoming__main small {
   display: block;
+  margin-block-start: 0.15rem;
   font-size: var(--nv-text-micro);
   color: var(--nv-text-muted);
 }
@@ -263,8 +269,8 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 0;
+  gap: 0.85rem;
+  padding: 0.95rem 0.35rem;
   border-block-end: 1px dashed var(--nv-divider);
 }
 .tl-milestones__row:last-child {

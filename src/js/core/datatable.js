@@ -70,8 +70,37 @@ const TONE_COLORS = {
   violet: ['#8b5cf6', 'بنفش'],
 };
 
+/* Phone-ish strings (digits, +, dashes, parens, spaces, Persian digits) must be
+   laid out left-to-right: in an RTL table an unisolated «۰۹۱۲۳۴۵۶۷۸۹» can be
+   re-ordered and read backwards. Detecting them here keeps every table honest
+   without having to special-case each column definition. */
+const PHONE_RE = /^[+()\u06F0-\u06F9\d][+()\-\s\u06F0-\u06F9\d]{5,}$/;
+function ltr(value) {
+  return `<span class="text-ltr" dir="ltr">${escapeHtml(value)}</span>`;
+}
+
 const renderers = {
-  text: (row, column) => escapeHtml(resolve(row, column) ?? '—'),
+  text: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    const text = String(value);
+    return PHONE_RE.test(text.trim()) ? ltr(text) : escapeHtml(text);
+  },
+  phone: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return ltr(String(value));
+  },
+  email: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return `<a class="text-ltr" dir="ltr" href="mailto:${escapeHtml(String(value))}">${escapeHtml(String(value))}</a>`;
+  },
+  code: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return `<code class="text-ltr" dir="ltr">${escapeHtml(String(value))}</code>`;
+  },
   primary: (row, column) => {
     const primary = resolve(row, column) ?? '—';
     const sub = column.sub && resolve(row, column.sub);
