@@ -111,6 +111,7 @@ const renderers = {
     </div>`;
   },
   currency: (row, column) => `<span class="numeric">${formatCurrency(resolve(row, column) ?? 0, column.currency ?? 'IRR', { compact: Boolean(column.compact) })}</span>`,
+  share: (row, column) => `<span class="numeric">${formatPercent(Number(resolve(row, column) ?? 0), { decimals: column.decimals ?? 1 })}</span>`,
   number: (row, column) => `<span class="numeric">${formatNumber(resolve(row, column) ?? 0)}</span>`,
   percent: (row, column) => {
     const value = Number(resolve(row, column) ?? 0);
@@ -298,6 +299,18 @@ export function createDataTable(root, options = {}) {
   bindPageHead();
 
   buildShell(instance);
+  /* Deep links such as «همه محصولات این برند» open a list with ?q=… — the term
+     is applied to the freshly built search box so the page shows what was
+     requested (and the toolbar explains why the list is filtered). */
+  const seed =
+    options.search ??
+    (typeof URLSearchParams === 'function' ? new URLSearchParams(window.location?.search ?? '').get('q') : '') ??
+    '';
+  if (seed) {
+    instance.state.search = seed;
+    const input = $('[data-datatable-search]', root);
+    if (input) input.value = seed;
+  }
   bindEvents(instance);
   attachLoad(instance);
   instance.load();

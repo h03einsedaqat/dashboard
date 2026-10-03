@@ -597,8 +597,502 @@ async function initEcommerce() {
       return;
     }
 
-    case 'ecommerce/brands.html':
-    case 'ecommerce/tags.html':
+    case 'ecommerce/brands.html': {
+      const node = host();
+      render(node, `<div class="dashboard-shell">${kit.skeleton(4)}</div>`);
+      const service = services.brandService;
+      const { items: rows, summary } = await service.list({ perPage: 200, sort: 'revenue', order: 'desc' });
+      const state = { q: '', filter: 'all', sort: 'revenue' };
+
+      const maxRevenue = Math.max(...rows.map((row) => row.revenue || 0), 1);
+      const grandRevenue = rows.reduce((sum, row) => sum + (row.revenue || 0), 0);
+      const toneFor = (tier) => ({ 'برتر': 'success', 'حرفه‌ای': 'primary', 'اقتصادی': 'warning', 'جدید': 'info' }[tier] ?? 'neutral');
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'برندها',
+            subtitle: 'پرتفوی برندها با سهم واقعی از فروش، کیفیت کاتالوگ و وضعیت موجودی',
+            icon: 'award',
+            badges: [statusBadge(`${toDigits(rows.length)} برند`, 'primary'), statusBadge(`${toDigits(summary.countries)} کشور مبدأ`, 'info')],
+            actions: '<button class="btn btn-primary" type="button" data-brand-add><i class="bi bi-plus-lg"></i> برند جدید</button><button class="btn btn-light" type="button" data-export="csv"><i class="bi bi-download"></i> خروجی CSV</button>',
+          })}
+          <div class="kpi-row" data-brand-kpis></div>
+          <section class="card brand-board">
+            <header class="card__head">
+              <div>
+                <h2 class="card__title">پرتفوی برندها</h2>
+                <p class="card__subtitle">روی هر کارت کلیک کنید تا کاتالوگ همان برند فیلتر شود</p>
+              </div>
+            </header>
+            <div class="brand-toolbar">
+              <label class="brand-toolbar__search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control" placeholder="جستجوی نام برند، کشور یا شهر…" aria-label="جستجوی برند" data-brand-search></label>
+              <div class="brand-seg" role="tablist" aria-label="فیلتر وضعیت">
+                <button type="button" role="tab" class="is-active" aria-selected="true" data-brand-filter="all">همه <span data-brand-count="all"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="featured">برندهای برتر <span data-brand-count="featured"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="active">فعال <span data-brand-count="active"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="low">نیازمند تأمین <span data-brand-count="low"></span></button>
+              </div>
+              <select class="form-select brand-toolbar__sort" aria-label="مرتب‌سازی برندها" data-brand-sort>
+                <option value="revenue">بیشترین فروش</option>
+                <option value="share">سهم بازار</option>
+                <option value="products">بیشترین محصول</option>
+                <option value="rating">بالاترین امتیاز</option>
+                <option value="growth">سریع‌ترین رشد</option>
+                <option value="name">الفبایی</option>
+              </select>
+            </div>
+            <div class="brand-grid" data-brand-grid></div>
+            <div class="brand-empty" data-brand-empty hidden></div>
+          </section>
+          <section class="card brand-rank">
+            <header class="card__head">
+              <div><h2 class="card__title">رتبه‌بندی برندها بر پایه فروش</h2><p class="card__subtitle">میله‌ها نسبت به پرفروش‌ترین برند مقیاس شده‌اند</p></div>
+              <span class="badge badge--soft-success"><i class="bi bi-graph-up-arrow"></i> مجموع ${escapeHtml(formatCurrency(grandRevenue, 'IRR', { compact: true }))}</span>
+            </header>
+            <div class="brand-rank__body" data-brand-rank></div>
+          </section>
+          <section class="card">
+            <header class="card__head">
+              <div><h2 class="card__title">فهرست کامل برندها</h2><p class="card__subtitle">مرتب‌سازی، جستجو و صفحه‌بندی روی همه ستون‌ها فعال است</p></div>
+            </header>
+            <div class="card__body" data-datatable data-resource="brands">
+              <div class="table-wrap"><table class="table table--hover"><thead><tr></tr></thead><tbody data-datatable-body></tbody></table></div>
+              <div class="datatable__foot" data-datatable-foot></div>
+            </div>
+          </section>
+        </div>`,
+      );
+
+      const paintKpis = () => {
+        const cells = [
+          ['برندهای فعال', toDigits(summary.active), `${toDigits(summary.featured)} برند برتر • ${toDigits(summary.countries)} کشور مبدأ`, 'primary', 'award'],
+          ['محصولات کاتالوگ', toDigits(summary.products), `${toDigits(summary.sold)} فروش ثبت‌شده`, 'info', 'box-seam'],
+          ['درآمد برندها', formatCurrency(summary.revenue, 'IRR', { compact: true }), `میانگین امتیاز ${formatNumber(summary.avgRating, { decimals: 1 })} از ۵`, 'success', 'graph-up-arrow'],
+          ['هشدار تأمین', toDigits(summary.lowStock + summary.outOfStock), `${toDigits(summary.lowStock)} موجودی کم • ${toDigits(summary.outOfStock)} ناموجود`, 'warning', 'exclamation-triangle'],
+        ];
+        $('[data-brand-kpis]', node).innerHTML = cells
+          .map(
+            ([label, value, meta, tone, icon]) => `<article class="stat-card">
+              <div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span><span class="stat-card__icon stat-card__icon--${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i></span></div>
+              <p class="stat-card__value">${escapeHtml(value)}</p>
+              <p class="stat-card__meta">${escapeHtml(meta)}</p>
+            </article>`,
+          )
+          .join('');
+      };
+
+      const matches = (row) => {
+        const q = state.q.trim().toLowerCase();
+        if (q && ![row.name, row.country, row.city, row.tier].some((field) => String(field ?? '').toLowerCase().includes(q))) return false;
+        if (state.filter === 'featured') return Boolean(row.featured);
+        if (state.filter === 'active') return row.status === 'active';
+        if (state.filter === 'low') return row.lowStock + row.outOfStock > 0;
+        return true;
+      };
+
+      const sorters = {
+        revenue: (a, b) => b.revenue - a.revenue,
+        share: (a, b) => b.share - a.share,
+        products: (a, b) => b.products - a.products,
+        rating: (a, b) => b.rating - a.rating,
+        growth: (a, b) => b.growth - a.growth,
+        name: (a, b) => a.name.localeCompare(b.name, 'fa'),
+      };
+
+      const cardHtml = (row) => `<article class="brand-card${row.status === 'active' ? '' : ' is-off'}" tabindex="0" role="button" data-brand-card="${escapeHtml(row.id)}" aria-label="مشاهده محصولات ${escapeHtml(row.name)}">
+        <header class="brand-card__head">
+          <span class="brand-card__logo"><img src="${escapeHtml(row.logo)}" alt="" loading="lazy" /></span>
+          <div class="brand-card__id">
+            <strong>${escapeHtml(row.name)}</strong>
+            <small><i class="bi bi-geo-alt"></i> ${escapeHtml(row.country)}${row.city ? ` — ${escapeHtml(row.city)}` : ''}</small>
+          </div>
+          <span class="brand-card__tier brand-card__tier--${toneFor(row.tier)}">${escapeHtml(row.tier)}</span>
+        </header>
+        <p class="brand-card__desc">${escapeHtml(row.description)}</p>
+        <div class="brand-card__stats">
+          <span><b class="numeric">${toDigits(row.products)}</b><small>محصول</small></span>
+          <span><b class="numeric">${toDigits(row.sold)}</b><small>فروش</small></span>
+          <span><b class="numeric">${formatCurrency(row.revenue, 'IRR', { compact: true })}</b><small>درآمد</small></span>
+        </div>
+        <div class="brand-card__meter">
+          <span class="brand-card__meter-label">سهم از فروش <b class="numeric">${formatPercent(row.share, { decimals: 1 })}</b></span>
+          <span class="brand-card__bar"><i style="--w:${Math.max(3, Math.round((row.revenue / maxRevenue) * 100))}%"></i></span>
+        </div>
+        <footer class="brand-card__foot">
+          <span class="brand-card__rating rating rating--readonly" aria-label="امتیاز ${toDigits(row.rating)} از ۵">${Array.from({ length: 5 }, (_, i) => `<i class="bi bi-star${i < Math.round(row.rating) ? '-fill' : ''}" aria-hidden="true"></i>`).join('')}<b class="numeric">${formatNumber(row.rating, { decimals: 1 })}</b></span>
+          <span class="brand-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })}</span>
+          <span class="brand-card__since">از سال ${toDigits(row.since)}</span>
+        </footer>
+        <div class="brand-card__actions">
+          <button type="button" class="icon-btn icon-btn--sm" data-brand-edit="${escapeHtml(row.id)}" title="ویرایش" aria-label="ویرایش ${escapeHtml(row.name)}"><i class="bi bi-pencil"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm" data-brand-toggle="${escapeHtml(row.id)}" title="${row.status === 'active' ? 'غیرفعال‌سازی' : 'فعال‌سازی'}" aria-label="${row.status === 'active' ? 'غیرفعال‌سازی' : 'فعال‌سازی'} ${escapeHtml(row.name)}"><i class="bi bi-${row.status === 'active' ? 'pause-circle' : 'play-circle'}"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" data-brand-delete="${escapeHtml(row.id)}" title="حذف" aria-label="حذف ${escapeHtml(row.name)}"><i class="bi bi-trash3"></i></button>
+        </div>
+      </article>`;
+
+      const paintGrid = () => {
+        const list = rows.filter(matches).sort(sorters[state.sort] ?? sorters.revenue);
+        $('[data-brand-grid]', node).innerHTML = list.map(cardHtml).join('');
+        const empty = $('[data-brand-empty]', node);
+        empty.hidden = list.length > 0;
+        if (!list.length) empty.innerHTML = emptyState({ title: 'برندی با این فیلتر پیدا نشد', text: 'عبارت جستجو را کوتاه‌تر کنید یا فیلتر دیگری انتخاب کنید.', icon: 'search' });
+        $$('[data-brand-count]', node).forEach((el) => {
+          const key = el.dataset.brandCount;
+          const count = key === 'all' ? rows.length : rows.filter((row) => (key === 'featured' ? row.featured : key === 'low' ? row.lowStock + row.outOfStock > 0 : row.status === key)).length;
+          el.textContent = toDigits(count);
+        });
+      };
+
+      const paintRank = () => {
+        const top = [...rows].sort(sorters.revenue).slice(0, 8);
+        $('[data-brand-rank]', node).innerHTML = top
+          .map(
+            (row, index) => `<div class="brand-rank__row" data-brand-jump="${escapeHtml(row.id)}" role="button" tabindex="0">
+              <span class="brand-rank__place numeric">${toDigits(index + 1)}</span>
+              <span class="brand-rank__logo"><img src="${escapeHtml(row.logo)}" alt="" loading="lazy" /></span>
+              <span class="brand-rank__name">${escapeHtml(row.name)}<small>${escapeHtml(row.country)} • ${toDigits(row.products)} محصول</small></span>
+              <span class="brand-rank__track"><i style="--w:${Math.max(4, Math.round((row.revenue / maxRevenue) * 100))}%"></i></span>
+              <span class="brand-rank__value numeric">${escapeHtml(formatCurrency(row.revenue, 'IRR', { compact: true }))}<small>${formatPercent(row.share, { decimals: 1 })} سهم</small></span>
+              <span class="brand-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })}</span>
+            </div>`,
+          )
+          .join('');
+      };
+
+      paintKpis();
+      paintGrid();
+      paintRank();
+
+      const table = createDataTable($('[data-datatable]', node), { resource: 'brands', perPage: 10, sort: 'revenue', order: 'desc' });
+
+      const openForm = (row = null) =>
+        openRecordForm({
+          resource: 'brands',
+          id: row?.id ?? null,
+          title: row ? `ویرایش ${row.name}` : 'افزودن برند جدید',
+          subtitle: 'اطلاعات پایه، مبدأ و جایگاه برند در پرتفوی',
+          fields: crudFields('brands'),
+          onSaved: () => window.location.reload(),
+        });
+
+      let searchTimer;
+      on($('[data-brand-search]', node), 'input', (event) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = event.target.value;
+          paintGrid();
+        }, 140);
+      });
+      on($('[data-brand-sort]', node), 'change', (event) => {
+        state.sort = event.target.value;
+        paintGrid();
+        paintRank();
+      });
+      $$('[data-brand-filter]', node).forEach((button) =>
+        on(button, 'click', () => {
+          state.filter = button.dataset.brandFilter;
+          $$('[data-brand-filter]', node).forEach((b) => {
+            b.classList.toggle('is-active', b === button);
+            b.setAttribute('aria-selected', String(b === button));
+          });
+          paintGrid();
+        }),
+      );
+      on($('[data-brand-add]', node), 'click', () => openForm());
+      exportable(node, 'brands');
+
+      on($('[data-brand-grid]', node), 'click', async (event) => {
+        const edit = event.target.closest('[data-brand-edit]');
+        const toggle = event.target.closest('[data-brand-toggle]');
+        const remove = event.target.closest('[data-brand-delete]');
+        if (edit) return openForm(rows.find((row) => row.id === edit.dataset.brandEdit));
+        if (toggle) {
+          const row = rows.find((r) => r.id === toggle.dataset.brandToggle);
+          if (!row) return;
+          const next = row.status === 'active' ? 'inactive' : 'active';
+          row.status = next;
+          paintGrid();
+          try {
+            await service.update(row.id, { status: next });
+            toast.success(next === 'active' ? 'برند فعال شد' : 'برند غیرفعال شد', row.name);
+            table?.reload();
+          } catch {
+            row.status = next === 'active' ? 'inactive' : 'active';
+            paintGrid();
+            toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
+          }
+          return;
+        }
+        if (remove) {
+          const row = rows.find((r) => r.id === remove.dataset.brandDelete);
+          if (!row) return;
+          const ok = await modal.confirm({
+            title: 'حذف برند',
+            text: `«${row.name}» از پرتفوی حذف می‌شود. ${toDigits(row.products)} محصول این برند بدون برند باقی می‌مانند.`,
+            tone: 'danger',
+            confirmText: 'حذف برند',
+          });
+          if (!ok) return;
+          await service.remove(row.id);
+          toast.success('برند حذف شد', row.name);
+          await service.list({ perPage: 200 }).then(({ items }) => {
+            rows.splice(0, rows.length, ...items);
+          });
+          paintGrid();
+          paintRank();
+          table?.reload();
+          return;
+        }
+        const card = event.target.closest('[data-brand-card]');
+        if (card) window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(rows.find((r) => r.id === card.dataset.brandCard)?.name ?? '')}`);
+      });
+
+      on($('[data-brand-rank]', node), 'click', (event) => {
+        const row = event.target.closest('[data-brand-jump]');
+        if (!row) return;
+        const name = rows.find((r) => r.id === row.dataset.brandJump)?.name ?? '';
+        window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(name)}`);
+      });
+      return;
+    }
+
+    case 'ecommerce/tags.html': {
+      const node = host();
+      render(node, `<div class="dashboard-shell">${kit.skeleton(4)}</div>`);
+      const service = services.tagService;
+      const { items: rows, summary } = await service.list({ perPage: 200, sort: 'products', order: 'desc' });
+      const state = { q: '', filter: 'all', sort: 'products' };
+
+      const maxProducts = Math.max(...rows.map((row) => row.products || 0), 1);
+      const toneForKind = (kind) => (kind === 'auto' ? 'info' : 'violet');
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'برچسب‌ها',
+            subtitle: 'برچسب‌گذاری کاتالوگ، قواعد خودکار و اثر هر برچسب بر بازدید و فروش',
+            icon: 'tags',
+            badges: [statusBadge(`${toDigits(rows.length)} برچسب`, 'primary'), statusBadge(`${toDigits(summary.automatic)} قاعده خودکار`, 'info')],
+            actions: '<button class="btn btn-primary" type="button" data-tag-add><i class="bi bi-plus-lg"></i> برچسب جدید</button><button class="btn btn-light" type="button" data-export="csv"><i class="bi bi-download"></i> خروجی CSV</button>',
+          })}
+          <div class="kpi-row" data-tag-kpis></div>
+          <section class="card tag-board">
+            <header class="card__head">
+              <div><h2 class="card__title">ابر برچسب‌ها</h2><p class="card__subtitle">اندازه هر برچسب به تعداد محصولاتش بستگی دارد — برای فیلتر کردن کلیک کنید</p></div>
+            </header>
+            <div class="tag-cloud" data-tag-cloud></div>
+            <div class="tag-toolbar">
+              <label class="tag-toolbar__search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control" placeholder="جستجوی برچسب، اسلاگ یا توضیح…" aria-label="جستجوی برچسب" data-tag-search></label>
+              <div class="tag-seg" role="tablist" aria-label="فیلتر نوع برچسب">
+                <button type="button" role="tab" class="is-active" aria-selected="true" data-tag-filter="all">همه <span data-tag-count="all"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="auto">خودکار <span data-tag-count="auto"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="manual">دستی <span data-tag-count="manual"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="archived">بایگانی <span data-tag-count="archived"></span></button>
+              </div>
+              <select class="form-select tag-toolbar__sort" aria-label="مرتب‌سازی برچسب‌ها" data-tag-sort>
+                <option value="products">بیشترین محصول</option>
+                <option value="views">بیشترین بازدید</option>
+                <option value="conversion">بالاترین نرخ تبدیل</option>
+                <option value="growth">سریع‌ترین رشد</option>
+                <option value="name">الفبایی</option>
+              </select>
+            </div>
+            <div class="tag-grid" data-tag-grid></div>
+            <div class="tag-empty" data-tag-empty hidden></div>
+          </section>
+          <section class="card">
+            <header class="card__head">
+              <div><h2 class="card__title">فهرست کامل برچسب‌ها</h2><p class="card__subtitle">نوع، تعداد محصول، بازدید، نرخ تبدیل و رشد هر برچسب</p></div>
+            </header>
+            <div class="card__body" data-datatable data-resource="tags">
+              <div class="table-wrap"><table class="table table--hover"><thead><tr></tr></thead><tbody data-datatable-body></tbody></table></div>
+              <div class="datatable__foot" data-datatable-foot></div>
+            </div>
+          </section>
+        </div>`,
+      );
+
+      const paintKpis = () => {
+        const cells = [
+          ['برچسب‌های فعال', toDigits(summary.active), `${toDigits(summary.archived)} بایگانی‌شده • ${toDigits(summary.manual)} برچسب دستی`, 'primary', 'tags'],
+          ['محصولات برچسب‌خورده', toDigits(summary.products), `${toDigits(summary.assignments)} انتساب برچسب`, 'info', 'box-seam'],
+          ['مجموع بازدید', formatNumber(summary.views), `میانگین نرخ تبدیل ${formatPercent(summary.avgConversion, { decimals: 1 })}`, 'success', 'eye'],
+          ['فروش برچسب‌خورده', formatCurrency(summary.revenue, 'IRR', { compact: true }), `پرفروش‌ترین برچسب: ${summary.top}`, 'warning', 'graph-up-arrow'],
+        ];
+        $('[data-tag-kpis]', node).innerHTML = cells
+          .map(
+            ([label, value, meta, tone, icon]) => `<article class="stat-card">
+              <div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span><span class="stat-card__icon stat-card__icon--${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i></span></div>
+              <p class="stat-card__value">${escapeHtml(value)}</p>
+              <p class="stat-card__meta">${escapeHtml(meta)}</p>
+            </article>`,
+          )
+          .join('');
+      };
+
+      const sorters = {
+        products: (a, b) => b.products - a.products,
+        views: (a, b) => b.views - a.views,
+        conversion: (a, b) => b.conversion - a.conversion,
+        growth: (a, b) => b.growth - a.growth,
+        name: (a, b) => a.name.localeCompare(b.name, 'fa'),
+      };
+      const matches = (row) => {
+        const q = state.q.trim().toLowerCase();
+        if (q && ![row.name, row.slug, row.description].some((field) => String(field ?? '').toLowerCase().includes(q))) return false;
+        if (state.filter === 'all') return true;
+        if (state.filter === 'archived') return row.status !== 'active';
+        return row.kind === state.filter;
+      };
+
+      const chipHtml = (row) => `<button type="button" class="tag-chip tag-chip--${escapeHtml(row.color)}${row.status === 'active' ? '' : ' is-off'}" style="--weight:${Math.round((0.82 + (row.popularity / 100) * 0.5) * 100) / 100}" data-tag-filter-chip="${escapeHtml(row.id)}" aria-label="فیلتر برچسب ${escapeHtml(row.name)}">
+        <span class="tag-chip__hash">#</span>${escapeHtml(row.name)}<span class="tag-chip__count numeric">${toDigits(row.products)}</span>
+      </button>`;
+
+      const cardHtml = (row) => `<article class="tag-card${row.status === 'active' ? '' : ' is-off'}" data-tag-card="${escapeHtml(row.id)}" data-tone="${escapeHtml(row.color)}">
+        <header class="tag-card__head">
+          <span class="tag-card__icon"><i class="bi bi-hash" aria-hidden="true"></i></span>
+          <div class="tag-card__id">
+            <strong>${escapeHtml(row.name)}</strong>
+            <code dir="ltr">/${escapeHtml(row.slug)}</code>
+          </div>
+          <span class="badge badge--soft-${toneForKind(row.kind)}"><i class="bi bi-${row.kind === 'auto' ? 'lightning-charge' : 'hand-index'}"></i> ${row.kind === 'auto' ? 'خودکار' : 'دستی'}</span>
+        </header>
+        <p class="tag-card__desc">${escapeHtml(row.description)}</p>
+        <div class="tag-card__stats">
+          <span><b class="numeric">${toDigits(row.products)}</b><small>محصول</small></span>
+          <span><b class="numeric">${formatNumber(row.views)}</b><small>بازدید</small></span>
+          <span><b class="numeric">${formatPercent(row.conversion, { decimals: 1 })}</b><small>نرخ تبدیل</small></span>
+        </div>
+        <div class="tag-card__meter">
+          <span class="tag-card__meter-label">پوشش کاتالوگ <b class="numeric">${formatPercent(row.usageShare, { decimals: 1 })}</b></span>
+          <span class="tag-card__bar"><i style="--w:${Math.max(3, Math.round((row.products / maxProducts) * 100))}%"></i></span>
+        </div>
+        <footer class="tag-card__foot">
+          <span class="tag-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })} نسبت به فصل قبل</span>
+          <span class="tag-card__revenue">${escapeHtml(formatCurrency(row.revenue, 'IRR', { compact: true }))}</span>
+          <span class="badge badge--soft-${row.status === 'active' ? 'success' : 'neutral'}">${row.status === 'active' ? 'فعال' : 'بایگانی'}</span>
+        </footer>
+        <div class="tag-card__actions">
+          <button type="button" class="icon-btn icon-btn--sm" data-tag-edit="${escapeHtml(row.id)}" title="ویرایش" aria-label="ویرایش ${escapeHtml(row.name)}"><i class="bi bi-pencil"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm" data-tag-toggle="${escapeHtml(row.id)}" title="${row.status === 'active' ? 'بایگانی کن' : 'فعال کن'}" aria-label="${row.status === 'active' ? 'بایگانی' : 'فعال‌سازی'} ${escapeHtml(row.name)}"><i class="bi bi-${row.status === 'active' ? 'archive' : 'arrow-counterclockwise'}"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" data-tag-delete="${escapeHtml(row.id)}" title="حذف" aria-label="حذف ${escapeHtml(row.name)}"><i class="bi bi-trash3"></i></button>
+        </div>
+      </article>`;
+
+      const paintCloud = () => {
+        const list = [...rows].sort(sorters.products).slice(0, 12);
+        $('[data-tag-cloud]', node).innerHTML = list.map(chipHtml).join('');
+      };
+
+      const paintGrid = () => {
+        const list = rows.filter(matches).sort(sorters[state.sort] ?? sorters.products);
+        $('[data-tag-grid]', node).innerHTML = list.map(cardHtml).join('');
+        const empty = $('[data-tag-empty]', node);
+        empty.hidden = list.length > 0;
+        if (!list.length) empty.innerHTML = emptyState({ title: 'برچسبی با این فیلتر پیدا نشد', text: 'عبارت جستجو را کوتاه‌تر کنید یا فیلتر دیگری انتخاب کنید.', icon: 'search' });
+        $$('[data-tag-count]', node).forEach((el) => {
+          const key = el.dataset.tagCount;
+          const count = key === 'all' ? rows.length : rows.filter((row) => (key === 'archived' ? row.status !== 'active' : row.kind === key)).length;
+          el.textContent = toDigits(count);
+        });
+      };
+
+      paintKpis();
+      paintCloud();
+      paintGrid();
+
+      const table = createDataTable($('[data-datatable]', node), { resource: 'tags', perPage: 10, sort: 'products', order: 'desc' });
+
+      const openForm = (row = null) =>
+        openRecordForm({
+          resource: 'tags',
+          id: row?.id ?? null,
+          title: row ? `ویرایش برچسب ${row.name}` : 'افزودن برچسب جدید',
+          subtitle: 'نام، رنگ، نوع انتساب و توضیح کاربرد برچسب',
+          fields: crudFields('tags'),
+          onSaved: () => window.location.reload(),
+        });
+
+      let searchTimer;
+      on($('[data-tag-search]', node), 'input', (event) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = event.target.value;
+          paintGrid();
+        }, 140);
+      });
+      on($('[data-tag-sort]', node), 'change', (event) => {
+        state.sort = event.target.value;
+        paintGrid();
+      });
+      $$('[data-tag-filter]', node).forEach((button) =>
+        on(button, 'click', () => {
+          state.filter = button.dataset.tagFilter;
+          $$('[data-tag-filter]', node).forEach((b) => {
+            b.classList.toggle('is-active', b === button);
+            b.setAttribute('aria-selected', String(b === button));
+          });
+          paintGrid();
+        }),
+      );
+      on($('[data-tag-add]', node), 'click', () => openForm());
+      exportable(node, 'tags');
+      on($('[data-tag-cloud]', node), 'click', (event) => {
+        const chip = event.target.closest('[data-tag-filter-chip]');
+        if (!chip) return;
+        const row = rows.find((r) => r.id === chip.dataset.tagFilterChip);
+        window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(row?.name ?? '')}`);
+      });
+
+      on($('[data-tag-grid]', node), 'click', async (event) => {
+        const edit = event.target.closest('[data-tag-edit]');
+        const toggle = event.target.closest('[data-tag-toggle]');
+        const remove = event.target.closest('[data-tag-delete]');
+        if (edit) return openForm(rows.find((row) => row.id === edit.dataset.tagEdit));
+        if (toggle) {
+          const row = rows.find((r) => r.id === toggle.dataset.tagToggle);
+          if (!row) return;
+          const next = row.status === 'active' ? 'archived' : 'active';
+          row.status = next;
+          paintGrid();
+          paintCloud();
+          try {
+            await service.update(row.id, { status: next });
+            toast.success(next === 'active' ? 'برچسب فعال شد' : 'برچسب بایگانی شد', row.name);
+            table?.reload();
+          } catch {
+            row.status = next === 'active' ? 'archived' : 'active';
+            paintGrid();
+            toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
+          }
+          return;
+        }
+        if (remove) {
+          const row = rows.find((r) => r.id === remove.dataset.tagDelete);
+          if (!row) return;
+          const ok = await modal.confirm({
+            title: 'حذف برچسب',
+            text: `«${row.name}» از ${toDigits(row.products)} محصول برداشته می‌شود. محصولات حذف نمی‌شوند.`,
+            tone: 'danger',
+            confirmText: 'حذف برچسب',
+          });
+          if (!ok) return;
+          await service.remove(row.id);
+          await service.list({ perPage: 200 }).then(({ items }) => {
+            rows.splice(0, rows.length, ...items);
+          });
+          paintCloud();
+          paintGrid();
+          table?.reload();
+        }
+      });
+      return;
+    }
+
     case 'ecommerce/coupons.html':
     case 'ecommerce/reviews.html': {
       const resource = page.split('/').pop().replace('.html', '');
@@ -5938,12 +6432,21 @@ function crudFields(resource) {
     ],
     brands: [
       { name: 'name', label: 'نام برند', required: true },
-      { name: 'country', label: 'کشور', type: 'select', options: ['ایران', 'آلمان', 'چین', 'ژاپن'] },
+      { name: 'tier', label: 'جایگاه', type: 'select', options: ['برتر', 'حرفه‌ای', 'اقتصادی', 'جدید'] },
+      { name: 'country', label: 'کشور مبدأ', type: 'select', options: ['ایران', 'آلمان', 'چین', 'ترکیه', 'امارات', 'ژاپن'] },
+      { name: 'city', label: 'شهر' },
+      { name: 'since', label: 'سال تأسیس', type: 'number', inputMode: 'numeric' },
       { name: 'website', label: 'وبسایت', rule: 'url', placeholder: 'https://example.com' },
+      { name: 'status', label: 'وضعیت', type: 'select', options: [{ value: 'active', label: 'فعال' }, { value: 'inactive', label: 'غیرفعال' }] },
+      { name: 'description', label: 'معرفی برند', type: 'textarea', col: 2, rows: 3 },
     ],
     tags: [
       { name: 'name', label: 'برچسب', required: true },
-      { name: 'color', label: 'رنگ', type: 'select', options: ['primary', 'success', 'warning', 'danger', 'info'] },
+      { name: 'slug', label: 'اسلاگ', placeholder: 'bestseller', hint: 'حروف لاتین، بدون فاصله' },
+      { name: 'kind', label: 'نوع انتساب', type: 'select', options: [{ value: 'auto', label: 'خودکار (قاعده)' }, { value: 'manual', label: 'دستی' }] },
+      { name: 'color', label: 'رنگ', type: 'select', options: ['primary', 'success', 'warning', 'danger', 'info', 'violet', 'neutral'] },
+      { name: 'status', label: 'وضعیت', type: 'select', options: [{ value: 'active', label: 'فعال' }, { value: 'archived', label: 'بایگانی‌شده' }] },
+      { name: 'description', label: 'توضیح کاربرد', type: 'textarea', col: 2, rows: 3 },
     ],
     coupons: [
       { name: 'code', label: 'کد تخفیف', required: true },
