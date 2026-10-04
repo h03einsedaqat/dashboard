@@ -20,8 +20,8 @@ import { modal } from './modal.js';
 import { storage, KEYS } from './storage.js';
 import { theme } from './theme.js';
 import { t, setLanguage, applyTranslations, dict } from './i18n.js';
-import { toDigits, toLatinDigits } from './numbers.js';
-import { relativeTime } from './jalali.js';
+import { toDigits, toLatinDigits, activeLang } from './numbers.js';
+import { relativeTime, system as calendarSystem } from './jalali.js';
 import { searchService, commandService, settingsService, notificationService, demoService } from '../../services/index.js';
 import { config } from '../../config/config.js';
 import { createSortable } from './dragdrop.js';
@@ -480,12 +480,25 @@ function initCustomizer() {
   ['theme', 'primary', 'fontSize', 'calendar', 'radius'].forEach((key) =>
     bus.on(EVENTS[key] ?? EVENTS.theme, syncCustomizer),
   );
+  bus.on(EVENTS.language, syncCustomizer);
   syncCustomizer();
 }
 
 /** Mirrors the active option state onto every customizer / configurator control. */
 function syncCustomizer() {
   const snapshot = theme.snapshot();
+  /* The calendar follows the language (see `core/jalali.js`): only a Persian
+     reader has a choice, so the segmented control is disabled elsewhere instead
+     of offering a switch that could not change anything. */
+  const calendarChoice = activeLang() === 'fa';
+  $$('[data-customizer="calendar"]').forEach((node) => {
+    node.classList.toggle('is-disabled', !calendarChoice);
+    node.setAttribute('aria-disabled', calendarChoice ? 'false' : 'true');
+  });
+  $$('[data-calendar-hint]').forEach((node) => {
+    node.textContent = t('ui.calendarFollowsLanguage', '');
+    node.hidden = calendarChoice;
+  });
   const groups = {
     theme: snapshot.theme,
     primary: snapshot.primary,
@@ -494,7 +507,7 @@ function syncCustomizer() {
     density: snapshot.density,
     fontSize: snapshot.fontSize,
     sidebarStyle: snapshot.sidebarStyle,
-    calendar: snapshot.calendar,
+    calendar: calendarSystem(),
   };
   Object.entries(groups).forEach(([group, value]) => {
     $$(`[data-customizer="${group}"] [data-value], [data-${group}-option]`).forEach((node) => {

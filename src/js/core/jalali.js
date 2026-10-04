@@ -3,8 +3,12 @@
  * ------------------------------------------------------------------
  * Wraps `jalaali-js` with the pieces the calendar, date-picker and finance
  * reports need: conversion, month grids, week starts (Saturday for Iran),
- * holiday detection and locale-aware labels. The selected calendar system is
- * a user preference (`nova:calendar` = `jalali` | `gregorian`).
+ * holiday detection and locale-aware labels.
+ *
+ * The **interface language owns the calendar**: Persian reads Jalali, English
+ * and Arabic read Gregorian (`system()`), so no page can show a Jalali grid
+ * under an English header. The customizer preference (`nova:calendar`) only
+ * refines the Persian case — a Persian reader may deliberately pick میلادی.
  */
 import * as jalaali from 'jalaali-js';
 import { toDigits, activeLang } from './numbers.js';
@@ -40,24 +44,61 @@ export function monthNames(lang = activeLang()) {
   return { jalali: JALALI_MONTHS, gregorian: GREGORIAN_MONTHS };
 }
 
+/**
+ * The twelve month names of the **active calendar**, in calendar order — the
+ * axis labels for month-by-month charts. Persian gets فروردین…, English and
+ * Arabic the Gregorian January… / يناير… .
+ */
+export function monthNames12(lang = activeLang()) {
+  const names = monthNames(lang);
+  return system(lang) === 'gregorian' ? names.gregorian : names.jalali;
+}
+
+/** Month name of a real date in the active calendar (chart ticks, tooltips). */
+export function monthNameOf(date, lang = activeLang()) {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const names = monthNames12(lang);
+  if (system(lang) === 'gregorian') return names[d.getMonth()] ?? '';
+  return names[toJalali(d).month - 1] ?? '';
+}
+
 export const JALALI_HOLIDAYS = [
   '01/01', '01/02', '01/03', '01/04', '01/12', '01/13',
   '03/14', '03/15', '11/22', '12/29',
 ];
 
-let calendarSystem = storage.get(KEYS.calendar, 'jalali');
+/** The stored customizer preference — read through `system()`. */
+let storedSystem = storage.get(KEYS.calendar, 'jalali') === 'gregorian' ? 'gregorian' : 'jalali';
+
+/**
+ * The calendar the interface must read right now.
+ *
+ * Persian → Jalali (unless the reader explicitly chose میلادی in the
+ * customizer), English and Arabic → Gregorian. Every date helper, picker,
+ * grid and chart axis asks this function, so one language switch can never
+ * leave a Jalali month label behind on an English page.
+ *
+ * @param {string} [lang] defaults to the active language
+ * @returns {'jalali'|'gregorian'}
+ */
+export function system(lang = activeLang()) {
+  if (lang !== 'fa') return 'gregorian';
+  return storedSystem;
+}
 
 export const calendar = {
   get system() {
-    return calendarSystem;
+    return system();
   },
+  /** The stored preference — only meaningful for Persian; see `system()`. */
   set(value) {
-    calendarSystem = value === 'gregorian' ? 'gregorian' : 'jalali';
-    storage.set(KEYS.calendar, calendarSystem);
-    document.documentElement.setAttribute('data-calendar', calendarSystem);
-    return calendarSystem;
+    storedSystem = value === 'gregorian' ? 'gregorian' : 'jalali';
+    storage.set(KEYS.calendar, storedSystem);
+    document.documentElement.setAttribute('data-calendar', system());
+    return storedSystem;
   },
-  isJalali: () => calendarSystem === 'jalali',
+  isJalali: () => system() === 'jalali',
 };
 
 const pad = (value) => String(value).padStart(2, '0');
@@ -82,7 +123,7 @@ export const isLeapJalali = (jy) => jalaali.isLeapJalaaliYear(jy);
 
 export function parts(date = new Date()) {
   const d = new Date(date);
-  if (calendarSystem === 'gregorian') {
+  if (system() === 'gregorian') {
     return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), weekday: d.getDay(), date: d };
   }
   const j = toJalali(d);
@@ -91,12 +132,12 @@ export function parts(date = new Date()) {
 
 export function monthLabel(year, month, { short = false, lang = activeLang() } = {}) {
   const names = monthNames(lang);
-  const name = (calendarSystem === 'gregorian' ? names.gregorian : names.jalali)[(month - 1 + 12) % 12];
+  const name = (system(lang) === 'gregorian' ? names.gregorian : names.jalali)[(month - 1 + 12) % 12];
   return short ? name.slice(0, 4) : name;
 }
 
 export function weekdayLabels({ short = true, lang = activeLang() } = {}) {
-  if (calendarSystem === 'gregorian' || lang !== 'fa') {
+  if (lang !== 'fa') {
     if (lang === 'ar') return short ? ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'] : WEEK_DAYS_LONG_AR;
     if (lang === 'en') return short ? WEEK_DAYS_EN : WEEK_DAYS_LONG_EN;
   }
@@ -114,18 +155,19 @@ export function weekDayIndex(date = new Date()) {
  * @param {Date|string} date
  * @param {Object} [options] { system, format: 'short'|'long'|'iso'|'time'|'datetime'|'month', lang }
  */
-export function formatDate(date, { system = calendarSystem, format = 'short', lang = activeLang() } = {}) {
+export function formatDate(date, { system: sys = system(), format = 'short', lang = activeLang() } = {}) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
   const names = monthNames(lang);
   const weekdays = weekdayLabels({ short: false, lang });
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   if (format === 'time') return toDigits(time, lang);
-  if (format === 'datetime') return `${formatDate(d, { system, format: 'short', lang })} — ${toDigits(time, lang)}`;
+  if (format === 'datetime') return `${formatDate(d, { system: sys, format: 'short', lang })} — ${toDigits(time, lang)}`;
 
-  /** English and Arabic read the Gregorian calendar by default. */
-  const useGregorian = system === 'gregorian' || (lang !== 'fa' && system !== 'jalali');
-  if (useGregorian) {
+  /* The language already decided the calendar in `system()`; an explicit
+     caller override (`{ system: 'jalali' }`) still wins. */
+  if (lang !== 'fa' && sys === 'jalali') sys = 'gregorian';
+  if (sys === 'gregorian') {
     const label = lang === 'en'
       ? `${names.gregorian[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
       : `${d.getDate()} ${names.gregorian[d.getMonth()]} ${d.getFullYear()}`;
@@ -141,7 +183,7 @@ export function formatDate(date, { system = calendarSystem, format = 'short', la
 /** Machine-usable ISO date that keeps the *current* calendar system's numbers. */
 export function formatIso(date = new Date()) {
   const d = new Date(date);
-  if (calendarSystem === 'gregorian') return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (system() === 'gregorian') return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const { jy, jm, jd } = jalaali.toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
   return `${jy}/${pad(jm)}/${pad(jd)}`;
 }
@@ -170,15 +212,12 @@ export function relativeTime(date, { lang = activeLang() } = {}) {
  * @returns {Array<{ date: Date, day: number, inMonth: boolean, today: boolean, holiday: boolean, weekend: boolean, key: string }>}
  */
 export function monthGrid(year, month) {
-  const first = calendarSystem === 'gregorian' ? new Date(year, month - 1, 1) : toGregorian(year, month, 1);
+  const gregorian = system() === 'gregorian';
+  const first = gregorian ? new Date(year, month - 1, 1) : toGregorian(year, month, 1);
   const offset = weekDayIndex(first); // cells before the 1st
-  const length = calendarSystem === 'gregorian'
-    ? new Date(year, month, 0).getDate()
-    : jalaliMonthLength(year, month);
+  const length = gregorian ? new Date(year, month, 0).getDate() : jalaliMonthLength(year, month);
 
-  const leading = calendarSystem === 'gregorian'
-    ? new Date(year, month - 1, 1 - offset)
-    : new Date(first.getTime() - offset * 86400000);
+  const leading = gregorian ? new Date(year, month - 1, 1 - offset) : new Date(first.getTime() - offset * 86400000);
   const total = Math.ceil((offset + length) / 7) * 7;
 
   return Array.from({ length: total }).map((_, index) => {
@@ -194,7 +233,7 @@ export function monthGrid(year, month) {
       inMonth,
       today: isSameDay(date, new Date()),
       weekend: wd === 6,
-      holiday: inMonth && calendarSystem === 'jalali' && JALALI_HOLIDAYS.includes(`${pad(p.month)}/${pad(p.day)}`),
+      holiday: inMonth && !gregorian && JALALI_HOLIDAYS.includes(`${pad(p.month)}/${pad(p.day)}`),
       key: `${p.year}-${pad(p.month)}-${pad(p.day)}`,
     };
   });
@@ -220,7 +259,7 @@ export function addDays(date, amount) {
 
 export function addMonths(date, amount) {
   const d = new Date(date);
-  if (calendarSystem === 'jalali') {
+  if (system() === 'jalali') {
     const { jy, jm, jd } = toJalali(d);
     let month = jm + amount;
     let year = jy;
@@ -253,7 +292,7 @@ export const dayDiff = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / 86
 
 export function monthRange(date = new Date()) {
   const p = parts(date);
-  const first = calendarSystem === 'gregorian' ? new Date(p.year, p.month - 1, 1) : toGregorian(p.year, p.month, 1);
+  const first = system() === 'gregorian' ? new Date(p.year, p.month - 1, 1) : toGregorian(p.year, p.month, 1);
   const last = addDays(addMonths(first, 1), -1);
   return { from: startOfDay(first), to: new Date(startOfDay(last).getTime() + 86399999) };
 }
@@ -264,6 +303,9 @@ export default {
   WEEK_DAYS_FA,
   WEEK_DAYS_SHORT_FA,
   calendar,
+  system,
+  monthNames12,
+  monthNameOf,
   toJalali,
   toGregorian,
   parts,

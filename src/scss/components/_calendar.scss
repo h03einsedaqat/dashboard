@@ -356,11 +356,111 @@
   background: var(--nv-primary);
 }
 
-/* ---------------------------------------------------------------- datepicker */
-.dp {
+/* ==========================================================================
+   Locale-aware date picker field (`core/datepicker.js`)
+   --------------------------------------------------------------------------
+   The native `<input type="date">` stays in the DOM (value + submit contract)
+   but is visually replaced by `.dp-text` + a calendar toggle, for both the
+   Jalali and the Gregorian system. The popup reuses the `.dp*` skin below.
+   ========================================================================== */
+.dp-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.dp-field .dp-native {
   position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+}
+.dp-field .dp-text {
+  padding-inline-end: 2.6rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dp-field .dp-toggle {
+  position: absolute;
+  inset-inline-end: 0.35rem;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  border-radius: var(--nv-radius-sm);
+  background: transparent;
+  color: var(--nv-text-muted);
+  cursor: pointer;
+  transition: color var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.dp-field .dp-toggle:hover {
+  color: var(--nv-primary);
+  background: var(--nv-primary-soft);
+}
+.dp-field--open .dp-text,
+.dp-text:focus {
+  border-color: var(--nv-primary);
+  box-shadow: var(--nv-shadow-focus);
+}
+
+/* The popup itself is positioned with fixed coordinates so no card's
+   `overflow: hidden` can clip it. */
+.dp {
+  position: fixed;
   z-index: var(--nv-z-command);
   width: min(19rem, 92vw);
+}
+.dp__nav {
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  cursor: pointer;
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.dp__nav:hover {
+  border-color: var(--nv-primary);
+  color: var(--nv-primary);
+}
+.dp__day.is-selected {
+  box-shadow: 0 6px 14px -6px rgba(var(--nv-primary-rgb), 0.6);
+}
+.dp__foot {
+  justify-content: space-between;
+}
+.dp__preset {
+  font-family: inherit;
+}
+[dir='ltr'] .dp__nav[data-dp-move='-1'] i,
+[dir='ltr'] .dp__nav[data-dp-move='1'] i {
+  transform: scaleX(-1);
+}
+@media (max-width: 575.98px) {
+  .dp {
+    width: min(20rem, 94vw);
+    padding: var(--nv-space-3);
+  }
+  .dp__day {
+    font-size: var(--nv-text-body-sm);
+  }
+}
+
+/* ---------------------------------------------------------------- datepicker
+   The popup is skinned here, positioned above with `position: fixed`: the
+   controller writes viewport coordinates (`getBoundingClientRect`), so an
+   `absolute` box would land thousands of pixels above a scrolled page and the
+   calendar simply never appeared on a phone. */
+.dp {
   padding: var(--nv-space-4);
   background: var(--nv-surface);
   border: 1px solid var(--nv-border);

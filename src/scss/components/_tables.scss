@@ -483,3 +483,137 @@
 
 /* Opt-out hook: tables that keep their grid layout on phones (core/tables.js). */
 .table--no-stack { table-layout: auto; }
+
+/* ==========================================================================
+   v1.1 — the phone card view gets a real card design
+   --------------------------------------------------------------------------
+   The stacked rows were functional but flat: hairline border, no hierarchy and
+   every label shouting at the same weight. Each row is now a raised card with
+   a tonal accent rail, a soft shadow, a large title and quiet, pill-styled
+   labels — closer to a native mobile list than a table that fell apart.
+   ========================================================================== */
+@media (max-width: 575.98px) {
+  table.table--stack > tbody {
+    gap: 0.8rem;
+    padding: 0.35rem 0.15rem 0.6rem;
+  }
+  table.table--stack > tbody > tr,
+  table.table--stack > tfoot > tr {
+    padding: 1rem 1rem 0.85rem;
+    border-radius: 1.1rem;
+    border-color: color-mix(in srgb, var(--nv-border) 80%, transparent);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px -18px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    transition: box-shadow var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease);
+  }
+  table.table--stack > tbody > tr:active {
+    transform: scale(0.995);
+  }
+  /* A tonal rail on the inline start edge — instant orientation in long lists. */
+  table.table--stack > tbody > tr::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: 3px;
+    background: var(--nv-primary);
+    opacity: 0.9;
+  }
+  table.table--stack > tbody > tr.is-selected::before {
+    opacity: 0;
+  }
+  table.table--stack > tbody > tr > td {
+    gap: 0.25rem;
+  }
+  table.table--stack > tbody > tr > td::before,
+  table.table--stack > tfoot > tr > td::before {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    max-inline-size: 100%;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--nv-surface-2);
+    color: var(--nv-text-muted);
+    font-size: 0.66rem;
+    font-weight: var(--nv-fw-semibold);
+    letter-spacing: 0.01em;
+    line-height: 1.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The title cell owns the card header: bigger, no pill, full width. */
+  table.table--stack > tbody > tr > td.cell--stack-title {
+    padding-block-end: 0.15rem !important;
+    font-size: 1.02rem;
+    font-weight: var(--nv-fw-semibold);
+    line-height: 1.6;
+  }
+  table.table--stack > tbody > tr > td.cell--stack-title :is(a, strong) {
+    color: var(--nv-heading);
+    text-decoration: none;
+  }
+  table.table--stack > tbody > tr > td.cell--stack-title .table__primary-title {
+    font-size: 1.02rem;
+  }
+  /* The title/avatar block becomes the card's identity row. */
+  table.table--stack > tbody > tr > td.cell--stack-title .table__thumb,
+  table.table--stack > tbody > tr > td:has(> img.avatar) > img.avatar {
+    inline-size: 2.4rem;
+    block-size: 2.4rem;
+    border-radius: 0.8rem;
+  }
+  /* Numbers keep their tabular rhythm and never wrap mid-amount. */
+  table.table--stack > tbody > tr > td .numeric,
+  table.table--stack > tbody > tr > td strong.numeric {
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  /* Badges stretch to their content instead of the full track. */
+  table.table--stack > tbody > tr > td > .badge,
+  table.table--stack > tbody > tr > td > .status-badge {
+    align-self: flex-start;
+  }
+  /* Footer actions get a soft surface so they read as controls. */
+  table.table--stack > tbody > tr > td.cell--row-actions {
+    gap: 0.45rem;
+    margin-block-start: 0.15rem;
+    padding-block-start: 0.75rem !important;
+    border-block-start: 1px solid var(--nv-divider) !important;
+  }
+  table.table--stack > tbody > tr > td.cell--row-actions .btn,
+  table.table--stack > tbody > tr > td.cell--row-actions .icon-btn {
+    min-block-size: 2.4rem;
+  }
+  table.table--stack > tbody > tr > td.cell--row-actions .btn {
+    border-radius: 0.75rem;
+  }
+  /* Checkbox pill in the top corner. */
+  table.table--stack > tbody > tr > td.cell--select {
+    inset-block-start: 0.95rem;
+    inset-inline-end: 0.95rem;
+    padding: 0.3rem;
+    border-radius: 0.6rem;
+    background: var(--nv-surface-2);
+  }
+  table.table--stack > tbody > tr > td.cell--select .form-check-input {
+    margin: 0;
+  }
+  table.table--stack > tbody > tr.is-selected {
+    border-color: color-mix(in srgb, var(--nv-primary) 45%, var(--nv-border));
+    background: color-mix(in srgb, var(--nv-primary-soft) 70%, var(--nv-surface));
+  }
+  table.table--stack > tbody > tr.is-selected::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: 3px;
+    background: var(--nv-primary);
+  }
+}
+/* Dark mode keeps the rail visible but calmer. */
+[data-theme='dark'] table.table--stack > tbody > tr {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 26px -20px rgba(0, 0, 0, 0.8);
+}

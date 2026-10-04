@@ -1,0 +1,343 @@
+/* ==========================================================================
+   NOVAADMIN — financial overview (`finance/overview.html`)
+   --------------------------------------------------------------------------
+   A CFO-style board: mixed cash-flow chart with its own legend, health meters
+   (runway · current ratio · net margin · net worth), an ageing ladder, P&L
+   composition and a trend-coded monthly table. Tokens only, so light/dark and
+   RTL/LTR both come for free.
+   ========================================================================== */
+
+.fin .stat-card__spark {
+  margin-block-start: var(--nv-space-3);
+}
+/* The KPI row is 4-up but the charts below must never stretch to its height. */
+.fin-grid {
+  align-items: start;
+}
+.fin-meter {
+  break-inside: avoid;
+}
+
+.fin-chart-card .card__body {
+  padding-block-end: var(--nv-space-2);
+}
+.fin-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.fin-chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.fin-dot {
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  border-radius: 2px;
+  background: var(--nv-primary);
+}
+.fin-dot--in {
+  background: var(--nv-success);
+}
+.fin-dot--out {
+  background: var(--nv-danger);
+}
+.fin-dot--net {
+  background: #64748b;
+  border-radius: var(--nv-radius-pill);
+}
+.fin-chart-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--nv-space-2) var(--nv-space-4);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.fin-chart-foot strong {
+  color: var(--nv-heading);
+}
+
+/* ---------------------------------------------------------- health meters -- */
+.fin-meters {
+  display: grid;
+  gap: var(--nv-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fin-meter__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nv-space-3);
+  margin-block-end: 0.45rem;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.fin-meter__head b {
+  font-size: var(--nv-text-body);
+}
+.fin-meter__bar {
+  display: block;
+  block-size: 8px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.fin-meter__bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+  transition: inline-size var(--nv-dur-slow) var(--nv-ease-out);
+}
+.fin-meter__bar--good i {
+  background: linear-gradient(90deg, var(--nv-success), color-mix(in srgb, var(--nv-success) 45%, var(--nv-info)));
+}
+.fin-meter__bar--warn i {
+  background: linear-gradient(90deg, var(--nv-warning), color-mix(in srgb, var(--nv-warning) 55%, var(--nv-danger)));
+}
+.fin-meter__bar--bad i {
+  background: linear-gradient(90deg, var(--nv-danger), color-mix(in srgb, var(--nv-danger) 50%, var(--nv-warning)));
+}
+.fin-meter__hint {
+  margin: 0.45rem 0 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  line-height: var(--nv-lh-snug);
+}
+
+/* ----------------------------------------------------------- ageing ladder -- */
+.fin-aging {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fin-aging__row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(3rem, 1fr) 6.5rem;
+  align-items: center;
+  gap: 0.7rem;
+}
+.fin-aging__label {
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.fin-aging__label small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-regular);
+  color: var(--nv-text-muted);
+}
+.fin-aging__bar {
+  display: block;
+  block-size: 12px;
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.fin-aging__bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: var(--nv-info);
+  transition: inline-size var(--nv-dur-slow) var(--nv-ease-out);
+}
+.fin-aging__bar--good i {
+  background: var(--nv-success);
+}
+.fin-aging__bar--warn i {
+  background: var(--nv-warning);
+}
+.fin-aging__bar--bad i {
+  background: var(--nv-danger);
+}
+.fin-aging__amount {
+  text-align: end;
+}
+.fin-aging__amount b {
+  display: block;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-heading);
+}
+.fin-aging__amount small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.fin-aging__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: var(--nv-space-4) 0 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  font-size: var(--nv-text-micro);
+  line-height: var(--nv-lh-snug);
+}
+
+/* ------------------------------------------------------------ P&L shares -- */
+.fin-pl {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fin-pl__row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 1.15fr) minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fin-pl__label {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-pl__bar {
+  display: block;
+  block-size: 6px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.fin-pl__fill {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: var(--nv-neutral);
+}
+.fin-pl__fill--success {
+  background: var(--nv-success);
+}
+.fin-pl__fill--warning {
+  background: var(--nv-warning);
+}
+.fin-pl__fill--danger {
+  background: var(--nv-danger);
+}
+.fin-pl__fill--primary {
+  background: var(--nv-primary);
+}
+.fin-pl__row b {
+  font-size: var(--nv-text-micro);
+  white-space: nowrap;
+}
+.fin-pl__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: var(--nv-space-4);
+  padding-block-start: var(--nv-space-3);
+  border-block-start: 1px dashed var(--nv-border);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.fin-pl__total strong {
+  font-size: var(--nv-text-body);
+  color: var(--nv-heading);
+}
+
+/* --------------------------------------------------------- monthly table -- */
+.fin-table tfoot td,
+.fin-table tfoot th {
+  border-block-start: 1px solid var(--nv-border);
+  color: var(--nv-heading);
+  font-weight: var(--nv-fw-bold);
+}
+.fin-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--nv-radius-pill);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  white-space: nowrap;
+}
+.fin-trend--up {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.fin-trend--down {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.fin-trend--flat {
+  background: var(--nv-neutral-soft);
+  color: var(--nv-neutral-soft-fg);
+}
+.fin-cover {
+  display: inline-block;
+  min-inline-size: 3.1rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--nv-radius-pill);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  text-align: center;
+}
+.fin-cover--good {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.fin-cover--warn {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.fin-cover--bad {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+
+/* ------------------------------------------------------------------ phone -- */
+@media (max-width: 767.98px) {
+  .fin-chart-legend {
+    display: none;
+  }
+  .fin-aging__row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+  .fin-aging__amount {
+    text-align: start;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .fin-aging__amount small {
+    font-size: var(--nv-text-micro);
+  }
+  .fin-pl__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .fin-pl__bar {
+    display: none;
+  }
+  .fin-meters {
+    gap: var(--nv-space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-meter__bar i,
+  .fin-aging__bar i,
+  .fin-pl__fill {
+    transition: none;
+  }
+}

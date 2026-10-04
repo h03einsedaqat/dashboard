@@ -42,7 +42,6 @@ export default {
     more: 'المزيد',
     less: 'أقل',
     loading: 'جارٍ التحميل…',
-    processing: 'جارٍ المعالجة…',
     saving: 'جارٍ الحفظ…',
     sending: 'جارٍ الإرسال…',
     upload: 'رفع',

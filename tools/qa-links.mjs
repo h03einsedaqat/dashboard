@@ -127,10 +127,23 @@ const duplicateIds = [];
 const inlineHandlers = [];
 const legacy = [];
 
+/**
+ * Docs pages ship one article per language (`[data-doc-lang]` panels); only the
+ * first is visible, so the heading check counts that one and ignores the
+ * translations — otherwise a correct page looks like it has three <h1>s.
+ */
+function headingsForCount(html) {
+  let seen = 0;
+  return html.replace(/(<div class="docs-lang"[^>]*>)([\s\S]*?)(?=<div class="docs-lang"|<\/main>)/g, (match, open, body) => {
+    seen += 1;
+    return seen === 1 ? match : `${open}${body.replace(/<h1[\s\S]*?<\/h1>/g, '')}`;
+  });
+}
+
 for (const file of htmlFiles) {
   const html = stripCodeSamples(fs.readFileSync(file, 'utf8'));
   const pageRel = rel(file);
-  const h1 = (html.match(/<h1[\s>]/g) ?? []).length;
+  const h1 = (headingsForCount(html).match(/<h1[\s>]/g) ?? []).length;
   if (h1 === 0) pagesWithoutH1.push(pageRel);
   if (h1 > 1) pagesWithManyH1.push(`${pageRel} (${h1})`);
   if (!/<main[\s>]/.test(html)) pagesWithoutMain.push(pageRel);

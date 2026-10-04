@@ -338,3 +338,40 @@
 @media (prefers-reduced-motion: reduce) {
   .pm-stage__img { animation: none; transition: none; }
 }
+
+/* ---------------------------------------------------- details-page variant -- */
+/* Same component as the studio, read-only and inside a two-column spec card:
+   the stage shrinks to the media column and the rail wraps below it. */
+.pm--detail {
+  min-inline-size: 0;
+}
+.pm--detail .pm-stage {
+  margin: 0;
+}
+.pm--detail .pm-rail {
+  grid-template-columns: repeat(auto-fill, minmax(3.35rem, 1fr));
+  margin-block-start: 0.65rem;
+}
+.pm--detail .pm-thumb {
+  cursor: pointer;
+}
+.pm-chip--count {
+  background: color-mix(in srgb, var(--nv-heading) 78%, transparent);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.pm-stage:focus-visible {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 3px;
+}
+
+@media (max-width: 575.98px) {
+  .pm--detail .pm-nav {
+    inline-size: 2rem;
+    block-size: 2rem;
+  }
+  .pm--detail .pm-stage__hint {
+    display: none;
+  }
+}

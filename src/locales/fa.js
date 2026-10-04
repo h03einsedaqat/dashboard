@@ -43,7 +43,6 @@ export default {
     more: 'بیشتر',
     less: 'کمتر',
     loading: 'در حال بارگذاری…',
-    processing: 'در حال پردازش…',
     saving: 'در حال ذخیره…',
     sending: 'در حال ارسال…',
     upload: 'بارگذاری',

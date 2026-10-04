@@ -652,7 +652,7 @@ $ais-tones: (
 @keyframes aic-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 .aic-compose-wrap { padding: 0.75rem clamp(0.75rem, 2.5vw, 2rem) 1rem; border-top: 1px solid var(--nv-border); background: var(--nv-surface); }
-.aic-quick { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.55rem; scrollbar-width: none; }
+.aic-quick { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.75rem; }
 .aic-quick button { flex: none; }
 .aic-compose {
   max-width: 900px;
@@ -918,12 +918,24 @@ a.pj-gantt__label:hover strong { color: var(--nv-primary); }
     gap: 0.5rem;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 0.65rem 0.75rem 0.8rem;
+    padding: 0.65rem 0.75rem 0.95rem;
     scroll-snap-type: x proximity;
-    scrollbar-width: none;
+    /* Bottom overflow bar comes from `components/_rail.scss` (the permission
+       matrix pattern) — the conversation strip must look scrollable. */
   }
-  .aic-list::-webkit-scrollbar { display: none; }
   .aic-list .aic-group { display: none; }
+  /* The rail arrows are sticky flex items: leave a little room for them and
+     keep each conversation card tall enough to show both its title lines. */
+  .aic-list { scroll-padding-inline: 2.25rem; }
+  .aic-list .aic-conv { padding: 0.7rem 0.75rem; }
+  .aic-list .aic-conv__title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .aic-quick { scroll-padding-inline: 2.1rem; }
+  .aic-quick .ais-chip { flex: 0 0 auto; }
   .aic-list .aic-conv {
     flex: 0 0 min(15rem, 72vw);
     scroll-snap-align: start;

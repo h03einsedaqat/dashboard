@@ -11,7 +11,7 @@ export const productService = createResourceService({
   name: 'products',
   collection: () => products,
   idPrefix: 'p',
-  searchFields: ['name', 'sku', 'category', 'brand', 'warehouse'],
+  searchFields: ['name', 'sku', 'category', 'brand', 'warehouse', 'tags'],
   sortFields: ['name', 'finalPrice', 'stock', 'sold', 'rating', 'createdAt'],
   extend: (result) => ({
     summary: {
@@ -40,16 +40,48 @@ export const brandService = createResourceService({
   name: 'brands',
   collection: () => brands,
   idPrefix: 'brand',
-  searchFields: ['name', 'country'],
-  sortFields: ['name', 'products', 'rating'],
+  searchFields: ['name', 'country', 'city', 'tier', 'slug'],
+  sortFields: ['name', 'products', 'rating', 'revenue', 'share', 'sold', 'growth', 'since'],
+  extend: (result) => ({
+    summary: {
+      total: brands.length,
+      active: brands.filter((b) => b.status === 'active').length,
+      featured: brands.filter((b) => b.featured).length,
+      products: brands.reduce((sum, b) => sum + b.products, 0),
+      revenue: brands.reduce((sum, b) => sum + b.revenue, 0),
+      sold: brands.reduce((sum, b) => sum + b.sold, 0),
+      avgRating: Math.round((brands.reduce((sum, b) => sum + b.rating, 0) / Math.max(1, brands.length)) * 10) / 10,
+      countries: [...new Set(brands.map((b) => b.country))].length,
+      lowStock: brands.reduce((sum, b) => sum + b.lowStock, 0),
+      outOfStock: brands.reduce((sum, b) => sum + b.outOfStock, 0),
+      top: [...brands].sort((a, b) => b.revenue - a.revenue)[0]?.name ?? '',
+      totalCount: result.total,
+    },
+  }),
 });
 
 export const tagService = createResourceService({
   name: 'tags',
   collection: () => tags,
   idPrefix: 'tag',
-  searchFields: ['name'],
-  sortFields: ['name', 'products'],
+  searchFields: ['name', 'slug', 'kind', 'description'],
+  sortFields: ['name', 'products', 'views', 'conversion', 'growth', 'popularity'],
+  extend: (result) => ({
+    summary: {
+      total: tags.length,
+      active: tags.filter((t) => t.status === 'active').length,
+      archived: tags.filter((t) => t.status !== 'active').length,
+      automatic: tags.filter((t) => t.kind === 'auto').length,
+      manual: tags.filter((t) => t.kind === 'manual').length,
+      products: products.filter((p) => p.tags.length).length,
+      assignments: tags.reduce((sum, t) => sum + t.products, 0),
+      views: tags.reduce((sum, t) => sum + t.views, 0),
+      avgConversion: Math.round((tags.reduce((sum, t) => sum + t.conversion, 0) / Math.max(1, tags.length)) * 10) / 10,
+      revenue: tags.reduce((sum, t) => sum + t.revenue, 0),
+      top: [...tags].sort((a, b) => b.products - a.products)[0]?.name ?? '',
+      totalCount: result.total,
+    },
+  }),
 });
 
 export const inventoryService = createResourceService({

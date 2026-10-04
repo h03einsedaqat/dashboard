@@ -243,3 +243,37 @@
     text-align: start;
   }
 }
+
+/* ------------------------------------------------------------------ KPIs -- */
+/* Amounts are long Rial strings: the value may wrap, never burst the card. */
+.inv-kpis .stat-card__value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.inv-kpis .stat-card__meta {
+  gap: 0.25rem;
+}
+.stat-card__meter {
+  display: block;
+  block-size: 6px;
+  margin-block-start: var(--nv-space-3);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.stat-card__meter i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-success), color-mix(in srgb, var(--nv-success) 55%, var(--nv-info)));
+  transition: inline-size var(--nv-dur-slow) var(--nv-ease-out);
+}
+.stat-card__meter--danger i {
+  background: linear-gradient(90deg, var(--nv-danger), color-mix(in srgb, var(--nv-danger) 55%, var(--nv-warning)));
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat-card__meter i {
+    transition: none;
+  }
+}

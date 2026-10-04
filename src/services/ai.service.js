@@ -7,6 +7,8 @@
  * to `false` (or `window.NOVA_ADMIN_API`) and pointing `baseUrl` at your proxy.
  */
 import { createResourceService } from './resource.js';
+import { activeLang } from '../js/core/numbers.js';
+import { system } from '../js/core/jalali.js';
 import { call } from './client.js';
 import {
   aiModels, aiPrompts, aiConversations, aiChatSeed, aiWriterSample, aiSummarizerSeed,
@@ -323,9 +325,13 @@ export const usageService = {
       resolver: () => {
         const sum = (key) => aiUsageDaily.reduce((s, d) => s + d[key], 0);
         const now = Date.now();
+        /* Day labels read in the interface's calendar: Jalali day/month in
+           Persian, Gregorian in English and Arabic (see `core/jalali.js`). */
         const dayLabel = (i) => {
           const d = new Date(now - (aiUsageDaily.length - 1 - i) * 86_400_000);
-          try { return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { day: 'numeric', month: 'short' }).format(d); } catch { return String(i + 1); }
+          const lang = activeLang();
+          const locale = lang === 'fa' && system() === 'jalali' ? 'fa-IR-u-ca-persian' : lang === 'ar' ? 'ar-AE' : 'en-US';
+          try { return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(d); } catch { return String(i + 1); }
         };
         const labels = aiUsageDaily.map((_, i) => dayLabel(i));
         const tokens = sum('tokens');

@@ -50,6 +50,7 @@
 @import 'components/progress';
 @import 'components/timeline';
 @import 'components/pagination';
+@import 'components/rail';
 @import 'components/charts';
 @import 'components/stats';
 @import 'components/kanban';
@@ -74,6 +75,15 @@
 @import 'pages/ai-studio';
 @import 'pages/product-media';
 @import 'pages/categories';
+@import 'pages/brands-tags';
+@import 'pages/tasks';
+@import 'pages/finance';
+@import 'pages/timeline';
+@import 'pages/support';
+@import 'pages/logistics';
+@import 'pages/permissions';
+@import 'pages/system';
+@import 'pages/feed';
 
 /* 8 ---------------------------------------------------------- utilities */
 @import 'utilities/helpers';

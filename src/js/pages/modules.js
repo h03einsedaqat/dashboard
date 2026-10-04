@@ -16,7 +16,8 @@ import { bus, EVENTS } from '../core/bus.js';
 import { toast } from '../core/toast.js';
 import { modal } from '../core/modal.js';
 import { formatCurrency, formatNumber, formatPercent, toDigits } from '../core/numbers.js';
-import { formatDate, relativeTime, monthNames } from '../core/jalali.js';
+import { formatDate, relativeTime, monthNameOf, monthNames12 } from '../core/jalali.js';
+import { activeLang } from '../core/numbers.js';
 import { initCharts } from '../core/charts.js';
 import { createDataTable } from '../core/datatable.js';
 import { initKanban } from '../core/kanban.js';
@@ -37,7 +38,8 @@ function detailValue(key, value, record) {
   if (typeof value === 'number') return `<span class="numeric">${formatNumber(value)}</span>`;
   if (DATE_KEYS.test(key) && !Number.isNaN(Date.parse(value))) return escapeHtml(formatDate(value));
   if (/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/.test(value)) return escapeHtml(statusLabel(value));
-  if (/email|website|phone|url/i.test(key)) return `<span dir="ltr">${escapeHtml(/phone/i.test(key) ? toDigits(value) : value)}</span>`;
+  if (/email|website|phone|url/i.test(key))
+    return `<span class="text-ltr" dir="ltr">${escapeHtml(/phone/i.test(key) ? toDigits(value) : value)}</span>`;
   return escapeHtml(value);
 }
 
@@ -146,6 +148,108 @@ async function loadRecord(resource, id) {
 
 /* ==================================================================== eCommerce */
 
+/* ============================================================ product media */
+
+/**
+ * Details-page gallery.
+ *
+ * Mirrors the product studio (same `pm-*` markup and interactions) but read
+ * only: stage with pointer-zoom, prev/next, dots, thumbnail rail, keyboard
+ * arrows (RTL-aware) and touch swipe. A product with a single image keeps the
+ * plain `<img>` from `.detail-split__media` — a carousel of one is noise.
+ */
+function initProductGallery(root, record) {
+  if (!root || !record) return;
+  const stored = Array.isArray(record.images) && record.images.length ? record.images.filter(Boolean) : [record.image];
+  const images = [...new Set([record.image, ...stored].filter(Boolean))].map((src, index) => ({
+    src,
+    label: index === 0 ? 'نمای اصلی محصول' : `نمای ${toDigits(index + 1)}`,
+  }));
+  if (images.length < 2) {
+    root.innerHTML = `<img class="detail-split__media" src="${escapeHtml(images[0]?.src ?? '')}" alt="${escapeHtml(record.name ?? '')}" loading="lazy" />`;
+    return;
+  }
+
+  let index = 0;
+  const paint = () => {
+    const current = images[index];
+    render(
+      root,
+      `<figure class="pm-stage" data-stage tabindex="0" role="group" aria-roledescription="اسلایدر" aria-label="تصویر ${toDigits(index + 1)} از ${toDigits(images.length)}">
+        <div class="pm-stage__frame" data-zoom-frame><img class="pm-stage__img" src="${escapeHtml(current.src)}" alt="${escapeHtml(record.name ?? '')} — ${escapeHtml(current.label)}" draggable="false" data-zoom-img /></div>
+        <div class="pm-stage__top"><span class="pm-chip pm-chip--count numeric">${toDigits(index + 1)} / ${toDigits(images.length)}</span></div>
+        <button type="button" class="pm-nav pm-nav--prev" data-detail-prev aria-label="تصویر قبلی"><i class="bi bi-chevron-right"></i></button>
+        <button type="button" class="pm-nav pm-nav--next" data-detail-next aria-label="تصویر بعدی"><i class="bi bi-chevron-left"></i></button>
+        <div class="pm-dots" aria-hidden="true">${images.map((_, i) => `<span class="${i === index ? 'is-active' : ''}"></span>`).join('')}</div>
+        <span class="pm-stage__hint"><i class="bi bi-zoom-in"></i> برای بزرگ‌نمایی نشانگر را حرکت دهید</span>
+      </figure>
+      <ol class="pm-rail" aria-label="تصاویر محصول">
+        ${images
+          .map(
+            (img, i) => `<li class="pm-thumb${i === index ? ' is-active' : ''}">
+              <button type="button" class="pm-thumb__btn" data-detail-thumb="${i}" aria-label="${escapeHtml(img.label)}" aria-current="${i === index}">
+                <img src="${escapeHtml(img.src)}" alt="" loading="lazy" />
+              </button>
+              <span class="pm-thumb__order numeric">${toDigits(i + 1)}</span>
+            </li>`,
+          )
+          .join('')}
+      </ol>`,
+    );
+  };
+
+  const go = (step) => {
+    index = (index + step + images.length) % images.length;
+    paint();
+    $('[data-stage]', root)?.focus({ preventScroll: true });
+  };
+
+  paint();
+
+  on(root, 'click', (event) => {
+    // RTL: the «previous» control sits on the right and steps backwards.
+    if (event.target.closest('[data-detail-prev]')) return go(-1);
+    if (event.target.closest('[data-detail-next]')) return go(1);
+    const thumb = event.target.closest('[data-detail-thumb]');
+    if (thumb) {
+      index = Number(thumb.dataset.detailThumb);
+      paint();
+    }
+  });
+
+  on(root, 'keydown', (event) => {
+    if (!event.target.closest('[data-stage]')) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); go(-1); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); go(1); }
+  });
+
+  let swipe = null;
+  on(root, 'pointerdown', (event) => {
+    if (event.pointerType === 'mouse' || !event.target.closest('[data-zoom-frame]')) return;
+    swipe = { x: event.clientX, y: event.clientY };
+  });
+  on(root, 'pointerup', (event) => {
+    if (!swipe) return;
+    const dx = event.clientX - swipe.x;
+    const dy = event.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx > 0 ? 1 : -1);
+  });
+  /* Pointer zoom on fine pointers — identical feel to the studio stage. */
+  on(root, 'pointermove', (event) => {
+    const frame = event.target.closest('[data-zoom-frame]');
+    if (!frame || event.pointerType !== 'mouse') return;
+    const rect = frame.getBoundingClientRect();
+    frame.style.setProperty('--zx', `${((event.clientX - rect.left) / Math.max(1, rect.width)) * 100}%`);
+    frame.style.setProperty('--zy', `${((event.clientY - rect.top) / Math.max(1, rect.height)) * 100}%`);
+    frame.classList.add('is-zooming');
+  });
+  on(root, 'pointerout', (event) => {
+    const frame = event.target.closest('[data-zoom-frame]');
+    if (frame && !frame.contains(event.relatedTarget)) frame.classList.remove('is-zooming');
+  });
+}
+
 async function initEcommerce() {
   const page = kit.pageId();
   switch (page) {
@@ -182,7 +286,7 @@ async function initEcommerce() {
 
     case 'ecommerce/product-details.html': {
       const id = queryParam('id');
-      await detailPage({
+      const detailRecord = await detailPage({
         resource: 'products',
         id,
         title: 'جزئیات محصول',
@@ -194,7 +298,7 @@ async function initEcommerce() {
           (p) => card({
             title: 'مشخصات',
             body: `<div class="detail-split">
-              <img class="detail-split__media" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />
+              <div class="pm pm--detail" data-detail-gallery aria-label="گالری تصاویر محصول"></div>
               <div>${infoRows([
                 ['قیمت پایه', formatCurrency(p.price, 'IRR')],
                 ['تخفیف', `${toDigits(p.discount ?? 0)}٪`],
@@ -219,6 +323,8 @@ async function initEcommerce() {
       });
       const duplicate = $('[data-duplicate]');
       if (duplicate) on(duplicate, 'click', () => toast.success('محصول کپی شد', 'نسخه کپی با شناسه جدید در فهرست محصولات قرار گرفت.'));
+      /* Called after `detailPage` rendered the tabs so the gallery can mount. */
+      initProductGallery($('[data-detail-gallery]'), detailRecord);
       return;
     }
 
@@ -596,8 +702,502 @@ async function initEcommerce() {
       return;
     }
 
-    case 'ecommerce/brands.html':
-    case 'ecommerce/tags.html':
+    case 'ecommerce/brands.html': {
+      const node = host();
+      render(node, `<div class="dashboard-shell">${kit.skeleton(4)}</div>`);
+      const service = services.brandService;
+      const { items: rows, summary } = await service.list({ perPage: 200, sort: 'revenue', order: 'desc' });
+      const state = { q: '', filter: 'all', sort: 'revenue' };
+
+      const maxRevenue = Math.max(...rows.map((row) => row.revenue || 0), 1);
+      const grandRevenue = rows.reduce((sum, row) => sum + (row.revenue || 0), 0);
+      const toneFor = (tier) => ({ 'برتر': 'success', 'حرفه‌ای': 'primary', 'اقتصادی': 'warning', 'جدید': 'info' }[tier] ?? 'neutral');
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'برندها',
+            subtitle: 'پرتفوی برندها با سهم واقعی از فروش، کیفیت کاتالوگ و وضعیت موجودی',
+            icon: 'award',
+            badges: [statusBadge(`${toDigits(rows.length)} برند`, 'primary'), statusBadge(`${toDigits(summary.countries)} کشور مبدأ`, 'info')],
+            actions: '<button class="btn btn-primary" type="button" data-brand-add><i class="bi bi-plus-lg"></i> برند جدید</button><button class="btn btn-light" type="button" data-export="csv"><i class="bi bi-download"></i> خروجی CSV</button>',
+          })}
+          <div class="kpi-row" data-brand-kpis></div>
+          <section class="card brand-board">
+            <header class="card__head">
+              <div>
+                <h2 class="card__title">پرتفوی برندها</h2>
+                <p class="card__subtitle">روی هر کارت کلیک کنید تا کاتالوگ همان برند فیلتر شود</p>
+              </div>
+            </header>
+            <div class="brand-toolbar">
+              <label class="brand-toolbar__search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control" placeholder="جستجوی نام برند، کشور یا شهر…" aria-label="جستجوی برند" data-brand-search></label>
+              <div class="brand-seg" role="tablist" aria-label="فیلتر وضعیت">
+                <button type="button" role="tab" class="is-active" aria-selected="true" data-brand-filter="all">همه <span data-brand-count="all"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="featured">برندهای برتر <span data-brand-count="featured"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="active">فعال <span data-brand-count="active"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-brand-filter="low">نیازمند تأمین <span data-brand-count="low"></span></button>
+              </div>
+              <select class="form-select brand-toolbar__sort" aria-label="مرتب‌سازی برندها" data-brand-sort>
+                <option value="revenue">بیشترین فروش</option>
+                <option value="share">سهم بازار</option>
+                <option value="products">بیشترین محصول</option>
+                <option value="rating">بالاترین امتیاز</option>
+                <option value="growth">سریع‌ترین رشد</option>
+                <option value="name">الفبایی</option>
+              </select>
+            </div>
+            <div class="brand-grid" data-brand-grid></div>
+            <div class="brand-empty" data-brand-empty hidden></div>
+          </section>
+          <section class="card brand-rank">
+            <header class="card__head">
+              <div><h2 class="card__title">رتبه‌بندی برندها بر پایه فروش</h2><p class="card__subtitle">میله‌ها نسبت به پرفروش‌ترین برند مقیاس شده‌اند</p></div>
+              <span class="badge badge--soft-success"><i class="bi bi-graph-up-arrow"></i> مجموع ${escapeHtml(formatCurrency(grandRevenue, 'IRR', { compact: true }))}</span>
+            </header>
+            <div class="brand-rank__body" data-brand-rank></div>
+          </section>
+          <section class="card">
+            <header class="card__head">
+              <div><h2 class="card__title">فهرست کامل برندها</h2><p class="card__subtitle">مرتب‌سازی، جستجو و صفحه‌بندی روی همه ستون‌ها فعال است</p></div>
+            </header>
+            <div class="card__body" data-datatable data-resource="brands">
+              <div class="table-wrap"><table class="table table--hover"><thead><tr></tr></thead><tbody data-datatable-body></tbody></table></div>
+              <div class="datatable__foot" data-datatable-foot></div>
+            </div>
+          </section>
+        </div>`,
+      );
+
+      const paintKpis = () => {
+        const cells = [
+          ['برندهای فعال', toDigits(summary.active), `${toDigits(summary.featured)} برند برتر • ${toDigits(summary.countries)} کشور مبدأ`, 'primary', 'award'],
+          ['محصولات کاتالوگ', toDigits(summary.products), `${toDigits(summary.sold)} فروش ثبت‌شده`, 'info', 'box-seam'],
+          ['درآمد برندها', formatCurrency(summary.revenue, 'IRR', { compact: true }), `میانگین امتیاز ${formatNumber(summary.avgRating, { decimals: 1 })} از ۵`, 'success', 'graph-up-arrow'],
+          ['هشدار تأمین', toDigits(summary.lowStock + summary.outOfStock), `${toDigits(summary.lowStock)} موجودی کم • ${toDigits(summary.outOfStock)} ناموجود`, 'warning', 'exclamation-triangle'],
+        ];
+        $('[data-brand-kpis]', node).innerHTML = cells
+          .map(
+            ([label, value, meta, tone, icon]) => `<article class="stat-card">
+              <div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span><span class="stat-card__icon stat-card__icon--${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i></span></div>
+              <p class="stat-card__value">${escapeHtml(value)}</p>
+              <p class="stat-card__meta">${escapeHtml(meta)}</p>
+            </article>`,
+          )
+          .join('');
+      };
+
+      const matches = (row) => {
+        const q = state.q.trim().toLowerCase();
+        if (q && ![row.name, row.country, row.city, row.tier].some((field) => String(field ?? '').toLowerCase().includes(q))) return false;
+        if (state.filter === 'featured') return Boolean(row.featured);
+        if (state.filter === 'active') return row.status === 'active';
+        if (state.filter === 'low') return row.lowStock + row.outOfStock > 0;
+        return true;
+      };
+
+      const sorters = {
+        revenue: (a, b) => b.revenue - a.revenue,
+        share: (a, b) => b.share - a.share,
+        products: (a, b) => b.products - a.products,
+        rating: (a, b) => b.rating - a.rating,
+        growth: (a, b) => b.growth - a.growth,
+        name: (a, b) => a.name.localeCompare(b.name, 'fa'),
+      };
+
+      const cardHtml = (row) => `<article class="brand-card${row.status === 'active' ? '' : ' is-off'}" tabindex="0" role="button" data-brand-card="${escapeHtml(row.id)}" aria-label="مشاهده محصولات ${escapeHtml(row.name)}">
+        <header class="brand-card__head">
+          <span class="brand-card__logo"><img src="${escapeHtml(row.logo)}" alt="" loading="lazy" /></span>
+          <div class="brand-card__id">
+            <strong>${escapeHtml(row.name)}</strong>
+            <small><i class="bi bi-geo-alt"></i> ${escapeHtml(row.country)}${row.city ? ` — ${escapeHtml(row.city)}` : ''}</small>
+          </div>
+          <span class="brand-card__tier brand-card__tier--${toneFor(row.tier)}">${escapeHtml(row.tier)}</span>
+        </header>
+        <p class="brand-card__desc">${escapeHtml(row.description)}</p>
+        <div class="brand-card__stats">
+          <span><b class="numeric">${toDigits(row.products)}</b><small>محصول</small></span>
+          <span><b class="numeric">${toDigits(row.sold)}</b><small>فروش</small></span>
+          <span><b class="numeric">${formatCurrency(row.revenue, 'IRR', { compact: true })}</b><small>درآمد</small></span>
+        </div>
+        <div class="brand-card__meter">
+          <span class="brand-card__meter-label">سهم از فروش <b class="numeric">${formatPercent(row.share, { decimals: 1 })}</b></span>
+          <span class="brand-card__bar"><i style="--w:${Math.max(3, Math.round((row.revenue / maxRevenue) * 100))}%"></i></span>
+        </div>
+        <footer class="brand-card__foot">
+          <span class="brand-card__rating rating rating--readonly" aria-label="امتیاز ${toDigits(row.rating)} از ۵">${Array.from({ length: 5 }, (_, i) => `<i class="bi bi-star${i < Math.round(row.rating) ? '-fill' : ''}" aria-hidden="true"></i>`).join('')}<b class="numeric">${formatNumber(row.rating, { decimals: 1 })}</b></span>
+          <span class="brand-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })}</span>
+          <span class="brand-card__since">از سال ${toDigits(row.since)}</span>
+        </footer>
+        <div class="brand-card__actions">
+          <button type="button" class="icon-btn icon-btn--sm" data-brand-edit="${escapeHtml(row.id)}" title="ویرایش" aria-label="ویرایش ${escapeHtml(row.name)}"><i class="bi bi-pencil"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm" data-brand-toggle="${escapeHtml(row.id)}" title="${row.status === 'active' ? 'غیرفعال‌سازی' : 'فعال‌سازی'}" aria-label="${row.status === 'active' ? 'غیرفعال‌سازی' : 'فعال‌سازی'} ${escapeHtml(row.name)}"><i class="bi bi-${row.status === 'active' ? 'pause-circle' : 'play-circle'}"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" data-brand-delete="${escapeHtml(row.id)}" title="حذف" aria-label="حذف ${escapeHtml(row.name)}"><i class="bi bi-trash3"></i></button>
+        </div>
+      </article>`;
+
+      const paintGrid = () => {
+        const list = rows.filter(matches).sort(sorters[state.sort] ?? sorters.revenue);
+        $('[data-brand-grid]', node).innerHTML = list.map(cardHtml).join('');
+        const empty = $('[data-brand-empty]', node);
+        empty.hidden = list.length > 0;
+        if (!list.length) empty.innerHTML = emptyState({ title: 'برندی با این فیلتر پیدا نشد', text: 'عبارت جستجو را کوتاه‌تر کنید یا فیلتر دیگری انتخاب کنید.', icon: 'search' });
+        $$('[data-brand-count]', node).forEach((el) => {
+          const key = el.dataset.brandCount;
+          const count = key === 'all' ? rows.length : rows.filter((row) => (key === 'featured' ? row.featured : key === 'low' ? row.lowStock + row.outOfStock > 0 : row.status === key)).length;
+          el.textContent = toDigits(count);
+        });
+      };
+
+      const paintRank = () => {
+        const top = [...rows].sort(sorters.revenue).slice(0, 8);
+        $('[data-brand-rank]', node).innerHTML = top
+          .map(
+            (row, index) => `<div class="brand-rank__row" data-brand-jump="${escapeHtml(row.id)}" role="button" tabindex="0">
+              <span class="brand-rank__place numeric">${toDigits(index + 1)}</span>
+              <span class="brand-rank__logo"><img src="${escapeHtml(row.logo)}" alt="" loading="lazy" /></span>
+              <span class="brand-rank__name">${escapeHtml(row.name)}<small>${escapeHtml(row.country)} • ${toDigits(row.products)} محصول</small></span>
+              <span class="brand-rank__track"><i style="--w:${Math.max(4, Math.round((row.revenue / maxRevenue) * 100))}%"></i></span>
+              <span class="brand-rank__value numeric">${escapeHtml(formatCurrency(row.revenue, 'IRR', { compact: true }))}<small>${formatPercent(row.share, { decimals: 1 })} سهم</small></span>
+              <span class="brand-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })}</span>
+            </div>`,
+          )
+          .join('');
+      };
+
+      paintKpis();
+      paintGrid();
+      paintRank();
+
+      const table = createDataTable($('[data-datatable]', node), { resource: 'brands', perPage: 10, sort: 'revenue', order: 'desc' });
+
+      const openForm = (row = null) =>
+        openRecordForm({
+          resource: 'brands',
+          id: row?.id ?? null,
+          title: row ? `ویرایش ${row.name}` : 'افزودن برند جدید',
+          subtitle: 'اطلاعات پایه، مبدأ و جایگاه برند در پرتفوی',
+          fields: crudFields('brands'),
+          onSaved: () => window.location.reload(),
+        });
+
+      let searchTimer;
+      on($('[data-brand-search]', node), 'input', (event) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = event.target.value;
+          paintGrid();
+        }, 140);
+      });
+      on($('[data-brand-sort]', node), 'change', (event) => {
+        state.sort = event.target.value;
+        paintGrid();
+        paintRank();
+      });
+      $$('[data-brand-filter]', node).forEach((button) =>
+        on(button, 'click', () => {
+          state.filter = button.dataset.brandFilter;
+          $$('[data-brand-filter]', node).forEach((b) => {
+            b.classList.toggle('is-active', b === button);
+            b.setAttribute('aria-selected', String(b === button));
+          });
+          paintGrid();
+        }),
+      );
+      on($('[data-brand-add]', node), 'click', () => openForm());
+      exportable(node, 'brands');
+
+      on($('[data-brand-grid]', node), 'click', async (event) => {
+        const edit = event.target.closest('[data-brand-edit]');
+        const toggle = event.target.closest('[data-brand-toggle]');
+        const remove = event.target.closest('[data-brand-delete]');
+        if (edit) return openForm(rows.find((row) => row.id === edit.dataset.brandEdit));
+        if (toggle) {
+          const row = rows.find((r) => r.id === toggle.dataset.brandToggle);
+          if (!row) return;
+          const next = row.status === 'active' ? 'inactive' : 'active';
+          row.status = next;
+          paintGrid();
+          try {
+            await service.update(row.id, { status: next });
+            toast.success(next === 'active' ? 'برند فعال شد' : 'برند غیرفعال شد', row.name);
+            table?.reload();
+          } catch {
+            row.status = next === 'active' ? 'inactive' : 'active';
+            paintGrid();
+            toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
+          }
+          return;
+        }
+        if (remove) {
+          const row = rows.find((r) => r.id === remove.dataset.brandDelete);
+          if (!row) return;
+          const ok = await modal.confirm({
+            title: 'حذف برند',
+            text: `«${row.name}» از پرتفوی حذف می‌شود. ${toDigits(row.products)} محصول این برند بدون برند باقی می‌مانند.`,
+            tone: 'danger',
+            confirmText: 'حذف برند',
+          });
+          if (!ok) return;
+          await service.remove(row.id);
+          toast.success('برند حذف شد', row.name);
+          await service.list({ perPage: 200 }).then(({ items }) => {
+            rows.splice(0, rows.length, ...items);
+          });
+          paintGrid();
+          paintRank();
+          table?.reload();
+          return;
+        }
+        const card = event.target.closest('[data-brand-card]');
+        if (card) window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(rows.find((r) => r.id === card.dataset.brandCard)?.name ?? '')}`);
+      });
+
+      on($('[data-brand-rank]', node), 'click', (event) => {
+        const row = event.target.closest('[data-brand-jump]');
+        if (!row) return;
+        const name = rows.find((r) => r.id === row.dataset.brandJump)?.name ?? '';
+        window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(name)}`);
+      });
+      return;
+    }
+
+    case 'ecommerce/tags.html': {
+      const node = host();
+      render(node, `<div class="dashboard-shell">${kit.skeleton(4)}</div>`);
+      const service = services.tagService;
+      const { items: rows, summary } = await service.list({ perPage: 200, sort: 'products', order: 'desc' });
+      const state = { q: '', filter: 'all', sort: 'products' };
+
+      const maxProducts = Math.max(...rows.map((row) => row.products || 0), 1);
+      const toneForKind = (kind) => (kind === 'auto' ? 'info' : 'violet');
+
+      render(
+        node,
+        `<div class="dashboard-shell">
+          ${pageHeader({
+            title: 'برچسب‌ها',
+            subtitle: 'برچسب‌گذاری کاتالوگ، قواعد خودکار و اثر هر برچسب بر بازدید و فروش',
+            icon: 'tags',
+            badges: [statusBadge(`${toDigits(rows.length)} برچسب`, 'primary'), statusBadge(`${toDigits(summary.automatic)} قاعده خودکار`, 'info')],
+            actions: '<button class="btn btn-primary" type="button" data-tag-add><i class="bi bi-plus-lg"></i> برچسب جدید</button><button class="btn btn-light" type="button" data-export="csv"><i class="bi bi-download"></i> خروجی CSV</button>',
+          })}
+          <div class="kpi-row" data-tag-kpis></div>
+          <section class="card tag-board">
+            <header class="card__head">
+              <div><h2 class="card__title">ابر برچسب‌ها</h2><p class="card__subtitle">اندازه هر برچسب به تعداد محصولاتش بستگی دارد — برای فیلتر کردن کلیک کنید</p></div>
+            </header>
+            <div class="tag-cloud" data-tag-cloud></div>
+            <div class="tag-toolbar">
+              <label class="tag-toolbar__search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control" placeholder="جستجوی برچسب، اسلاگ یا توضیح…" aria-label="جستجوی برچسب" data-tag-search></label>
+              <div class="tag-seg" role="tablist" aria-label="فیلتر نوع برچسب">
+                <button type="button" role="tab" class="is-active" aria-selected="true" data-tag-filter="all">همه <span data-tag-count="all"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="auto">خودکار <span data-tag-count="auto"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="manual">دستی <span data-tag-count="manual"></span></button>
+                <button type="button" role="tab" aria-selected="false" data-tag-filter="archived">بایگانی <span data-tag-count="archived"></span></button>
+              </div>
+              <select class="form-select tag-toolbar__sort" aria-label="مرتب‌سازی برچسب‌ها" data-tag-sort>
+                <option value="products">بیشترین محصول</option>
+                <option value="views">بیشترین بازدید</option>
+                <option value="conversion">بالاترین نرخ تبدیل</option>
+                <option value="growth">سریع‌ترین رشد</option>
+                <option value="name">الفبایی</option>
+              </select>
+            </div>
+            <div class="tag-grid" data-tag-grid></div>
+            <div class="tag-empty" data-tag-empty hidden></div>
+          </section>
+          <section class="card">
+            <header class="card__head">
+              <div><h2 class="card__title">فهرست کامل برچسب‌ها</h2><p class="card__subtitle">نوع، تعداد محصول، بازدید، نرخ تبدیل و رشد هر برچسب</p></div>
+            </header>
+            <div class="card__body" data-datatable data-resource="tags">
+              <div class="table-wrap"><table class="table table--hover"><thead><tr></tr></thead><tbody data-datatable-body></tbody></table></div>
+              <div class="datatable__foot" data-datatable-foot></div>
+            </div>
+          </section>
+        </div>`,
+      );
+
+      const paintKpis = () => {
+        const cells = [
+          ['برچسب‌های فعال', toDigits(summary.active), `${toDigits(summary.archived)} بایگانی‌شده • ${toDigits(summary.manual)} برچسب دستی`, 'primary', 'tags'],
+          ['محصولات برچسب‌خورده', toDigits(summary.products), `${toDigits(summary.assignments)} انتساب برچسب`, 'info', 'box-seam'],
+          ['مجموع بازدید', formatNumber(summary.views), `میانگین نرخ تبدیل ${formatPercent(summary.avgConversion, { decimals: 1 })}`, 'success', 'eye'],
+          ['فروش برچسب‌خورده', formatCurrency(summary.revenue, 'IRR', { compact: true }), `پرفروش‌ترین برچسب: ${summary.top}`, 'warning', 'graph-up-arrow'],
+        ];
+        $('[data-tag-kpis]', node).innerHTML = cells
+          .map(
+            ([label, value, meta, tone, icon]) => `<article class="stat-card">
+              <div class="stat-card__head"><span class="stat-card__label">${escapeHtml(label)}</span><span class="stat-card__icon stat-card__icon--${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i></span></div>
+              <p class="stat-card__value">${escapeHtml(value)}</p>
+              <p class="stat-card__meta">${escapeHtml(meta)}</p>
+            </article>`,
+          )
+          .join('');
+      };
+
+      const sorters = {
+        products: (a, b) => b.products - a.products,
+        views: (a, b) => b.views - a.views,
+        conversion: (a, b) => b.conversion - a.conversion,
+        growth: (a, b) => b.growth - a.growth,
+        name: (a, b) => a.name.localeCompare(b.name, 'fa'),
+      };
+      const matches = (row) => {
+        const q = state.q.trim().toLowerCase();
+        if (q && ![row.name, row.slug, row.description].some((field) => String(field ?? '').toLowerCase().includes(q))) return false;
+        if (state.filter === 'all') return true;
+        if (state.filter === 'archived') return row.status !== 'active';
+        return row.kind === state.filter;
+      };
+
+      const chipHtml = (row) => `<button type="button" class="tag-chip tag-chip--${escapeHtml(row.color)}${row.status === 'active' ? '' : ' is-off'}" style="--weight:${Math.round((0.82 + (row.popularity / 100) * 0.5) * 100) / 100}" data-tag-filter-chip="${escapeHtml(row.id)}" aria-label="فیلتر برچسب ${escapeHtml(row.name)}">
+        <span class="tag-chip__hash">#</span>${escapeHtml(row.name)}<span class="tag-chip__count numeric">${toDigits(row.products)}</span>
+      </button>`;
+
+      const cardHtml = (row) => `<article class="tag-card${row.status === 'active' ? '' : ' is-off'}" data-tag-card="${escapeHtml(row.id)}" data-tone="${escapeHtml(row.color)}">
+        <header class="tag-card__head">
+          <span class="tag-card__icon"><i class="bi bi-hash" aria-hidden="true"></i></span>
+          <div class="tag-card__id">
+            <strong>${escapeHtml(row.name)}</strong>
+            <code dir="ltr">/${escapeHtml(row.slug)}</code>
+          </div>
+          <span class="badge badge--soft-${toneForKind(row.kind)}"><i class="bi bi-${row.kind === 'auto' ? 'lightning-charge' : 'hand-index'}"></i> ${row.kind === 'auto' ? 'خودکار' : 'دستی'}</span>
+        </header>
+        <p class="tag-card__desc">${escapeHtml(row.description)}</p>
+        <div class="tag-card__stats">
+          <span><b class="numeric">${toDigits(row.products)}</b><small>محصول</small></span>
+          <span><b class="numeric">${formatNumber(row.views)}</b><small>بازدید</small></span>
+          <span><b class="numeric">${formatPercent(row.conversion, { decimals: 1 })}</b><small>نرخ تبدیل</small></span>
+        </div>
+        <div class="tag-card__meter">
+          <span class="tag-card__meter-label">پوشش کاتالوگ <b class="numeric">${formatPercent(row.usageShare, { decimals: 1 })}</b></span>
+          <span class="tag-card__bar"><i style="--w:${Math.max(3, Math.round((row.products / maxProducts) * 100))}%"></i></span>
+        </div>
+        <footer class="tag-card__foot">
+          <span class="tag-trend ${row.growth >= 0 ? 'is-up' : 'is-down'}"><i class="bi bi-${row.growth >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i>${formatPercent(Math.abs(row.growth), { decimals: 1 })} نسبت به فصل قبل</span>
+          <span class="tag-card__revenue">${escapeHtml(formatCurrency(row.revenue, 'IRR', { compact: true }))}</span>
+          <span class="badge badge--soft-${row.status === 'active' ? 'success' : 'neutral'}">${row.status === 'active' ? 'فعال' : 'بایگانی'}</span>
+        </footer>
+        <div class="tag-card__actions">
+          <button type="button" class="icon-btn icon-btn--sm" data-tag-edit="${escapeHtml(row.id)}" title="ویرایش" aria-label="ویرایش ${escapeHtml(row.name)}"><i class="bi bi-pencil"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm" data-tag-toggle="${escapeHtml(row.id)}" title="${row.status === 'active' ? 'بایگانی کن' : 'فعال کن'}" aria-label="${row.status === 'active' ? 'بایگانی' : 'فعال‌سازی'} ${escapeHtml(row.name)}"><i class="bi bi-${row.status === 'active' ? 'archive' : 'arrow-counterclockwise'}"></i></button>
+          <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" data-tag-delete="${escapeHtml(row.id)}" title="حذف" aria-label="حذف ${escapeHtml(row.name)}"><i class="bi bi-trash3"></i></button>
+        </div>
+      </article>`;
+
+      const paintCloud = () => {
+        const list = [...rows].sort(sorters.products).slice(0, 12);
+        $('[data-tag-cloud]', node).innerHTML = list.map(chipHtml).join('');
+      };
+
+      const paintGrid = () => {
+        const list = rows.filter(matches).sort(sorters[state.sort] ?? sorters.products);
+        $('[data-tag-grid]', node).innerHTML = list.map(cardHtml).join('');
+        const empty = $('[data-tag-empty]', node);
+        empty.hidden = list.length > 0;
+        if (!list.length) empty.innerHTML = emptyState({ title: 'برچسبی با این فیلتر پیدا نشد', text: 'عبارت جستجو را کوتاه‌تر کنید یا فیلتر دیگری انتخاب کنید.', icon: 'search' });
+        $$('[data-tag-count]', node).forEach((el) => {
+          const key = el.dataset.tagCount;
+          const count = key === 'all' ? rows.length : rows.filter((row) => (key === 'archived' ? row.status !== 'active' : row.kind === key)).length;
+          el.textContent = toDigits(count);
+        });
+      };
+
+      paintKpis();
+      paintCloud();
+      paintGrid();
+
+      const table = createDataTable($('[data-datatable]', node), { resource: 'tags', perPage: 10, sort: 'products', order: 'desc' });
+
+      const openForm = (row = null) =>
+        openRecordForm({
+          resource: 'tags',
+          id: row?.id ?? null,
+          title: row ? `ویرایش برچسب ${row.name}` : 'افزودن برچسب جدید',
+          subtitle: 'نام، رنگ، نوع انتساب و توضیح کاربرد برچسب',
+          fields: crudFields('tags'),
+          onSaved: () => window.location.reload(),
+        });
+
+      let searchTimer;
+      on($('[data-tag-search]', node), 'input', (event) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = event.target.value;
+          paintGrid();
+        }, 140);
+      });
+      on($('[data-tag-sort]', node), 'change', (event) => {
+        state.sort = event.target.value;
+        paintGrid();
+      });
+      $$('[data-tag-filter]', node).forEach((button) =>
+        on(button, 'click', () => {
+          state.filter = button.dataset.tagFilter;
+          $$('[data-tag-filter]', node).forEach((b) => {
+            b.classList.toggle('is-active', b === button);
+            b.setAttribute('aria-selected', String(b === button));
+          });
+          paintGrid();
+        }),
+      );
+      on($('[data-tag-add]', node), 'click', () => openForm());
+      exportable(node, 'tags');
+      on($('[data-tag-cloud]', node), 'click', (event) => {
+        const chip = event.target.closest('[data-tag-filter-chip]');
+        if (!chip) return;
+        const row = rows.find((r) => r.id === chip.dataset.tagFilterChip);
+        window.location.href = url(`ecommerce/products.html?q=${encodeURIComponent(row?.name ?? '')}`);
+      });
+
+      on($('[data-tag-grid]', node), 'click', async (event) => {
+        const edit = event.target.closest('[data-tag-edit]');
+        const toggle = event.target.closest('[data-tag-toggle]');
+        const remove = event.target.closest('[data-tag-delete]');
+        if (edit) return openForm(rows.find((row) => row.id === edit.dataset.tagEdit));
+        if (toggle) {
+          const row = rows.find((r) => r.id === toggle.dataset.tagToggle);
+          if (!row) return;
+          const next = row.status === 'active' ? 'archived' : 'active';
+          row.status = next;
+          paintGrid();
+          paintCloud();
+          try {
+            await service.update(row.id, { status: next });
+            toast.success(next === 'active' ? 'برچسب فعال شد' : 'برچسب بایگانی شد', row.name);
+            table?.reload();
+          } catch {
+            row.status = next === 'active' ? 'archived' : 'active';
+            paintGrid();
+            toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
+          }
+          return;
+        }
+        if (remove) {
+          const row = rows.find((r) => r.id === remove.dataset.tagDelete);
+          if (!row) return;
+          const ok = await modal.confirm({
+            title: 'حذف برچسب',
+            text: `«${row.name}» از ${toDigits(row.products)} محصول برداشته می‌شود. محصولات حذف نمی‌شوند.`,
+            tone: 'danger',
+            confirmText: 'حذف برچسب',
+          });
+          if (!ok) return;
+          await service.remove(row.id);
+          await service.list({ perPage: 200 }).then(({ items }) => {
+            rows.splice(0, rows.length, ...items);
+          });
+          paintCloud();
+          paintGrid();
+          table?.reload();
+        }
+      });
+      return;
+    }
+
     case 'ecommerce/coupons.html':
     case 'ecommerce/reviews.html': {
       const resource = page.split('/').pop().replace('.html', '');
@@ -729,13 +1329,34 @@ async function ecommerceProductForm() {
   const SAMPLE_POOL = Array.from({ length: 24 }, (_, i) => `assets/img/products/product-${String(i + 1).padStart(2, '0')}.svg`);
   let seq = 0;
   const makeId = () => `img-${Date.now().toString(36)}-${(seq += 1)}`;
-  let productImages = (Array.isArray(values.images) && values.images.length
-    ? values.images
-    : [
-        { url: values.image || 'assets/img/products/product-01.svg', name: 'تصویر اصلی', alt: values.name ?? '' },
-        { url: 'assets/img/products/product-02.svg', name: 'نمای زاویه‌دار', alt: '' },
-      ]
-  ).map((img, index) => ({ id: img.id ?? makeId(), url: img.url, name: img.name ?? `تصویر ${index + 1}`, alt: img.alt ?? '', isCover: index === 0 ? img.isCover !== false : Boolean(img.isCover) }));
+  /**
+   * Gallery seed.
+   *
+   * Editing a product must show *its own* photos: records store the cover in
+   * `image` and (after a save) the whole gallery in `images`, which older data
+   * may keep as a plain array of URLs. Both shapes are normalised here so the
+   * carousel — add, remove, reorder, set cover — always opens with the real
+   * media, exactly like the create screen.
+   */
+  const seed = (() => {
+    const stored = Array.isArray(values.images) ? values.images.filter(Boolean) : [];
+    const list = stored.map((img, index) => (typeof img === 'string' ? { url: img, name: `تصویر ${index + 1}`, alt: '' } : img));
+    if (list.length) return list;
+    if (id || values.image) {
+      return [{ url: values.image || 'assets/img/products/product-01.svg', name: 'تصویر اصلی', alt: values.name ?? '' }];
+    }
+    return [
+      { url: 'assets/img/products/product-01.svg', name: 'تصویر اصلی', alt: '' },
+      { url: 'assets/img/products/product-02.svg', name: 'نمای زاویه‌دار', alt: '' },
+    ];
+  })();
+  let productImages = seed.map((img, index) => ({
+    id: img.id ?? makeId(),
+    url: img.url,
+    name: img.name ?? `تصویر ${index + 1}`,
+    alt: img.alt ?? '',
+    isCover: img.isCover === undefined ? index === 0 : Boolean(img.isCover),
+  }));
   if (!productImages.some((img) => img.isCover) && productImages[0]) productImages[0].isCover = true;
   let currentImageIndex = 0;
   const blobUrls = new Set();
@@ -1261,10 +1882,21 @@ async function initFinance() {
       /**
        * `financeReportsService` answers with the shapes the data layer keeps —
        * cash flow as twelve `{ month, inflow, outflow }` buckets, the balance
-       * sheet as `rows`, and receivables as a *plain array* of buckets. Every
-       * number on this page is read from those fields; the ageing percentages
-       * are derived here rather than expected from the service.
+       * sheet as `rows`, receivables as a plain array of buckets and P&L as
+       * `lines`. Every figure on this page is derived from those fields: the
+       * half-over-half deltas, the runway, the current ratio and the cover
+       * meter are computed here, never hard-coded.
        */
+      /**
+       * The chart is drawn from `onData` (after the shell is in the DOM), while
+       * the series are computed inside `paint` — so the payload is handed over
+       * through this variable instead of being closed over.
+       */
+      let cashflowChart = null;
+      /* Set inside `paint`, read by both the card copy and `onData` — a phone
+         gets six months, a wider screen the whole year. */
+      let cashflowPhone = false;
+
       const paint = async () => {
         const [cashFlow, balance, aging, profit] = await Promise.all([
           services.financeReportsService.cashFlow(),
@@ -1273,51 +1905,166 @@ async function initFinance() {
           services.financeReportsService.profitAndLoss(),
         ]);
         const months = cashFlow.series ?? [];
-        const JALALI = monthNames().jalali;
-        const labels = months.map((row) => JALALI[row.month % 12] ?? `ماه ${row.month + 1}`);
+        /* Axis labels read in the interface's own calendar — Jalali under a
+           Persian UI, Gregorian under English/Arabic (see `core/jalali.js`). */
+        const NAMES = monthNames12();
+        const labels = months.map((row) => NAMES[row.month % 12] ?? `ماه ${row.month + 1}`);
         const buckets = Array.isArray(aging) ? aging : (aging?.buckets ?? []);
         const outstanding = buckets.reduce((sum, bucket) => sum + (bucket.amount ?? 0), 0);
-        const peak = Math.max(1, ...buckets.map((bucket) => bucket.amount ?? 0));
-        const assets = (balance.rows ?? []).filter((row) => row.value > 0);
-        const liabilities = (balance.rows ?? []).filter((row) => row.value <= 0);
-        return `<div class="dashboard-shell">
+        const outstandingCount = buckets.reduce((sum, bucket) => sum + (bucket.count ?? 0), 0);
+        const rows = balance.rows ?? [];
+        const assets = rows.filter((row) => row.value > 0);
+        const liabilities = rows.filter((row) => row.value < 0);
+        const assetTotal = assets.reduce((sum, row) => sum + row.value, 0);
+        const liabilityTotal = Math.abs(liabilities.reduce((sum, row) => sum + row.value, 0));
+        const netWorth = assetTotal - liabilityTotal;
+        const cash = rows.find((row) => row.label?.includes('نقد'))?.value ?? assets[0]?.value ?? 0;
+        const burn = (cashFlow.outflow ?? 0) / Math.max(1, months.length);
+        const runway = burn ? cash / burn : 0;
+        const currentRatio = liabilityTotal ? assetTotal / liabilityTotal : 0;
+        const netMargin = profit.revenue ? (profit.net / profit.revenue) * 100 : 0;
+
+        /** Second half of the period against the first — the "so what?" delta. */
+        const half = Math.max(1, Math.floor(months.length / 2));
+        const sumOf = (side, key) =>
+          months.slice(side === 'recent' ? -half : 0, side === 'recent' ? months.length : half).reduce((sum, row) => sum + (row[key] ?? 0), 0);
+        const delta = (key) => {
+          const before = sumOf('early', key);
+          return before ? Number((((sumOf('recent', key) - before) / before) * 100).toFixed(1)) : 0;
+        };
+        const netSeries = months.map((row) => row.inflow - row.outflow);
+        const spark = (key) => months.map((row) => (key === 'net' ? row.inflow - row.outflow : row[key]));
+        const peakAging = Math.max(1, ...buckets.map((bucket) => bucket.amount ?? 0));
+        const worstMonth = months.reduce((worst, row, index) => (row.inflow - row.outflow < (months[worst]?.inflow ?? 0) - (months[worst]?.outflow ?? 0) ? index : worst), 0);
+        const bestMonth = months.reduce((best, row, index) => (row.inflow - row.outflow > (months[best]?.inflow ?? 0) - (months[best]?.outflow ?? 0) ? index : best), 0);
+        const meter = (value, max) => Math.max(3, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
+
+        /* Read once per render: the chart body is built after `paint()`, and a
+           phone should never receive the twelve-month combo in the first place. */
+        cashflowPhone = window.matchMedia('(max-width: 640px)').matches;
+        cashflowChart = {
+          labels,
+          series: [
+            { name: 'ورودی', data: months.map((row) => row.inflow), type: 'column' },
+            { name: 'خروجی', data: months.map((row) => row.outflow), type: 'column' },
+            { name: 'خالص', data: netSeries, type: 'line', dashed: true },
+          ],
+        };
+
+        return `<div class="dashboard-shell fin">
           ${pageHeader({
             title: 'نمای کلی مالی',
-            subtitle: 'جریان نقدی دوازده ماه، ترازنامه و مطالبات باز — همه از همان لایه سرویس',
+            subtitle: 'تصویر یک‌نگاه از نقدینگی، مطالبات و سودآوری — محاسبه‌شده از داده‌های همین ماه',
             icon: 'cash-stack',
+            badges: [
+              statusBadge(`حاشیه سود خالص ${toDigits(netMargin.toFixed(1))}٪`, netMargin >= 0 ? 'success' : 'danger'),
+              statusBadge(`${toDigits(outstandingCount)} فاکتور باز`, outstandingCount ? 'warning' : 'success'),
+            ],
             actions: toolButtons({ create: 'ثبت دستی', exportResource: 'transactions' }),
           })}
-          ${statsFrom(
-            { inflow: cashFlow.inflow, outflow: cashFlow.outflow, net: cashFlow.net, outstanding },
-            [
-              ['inflow', 'ورودی دوره', 'currency', 'success', 'arrow-down-circle'],
-              ['outflow', 'خروجی دوره', 'currency', 'danger', 'arrow-up-circle'],
-              ['net', 'خالص دوره', 'currency', 'primary', 'activity'],
-              ['outstanding', 'مطالبات باز', 'currency', 'warning', 'hourglass-split'],
-            ],
-          )}
-          <div class="widget-grid">
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'ورودی دوره', value: formatCurrency(cashFlow.inflow ?? 0, 'IRR', { compact: true }), trend: delta('inflow'), meta: 'نیمه دوم در برابر نیمه اول', tone: 'success', icon: 'arrow-down-circle', spark: spark('inflow'), id: 'fin-inflow' })}
+            ${statCard({ label: 'خروجی دوره', value: formatCurrency(cashFlow.outflow ?? 0, 'IRR', { compact: true }), trend: -delta('outflow'), meta: 'رشد کمتر، بهتر', tone: 'danger', icon: 'arrow-up-circle', spark: spark('outflow'), id: 'fin-outflow' })}
+            ${statCard({ label: 'خالص دوره', value: formatCurrency(cashFlow.net ?? 0, 'IRR', { compact: true }), trend: delta('net'), meta: `${toDigits(months.length)} ماه مالی`, tone: 'primary', icon: 'activity', spark: spark('net'), id: 'fin-net' })}
+            ${statCard({ label: 'مطالبات باز', value: formatCurrency(outstanding, 'IRR', { compact: true }), meta: `${toDigits(outstandingCount)} فاکتور تسویه‌نشده`, tone: 'warning', icon: 'hourglass-split', id: 'fin-open' })}
+          </div>
+
+          <div class="widget-grid fin-grid">
             ${card({
               span: 8,
-              title: 'جریان نقدی دوازده ماه',
-              subtitle: 'ستون‌های ورودی و خروجی از رکوردهای واقعی ماه‌به‌ماه ساخته شده‌اند',
-              body: `<div class="chart" data-chart-key="cashflow" data-chart="bar" data-chart-height="320" data-chart-series='${JSON.stringify([
-                { name: 'ورودی', data: months.map((row) => row.inflow) },
-                { name: 'خروجی', data: months.map((row) => row.outflow) },
-              ])}' data-chart-labels='${JSON.stringify(labels)}'></div>`,
-              foot: `<span class="fs-caption text-muted">بیشترین ورودی: <strong class="numeric">${escapeHtml(
-                formatCurrency(Math.max(0, ...months.map((row) => row.inflow)), 'IRR', { compact: true }),
-              )}</strong> · کمترین خالص ماهانه: <strong class="numeric">${escapeHtml(
-                formatCurrency(Math.min(...months.map((row) => row.inflow - row.outflow)), 'IRR', { compact: true }),
-              )}</strong></span>`,
+              className: 'fin-chart-card',
+              icon: 'graph-up-arrow',
+              title: cashflowPhone ? 'جریان نقدی شش ماه اخیر' : 'جریان نقدی دوازده ماه',
+              subtitle: cashflowPhone
+                ? 'ستون‌ها ورودی و خروجی، خط‌چین خالص — شش ماه اخیر، خوانا روی صفحه کوچک'
+                : 'ستون‌ها ورودی و خروجی، خط‌چین خالص هر ماه — همه از رکوردهای واقعی',
+              actions: `<div class="fin-chart-legend">
+                <span><i class="fin-dot fin-dot--in"></i> ورودی</span>
+                <span><i class="fin-dot fin-dot--out"></i> خروجی</span>
+                <span><i class="fin-dot fin-dot--net"></i> خالص</span>
+              </div>`,
+              body: `<div class="chart" data-chart-key="cashflow" data-chart-owner="controller" data-chart-height="330" style="min-height:330px"></div>`,
+              foot: `<div class="fin-chart-foot">
+                <span><i class="bi bi-arrow-up-right-circle text-success"></i> بهترین ماه: <strong>${escapeHtml(labels[bestMonth] ?? '')}</strong> با خالص <strong class="numeric">${escapeHtml(formatCurrency(netSeries[bestMonth] ?? 0, 'IRR', { compact: true }))}</strong></span>
+                <span><i class="bi bi-arrow-down-right-circle text-danger"></i> ضعیف‌ترین ماه: <strong>${escapeHtml(labels[worstMonth] ?? '')}</strong> با خالص <strong class="numeric">${escapeHtml(formatCurrency(netSeries[worstMonth] ?? 0, 'IRR', { compact: true }))}</strong></span>
+              </div>`,
             })}
             ${card({
               span: 4,
+              icon: 'speedometer2',
+              title: 'سلامت مالی',
+              subtitle: 'نسبت‌های کلیدی از ترازنامه و جریان نقدی',
+              body: `<ul class="fin-meters">
+                <li class="fin-meter">
+                  <div class="fin-meter__head"><span>دوره بقای نقدی</span><b class="numeric">${toDigits(runway.toFixed(1))} ماه</b></div>
+                  <span class="fin-meter__bar fin-meter__bar--${runway >= 6 ? 'good' : runway >= 3 ? 'warn' : 'bad'}"><i style="--w:${meter(runway, 12)}%"></i></span>
+                  <p class="fin-meter__hint">موجودی نقدی ${escapeHtml(formatCurrency(cash, 'IRR', { compact: true }))} ÷ میانگین خروجی ماهانه</p>
+                </li>
+                <li class="fin-meter">
+                  <div class="fin-meter__head"><span>نسبت جاری</span><b class="numeric">${toDigits(currentRatio.toFixed(2))}</b></div>
+                  <span class="fin-meter__bar fin-meter__bar--${currentRatio >= 1.5 ? 'good' : currentRatio >= 1 ? 'warn' : 'bad'}"><i style="--w:${meter(currentRatio, 3)}%"></i></span>
+                  <p class="fin-meter__hint">دارایی‌ها ${escapeHtml(formatCurrency(assetTotal, 'IRR', { compact: true }))} در برابر تعهدات ${escapeHtml(formatCurrency(liabilityTotal, 'IRR', { compact: true }))}</p>
+                </li>
+                <li class="fin-meter">
+                  <div class="fin-meter__head"><span>حاشیه سود خالص</span><b class="numeric">${toDigits(netMargin.toFixed(1))}٪</b></div>
+                  <span class="fin-meter__bar fin-meter__bar--${netMargin >= 20 ? 'good' : netMargin >= 8 ? 'warn' : 'bad'}"><i style="--w:${meter(netMargin, 40)}%"></i></span>
+                  <p class="fin-meter__hint">سود خالص ${escapeHtml(formatCurrency(profit.net ?? 0, 'IRR', { compact: true }))} از درآمد ${escapeHtml(formatCurrency(profit.revenue ?? 0, 'IRR', { compact: true }))}</p>
+                </li>
+                <li class="fin-meter">
+                  <div class="fin-meter__head"><span>ارزش خالص</span><b class="numeric">${escapeHtml(formatCurrency(netWorth, 'IRR', { compact: true }))}</b></div>
+                  <span class="fin-meter__bar fin-meter__bar--${netWorth > 0 ? 'good' : 'bad'}"><i style="--w:${meter(Math.abs(netWorth), Math.max(1, assetTotal))}%"></i></span>
+                  <p class="fin-meter__hint">${toDigits(assets.length)} قلم دارایی و ${toDigits(liabilities.length)} قلم تعهد</p>
+                </li>
+              </ul>`,
+            })}
+
+            ${card({
+              span: 5,
+              icon: 'calendar2-check',
+              title: 'نردبان سنی مطالبات',
+              subtitle: `${toDigits(outstandingCount)} فاکتور باز در ${toDigits(buckets.length)} بازه سررسید`,
+              body: buckets.length
+                ? `<ul class="fin-aging">${buckets
+                    .map((bucket, index) => {
+                      const share = Math.round(((bucket.amount ?? 0) / (outstanding || 1)) * 100);
+                      const tone = index === 0 ? 'good' : bucket.days > 60 ? 'bad' : bucket.days > 30 ? 'warn' : 'info';
+                      return `<li class="fin-aging__row">
+                        <span class="fin-aging__label">${escapeHtml(bucket.label)}<small>${toDigits(bucket.count ?? 0)} فاکتور</small></span>
+                        <span class="fin-aging__bar fin-aging__bar--${tone}"><i style="--w:${Math.round(((bucket.amount ?? 0) / peakAging) * 100)}%"></i></span>
+                        <span class="fin-aging__amount"><b class="numeric">${escapeHtml(formatCurrency(bucket.amount ?? 0, 'IRR', { compact: true }))}</b><small>${toDigits(share)}٪ سبد</small></span>
+                      </li>`;
+                    })
+                    .join('')}</ul>
+                  <p class="fin-aging__note"><i class="bi bi-info-circle"></i> تمرکز روی بازه‌های بالای ۶۰ روز = ریسک وصول؛ تماس با مشتریان این بازه در اولویت است.</p>`
+                : emptyState({ title: 'فاکتور تسویه‌نشده‌ای وجود ندارد', text: 'همه فاکتورهای این دوره پرداخت شده‌اند.', icon: 'check2-circle' }),
+            })}
+
+            ${card({
+              span: 3,
+              icon: 'pie-chart',
+              title: 'ترکیب سود و زیان',
+              subtitle: `حاشیه سود ${toDigits(profit.margin ?? 0)}٪`,
+              body: `<ul class="fin-pl">${(profit.lines ?? [])
+                .map((line) => {
+                  const magnitude = Math.abs(line.value ?? 0);
+                  const base = Math.max(1, profit.revenue ?? 1);
+                  return `<li class="fin-pl__row">
+                    <span class="fin-pl__label">${escapeHtml(line.label)}</span>
+                    <span class="fin-pl__bar"><i class="fin-pl__fill fin-pl__fill--${escapeHtml(line.tone ?? 'neutral')}" style="--w:${Math.round((magnitude / base) * 100)}%"></i></span>
+                    <b class="numeric ${line.value < 0 ? 'text-danger' : 'text-success'}">${escapeHtml(formatCurrency(line.value, 'IRR', { compact: true }))}</b>
+                  </li>`;
+                })
+                .join('')}</ul>
+              <div class="fin-pl__total"><span>سود خالص</span><strong class="numeric">${escapeHtml(formatCurrency(profit.net ?? 0, 'IRR', { compact: true }))}</strong></div>`,
+            })}
+
+            ${card({
+              span: 4,
+              icon: 'wallet2',
               title: 'ترکیب ترازنامه',
-              subtitle: `${toDigits(assets.length)} دارایی در برابر ${toDigits(liabilities.length)} بدهی`,
-              body: `<div class="chart" data-chart-key="balance" data-chart="donut" data-chart-height="220" data-chart-series='${JSON.stringify(
-                assets.map((row) => row.value),
-              )}' data-chart-labels='${JSON.stringify(assets.map((row) => row.label))}'></div>
+              subtitle: `${toDigits(assets.length)} دارایی در برابر ${toDigits(liabilities.length)} تعهد`,
+              body: `<div class="chart" data-chart-key="balance" data-chart="donut" data-chart-height="212" data-chart-series='${JSON.stringify(assets.map((row) => row.value))}' data-chart-labels='${JSON.stringify(assets.map((row) => row.label))}'></div>
                 ${infoRows(
                   [...assets, ...liabilities].map((row) => [
                     row.label,
@@ -1325,62 +2072,74 @@ async function initFinance() {
                   ]),
                 )}`,
             })}
-            ${card({
-              span: 4,
-              title: 'صورت سود و زیان',
-              subtitle: `حاشیه سود ${toDigits(profit.margin ?? 0)}٪`,
-              body: `<ul class="list-group list-group--flush">${(profit.lines ?? [])
-                .map(
-                  (line) => `<li class="list-group__item"><span class="list-item__title">${escapeHtml(line.label)}</span><span class="list-item__meta numeric text-${line.tone ?? 'default'}">${escapeHtml(
-                    formatCurrency(line.value, 'IRR', { compact: true }),
-                  )}</span></li>`,
-                )
-                .join('')}</ul>`,
-            })}
-            ${card({
-              span: 8,
-              title: 'گزارش سنی مطالبات',
-              subtitle: `${toDigits(buckets.reduce((sum, bucket) => sum + (bucket.count ?? 0), 0))} فاکتور تسویه‌نشده بر اساس روزهای گذشته از سررسید`,
-              flush: (buckets ?? []).length > 0,
-              body: (buckets ?? []).length
-                ? `<div class="table-wrap"><table class="table table--hover table--compact"><thead><tr><th>بازه</th><th class="text-center">فاکتور</th><th class="text-end">مبلغ باز</th><th>سهم از کل</th></tr></thead><tbody>${buckets
-                    .map(
-                      (bucket) => `<tr>
-                        <th scope="row">${escapeHtml(bucket.label)}</th>
-                        <td class="text-center numeric">${toDigits(bucket.count ?? 0)}</td>
-                        <td class="text-end numeric">${escapeHtml(formatCurrency(bucket.amount ?? 0, 'IRR'))}</td>
-                        <td><div class="progress progress--sm"><div class="progress-bar progress-bar--${bucket.days > 60 ? 'danger' : bucket.days > 30 ? 'warning' : 'primary'}" style="width:${Math.round(
-                          ((bucket.amount ?? 0) / peak) * 100,
-                        )}%"></div></div></td>
-                      </tr>`,
-                    )
-                    .join('')}</tbody></table></div>`
-                : emptyState({ title: 'فاکتور تسویه‌نشده‌ای وجود ندارد', text: 'همه فاکتورهای این دوره پرداخت شده‌اند.', icon: 'check2-circle' }),
-            })}
-            ${card({
-              span: 12,
-              title: 'ریتم ماهانه',
-              subtitle: 'همان اعداد نمودار، به‌صورت جدول — برای مغایرت‌گیری و پیوست گزارش',
-              flush: true,
-              body: `<div class="table-wrap"><table class="table table--hover table--compact"><thead><tr><th>ماه</th><th class="text-end">ورودی</th><th class="text-end">خروجی</th><th class="text-end">خالص</th><th class="text-end">نرخ پوشش</th></tr></thead><tbody>${months
-                .map((row, index) => {
-                  const net = row.inflow - row.outflow;
-                  const cover = row.outflow ? Math.round((row.inflow / row.outflow) * 100) : 0;
-                  return `<tr><th scope="row">${escapeHtml(labels[index] ?? '')}</th>
-                    <td class="text-end numeric">${escapeHtml(formatCurrency(row.inflow, 'IRR', { compact: true }))}</td>
-                    <td class="text-end numeric">${escapeHtml(formatCurrency(row.outflow, 'IRR', { compact: true }))}</td>
-                    <td class="text-end numeric ${net >= 0 ? 'text-success' : 'text-danger'}">${escapeHtml(formatCurrency(net, 'IRR', { compact: true }))}</td>
-                    <td class="text-end numeric">${toDigits(cover)}٪</td></tr>`;
-                })
-                .join('')}</tbody></table></div>`,
-            })}
           </div>
+
+          ${card({
+            className: 'mt-4',
+            icon: 'table',
+            title: 'ریتم ماهانه',
+            subtitle: 'همان اعداد نمودار، به‌صورت جدول — برای مغایرت‌گیری و پیوست گزارش',
+            flush: true,
+            body: `<div class="table-wrap"><table class="table table--hover table--compact fin-table"><thead><tr><th>ماه</th><th class="text-end">ورودی</th><th class="text-end">خروجی</th><th class="text-end">خالص</th><th class="text-center">روند</th><th class="text-end">نرخ پوشش</th></tr></thead><tbody>${months
+              .map((row, index) => {
+                const net = row.inflow - row.outflow;
+                const previous = index ? months[index - 1].inflow - months[index - 1].outflow : null;
+                const dir = previous === null ? 0 : Math.sign(net - previous);
+                const cover = row.outflow ? Math.round((row.inflow / row.outflow) * 100) : 0;
+                return `<tr>
+                  <th scope="row">${escapeHtml(labels[index] ?? '')}</th>
+                  <td class="text-end numeric">${escapeHtml(formatCurrency(row.inflow, 'IRR', { compact: true }))}</td>
+                  <td class="text-end numeric">${escapeHtml(formatCurrency(row.outflow, 'IRR', { compact: true }))}</td>
+                  <td class="text-end numeric ${net >= 0 ? 'text-success' : 'text-danger'}">${escapeHtml(formatCurrency(net, 'IRR', { compact: true }))}</td>
+                  <td class="text-center"><span class="fin-trend fin-trend--${dir > 0 ? 'up' : dir < 0 ? 'down' : 'flat'}"><i class="bi bi-arrow-${dir > 0 ? 'up' : dir < 0 ? 'down' : 'right'}-short"></i>${dir === 0 ? 'ثابت' : toDigits(Math.abs(Math.round(((net - previous) / Math.max(1, Math.abs(previous))) * 100)))}٪</span></td>
+                  <td class="text-end"><span class="fin-cover fin-cover--${cover >= 130 ? 'good' : cover >= 100 ? 'warn' : 'bad'}">${toDigits(cover)}٪</span></td>
+                </tr>`;
+              })
+              .join('')}</tbody>
+            <tfoot><tr><th scope="row">جمع دوره</th><td class="text-end numeric">${escapeHtml(formatCurrency(cashFlow.inflow ?? 0, 'IRR', { compact: true }))}</td><td class="text-end numeric">${escapeHtml(formatCurrency(cashFlow.outflow ?? 0, 'IRR', { compact: true }))}</td><td class="text-end numeric">${escapeHtml(formatCurrency(cashFlow.net ?? 0, 'IRR', { compact: true }))}</td><td></td><td class="text-end">${toDigits(cashFlow.outflow ? Math.round(((cashFlow.inflow ?? 0) / cashFlow.outflow) * 100) : 0)}٪</td></tr></tfoot></table></div>`,
+          })}
         </div>`;
       };
       await withState(node, paint, {
         skeleton: 'chart',
         title: 'نمای کلی مالی',
         onData: (target) => {
+          /* Drawn through the controller API so the series colours match the
+             legend dots exactly (green in, red out, slate net). */
+          if (cashflowChart) {
+            /* A twelve-month combo on a 288px card is unreadable: the columns
+               land on top of each other and ApexCharts drops half the month
+               names. Phones get the last six months with a slimmer column and
+               a compact axis; the responsive block keeps it true after a
+               rotation, and the card's own legend replaces the duplicated one. */
+            const phoneData = (row) => ({ ...row, data: cashflowPhone ? row.data.slice(-6) : row.data });
+            chart($('[data-chart-key="cashflow"]', target), {
+              type: 'bar',
+              mixed: true,
+              height: cashflowPhone ? 280 : 330,
+              labels: cashflowPhone ? cashflowChart.labels.slice(-6) : cashflowChart.labels,
+              series: cashflowChart.series.map(phoneData),
+              colors: ['#10b981', '#ef4444', '#64748b'],
+              extra: {
+                plotOptions: { bar: { columnWidth: '52%', borderRadius: 4 } },
+                responsive: [
+                  {
+                    breakpoint: 641,
+                    options: {
+                      chart: { height: 280 },
+                      legend: { show: false },
+                      series: cashflowChart.series.map(phoneData),
+                      labels: cashflowChart.labels.slice(-6),
+                      stroke: { width: cashflowChart.series.map((row) => (row.type === 'line' ? 2.5 : 0)), dashArray: cashflowChart.series.map((row) => (row.dashed ? 5 : 0)) },
+                      markers: { size: 0, hover: { size: 5 } },
+                      xaxis: { labels: { style: { fontSize: '9px' }, rotate: 0, hideOverlappingLabels: true } },
+                      plotOptions: { bar: { columnWidth: '58%', borderRadius: 3 } },
+                    },
+                  },
+                ],
+              },
+            });
+          }
           initCharts(target);
           exportable(target, 'transactions');
         },
@@ -1396,13 +2155,30 @@ async function initFinance() {
       const overdueAmount = items.filter((inv) => inv.status === 'overdue').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
       const pendingAmount = items.filter((inv) => inv.status === 'pending').reduce((sum, inv) => sum + (inv.total ?? 0), 0);
 
-      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+      const months = monthNames12();
       const invoicedSeries = [1850, 2120, 2480, 2310, 2890, 3240, 3050, 3620, 3940, 3780, 4320, 4850];
       const collectedSeries = [1680, 1940, 2290, 2180, 2690, 3080, 2920, 3450, 3760, 3610, 4150, 4690];
       const chartTrendSeries = JSON.stringify([
         { name: 'مبالغ صادرشده (میلیون تومان)', data: invoicedSeries },
         { name: 'مبالغ وصول‌شده نقدی (میلیون تومان)', data: collectedSeries },
       ]);
+
+      /**
+       * KPI figures. Amounts print *compact* (کوتاه) so a long Rial string can
+       * never burst out of a phone card — the full number stays available in the
+       * `title` of each value — and every rate on the card is derived from the
+       * records instead of being typed in by hand.
+       */
+      const DAY = 86400000;
+      const overdueItems = items.filter((inv) => inv.status === 'overdue');
+      const collectionRate = totalAmount ? Math.round((paidAmount / totalAmount) * 100) : 0;
+      const avgOverdueDays = overdueItems.length
+        ? Math.round(
+            overdueItems.reduce((sum, inv) => sum + Math.max(0, Math.round((Date.now() - new Date(inv.dueDate ?? inv.issuedAt ?? Date.now()).getTime()) / DAY)), 0) /
+              overdueItems.length,
+          )
+        : 0;
+      const overdueShare = totalAmount ? Math.round((overdueAmount / totalAmount) * 100) : 0;
 
       const paidCount = items.filter((inv) => inv.status === 'paid').length || 18;
       const pendingCount = items.filter((inv) => inv.status === 'pending').length || 8;
@@ -1421,30 +2197,32 @@ async function initFinance() {
             actions: `<a class="btn btn-primary" href="finance/invoice-create.html"><i class="bi bi-plus-lg me-1"></i>صدور فاکتور جدید</a>
               <button class="btn btn-light" type="button" data-export-invoices><i class="bi bi-file-earmark-excel me-1"></i>خروجی اکسل</button>`,
           })}
-          <div class="stat-grid mb-4">
+          <div class="stat-grid inv-kpis mb-4">
             <article class="stat-card stat-card--primary">
               <span class="stat-card__icon"><i class="bi bi-receipt"></i></span>
               <p class="stat-card__label">کل صورتحساب‌ها</p>
-              <p class="stat-card__value">${formatCurrency(totalAmount, 'IRR')}</p>
-              <p class="stat-card__meta text-success"><i class="bi bi-arrow-up-right"></i> +۱۴٫۵٪ نسبت به دوره قبل</p>
+              <p class="stat-card__value" title="${escapeHtml(formatCurrency(totalAmount, 'IRR'))}">${escapeHtml(formatCurrency(totalAmount, 'IRR', { compact: true }))}</p>
+              <p class="stat-card__meta"><i class="bi bi-files"></i> ${toDigits(items.length)} فاکتور در سامانه</p>
             </article>
             <article class="stat-card stat-card--success">
               <span class="stat-card__icon"><i class="bi bi-check-circle"></i></span>
               <p class="stat-card__label">وصول‌شده (تسویه کامل)</p>
-              <p class="stat-card__value">${formatCurrency(paidAmount, 'IRR')}</p>
-              <p class="stat-card__meta text-success"><i class="bi bi-shield-check"></i> نرخ وصول ۹۲٫۴٪</p>
+              <p class="stat-card__value" title="${escapeHtml(formatCurrency(paidAmount, 'IRR'))}">${escapeHtml(formatCurrency(paidAmount, 'IRR', { compact: true }))}</p>
+              <p class="stat-card__meta text-success"><i class="bi bi-shield-check"></i> نرخ وصول ${toDigits(collectionRate)}٪</p>
+              <span class="stat-card__meter" role="img" aria-label="نرخ وصول ${toDigits(collectionRate)} درصد"><i style="--w:${collectionRate}%"></i></span>
             </article>
             <article class="stat-card stat-card--danger">
               <span class="stat-card__icon"><i class="bi bi-exclamation-octagon"></i></span>
               <p class="stat-card__label">معوق و سررسید گذشته</p>
-              <p class="stat-card__value">${formatCurrency(overdueAmount, 'IRR')}</p>
-              <p class="stat-card__meta text-danger"><i class="bi bi-clock-history"></i> ${toDigits(overdueCount)} فاکتور نیازمند پیگیری</p>
+              <p class="stat-card__value" title="${escapeHtml(formatCurrency(overdueAmount, 'IRR'))}">${escapeHtml(formatCurrency(overdueAmount, 'IRR', { compact: true }))}</p>
+              <p class="stat-card__meta text-danger"><i class="bi bi-clock-history"></i> ${toDigits(overdueCount)} فاکتور · میانگین ${toDigits(avgOverdueDays)} روز تأخیر</p>
+              <span class="stat-card__meter stat-card__meter--danger" role="img" aria-label="${toDigits(overdueShare)} درصد از کل"><i style="--w:${Math.min(100, overdueShare)}%"></i></span>
             </article>
             <article class="stat-card stat-card--warning">
               <span class="stat-card__icon"><i class="bi bi-hourglass-split"></i></span>
               <p class="stat-card__label">در انتظار پرداخت</p>
-              <p class="stat-card__value">${formatCurrency(pendingAmount, 'IRR')}</p>
-              <p class="stat-card__meta text-muted">مهلت تسویه تا انتهای ماه جاری</p>
+              <p class="stat-card__value" title="${escapeHtml(formatCurrency(pendingAmount, 'IRR'))}">${escapeHtml(formatCurrency(pendingAmount, 'IRR', { compact: true }))}</p>
+              <p class="stat-card__meta text-muted"><i class="bi bi-hourglass"></i> ${toDigits(pendingCount)} فاکتور تا سررسید</p>
             </article>
           </div>
           <div class="widget-grid mb-4">
@@ -1759,7 +2537,7 @@ async function initProjects() {
         if (t > passed / totalDays + 0.001) return null;
         return Math.round(project.tasksTotal * (1 - doneRatio * Math.pow(t / Math.max(0.05, passed / totalDays), 1.15)));
       });
-      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+      const months = monthNames12().slice(0, 6);
       const planned = months.map((_, i) => Math.round((project.budget / 6 / 1_000_000) * (0.8 + ((i * 37) % 5) / 10)));
       const real = planned.map((v, i) => Math.round(v * (spentPct / 100) * (0.85 + ((i * 53) % 4) / 10)));
       const workload = members.map((m, i) => ({ name: m.name, open: 3 + ((i * 7) % 6), done: 4 + ((i * 5) % 9) }));
@@ -1864,49 +2642,185 @@ async function initProjects() {
       const monthTicks = [];
       const cursor = new Date(min);
       while (cursor.getTime() < min.getTime() + range) {
-        monthTicks.push({ left: pos(cursor.getTime()), label: formatDate(cursor.toISOString(), { format: 'medium' }).split(' ').slice(1).join(' ') || formatDate(cursor.toISOString(), { format: 'short' }) });
+        monthTicks.push({ left: pos(cursor.getTime()), label: monthNameOf(cursor) });
         cursor.setMonth(cursor.getMonth() + 1);
       }
       const today = pos(Date.now());
       const toneOf = (p) => (p.status === 'completed' ? 'success' : p.health === 'critical' ? 'danger' : p.health === 'at-risk' ? 'warning' : p.status === 'on-hold' ? 'neutral' : 'primary');
+      const elapsed = (p) => {
+        const a = new Date(p.startDate).getTime();
+        const b = new Date(p.dueDate).getTime();
+        return Math.max(0, Math.min(100, Math.round(((Date.now() - a) / Math.max(1, b - a)) * 100)));
+      };
       const stat = (st) => items.filter((p) => p.status === st).length;
+      const avgProgress = Math.round(items.reduce((sum, p) => sum + p.progress, 0) / Math.max(1, items.length));
+      const atRisk = items.filter((p) => p.health !== 'good');
+      const avgDelay = atRisk.length ? Math.round(atRisk.reduce((sum, p) => sum + (p.delayDays ?? 0), 0) / atRisk.length) : 0;
+      const milestones = await services.milestoneService.list(items[0]?.id);
+      const upcoming = [...items]
+        .filter((p) => p.status !== 'completed')
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+        .slice(0, 5);
+      const healthOf = (id) => items.filter((p) => p.health === id).length;
+      const pct = (n) => (items.length ? Math.round((n / items.length) * 100) : 0);
+
       render(
         node,
-        `<div class="ais">
-          <div class="ais-kpis">
-            <article class="ais-kpi ais-kpi--primary"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-kanban"></i></span><span class="ais-kpi__label">پروژه‌های فعال</span></div><p class="ais-kpi__value">${toDigits(stat('active'))}</p><div class="ais-kpi__meta">از ${toDigits(items.length)} پروژه</div><div style="height:10px"></div></article>
-            <article class="ais-kpi ais-kpi--success"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-check2-circle"></i></span><span class="ais-kpi__label">تکمیل‌شده</span></div><p class="ais-kpi__value">${toDigits(stat('completed'))}</p><div class="ais-kpi__meta">تحویل به مشتری</div><div style="height:10px"></div></article>
-            <article class="ais-kpi ais-kpi--warning"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-exclamation-triangle"></i></span><span class="ais-kpi__label">در معرض ریسک</span></div><p class="ais-kpi__value">${toDigits(items.filter((p) => p.health !== 'good').length)}</p><div class="ais-kpi__meta">نیازمند توجه</div><div style="height:10px"></div></article>
-            <article class="ais-kpi ais-kpi--info"><div class="ais-kpi__head"><span class="ais-kpi__icon"><i class="bi bi-speedometer2"></i></span><span class="ais-kpi__label">میانگین پیشرفت</span></div><p class="ais-kpi__value">${toDigits(Math.round(items.reduce((s, p) => s + p.progress, 0) / items.length))}٪</p><div class="ais-kpi__meta">همه پروژه‌ها</div><div style="height:10px"></div></article>
+        `<div class="dashboard-shell tl">
+          ${pageHeader({
+            title: 'خط زمانی پروژه‌ها',
+            subtitle: 'هم‌ترازی زمان‌بندی، پیشرفت و سلامت تحویل در یک نما',
+            icon: 'calendar-range',
+            badges: [
+              statusBadge(`${toDigits(items.length)} پروژه`, 'primary'),
+              atRisk.length ? statusBadge(`${toDigits(atRisk.length)} نیازمند توجه`, 'warning') : statusBadge('همه سالم', 'success'),
+            ],
+            actions: toolButtons({ create: 'پروژه جدید', exportResource: 'projects' }),
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'پروژه‌های فعال', value: toDigits(stat('active')), meta: `از ${toDigits(items.length)} پروژه ثبت‌شده`, tone: 'primary', icon: 'kanban', id: 'tl-active' })}
+            ${statCard({ label: 'تکمیل‌شده', value: toDigits(stat('completed')), meta: `${toDigits(pct(stat('completed')))}٪ سبد پروژه`, tone: 'success', icon: 'check2-circle', id: 'tl-done' })}
+            ${statCard({ label: 'میانگین پیشرفت', value: `${toDigits(avgProgress)}٪`, meta: atRisk.length ? `${toDigits(atRisk.length)} پروژه در معرض ریسک` : 'بدون پروژه پرریسک', tone: atRisk.length ? 'warning' : 'info', icon: 'speedometer2', id: 'tl-progress' })}
+            ${statCard({ label: 'تأخیر میانگین', value: `${toDigits(avgDelay)} روز`, meta: atRisk.length ? `روی ${toDigits(atRisk.length)} پروژه پرریسک` : 'تحویل‌ها طبق برنامه', tone: avgDelay ? 'danger' : 'success', icon: 'alarm', id: 'tl-delay' })}
           </div>
-          <section class="card">
-            <header class="card__head"><span class="card__icon"><i class="bi bi-calendar-range"></i></span><div><h2 class="card__title">نمای گانت پروژه‌ها</h2><p class="card__subtitle">مدت هر پروژه، پیشرفت و خط امروز</p></div>
-              <div class="card__actions pj-legend"><span><i class="ais-dot ais-dot--primary"></i> در جریان</span><span><i class="ais-dot ais-dot--success"></i> تکمیل</span><span><i class="ais-dot ais-dot--warning"></i> ریسک</span><span><i class="ais-dot ais-dot--danger"></i> بحرانی</span></div></header>
-            <div class="card__body"><div class="pj-gantt-scroll"><div class="pj-gantt">
-              <div class="pj-gantt__head"><div class="pj-gantt__label">پروژه</div><div class="pj-gantt__scale">${monthTicks.map((m, i) => (monthTicks.length > 8 && i % 2 ? '' : `<span style="inset-inline-start:${m.left}%">${escapeHtml(m.label)}</span>`)).join('')}</div></div>
-              ${items
-                .map((p) => {
-                  const l = pos(new Date(p.startDate).getTime());
-                  const w = Math.max(3, pos(new Date(p.dueDate).getTime()) - l);
-                  return `<div class="pj-gantt__row">
-                    <a class="pj-gantt__label" href="projects/details.html?id=${escapeHtml(p.id)}"><img src="${escapeHtml(p.ownerAvatar)}" alt=""><span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.owner)}</small></span></a>
-                    <div class="pj-gantt__track">
-                      ${monthTicks.map((m) => `<i class="pj-gantt__grid" style="inset-inline-start:${m.left}%"></i>`).join('')}
-                      <div class="pj-gantt__bar ais-tone--${toneOf(p)}" style="inset-inline-start:${l}%;width:${w}%" title="${escapeHtml(p.name)}"><span class="pj-gantt__fill" style="width:${p.progress}%"></span><b>${toDigits(p.progress)}٪</b></div>
-                    </div>
-                  </div>`;
-                })
-                .join('')}
-              <div class="pj-gantt__today" style="--today:${today.toFixed(2)}"><span>امروز</span></div>
-            </div></div></div>
+
+          <section class="card tl-gantt-card">
+            <header class="card__head">
+              <span class="card__icon"><i class="bi bi-bar-chart-steps" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="card__title">گانت پروژه‌ها</h2>
+                <p class="card__subtitle">پهنای میله = مدت پروژه · پرشدگی = پیشرفت واقعی · خط عمودی = امروز</p>
+              </div>
+              <div class="card__actions tl-legend">
+                <span><i class="ais-dot ais-dot--primary"></i> در جریان</span>
+                <span><i class="ais-dot ais-dot--success"></i> تکمیل</span>
+                <span><i class="ais-dot ais-dot--warning"></i> ریسک</span>
+                <span><i class="ais-dot ais-dot--danger"></i> بحرانی</span>
+              </div>
+            </header>
+            <div class="card__body">
+              <div class="pj-gantt-scroll tl-gantt-scroll">
+                <div class="pj-gantt tl-gantt">
+                  <div class="pj-gantt__head"><div class="pj-gantt__label">پروژه</div><div class="pj-gantt__scale">${monthTicks
+                    .map((m, i) => (monthTicks.length > 8 && i % 2 ? '' : `<span style="inset-inline-start:${m.left}%">${escapeHtml(m.label)}</span>`))
+                    .join('')}</div></div>
+                  ${items
+                    .map((p) => {
+                      const l = pos(new Date(p.startDate).getTime());
+                      const w = Math.max(3, pos(new Date(p.dueDate).getTime()) - l);
+                      const drift = p.progress - elapsed(p);
+                      return `<div class="pj-gantt__row tl-gantt__row">
+                        <a class="pj-gantt__label" href="projects/details.html?id=${escapeHtml(p.id)}">
+                          <img src="${escapeHtml(p.ownerAvatar)}" alt="">
+                          <span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.owner)} · ${toDigits(p.progress)}٪ پیشرفت</small></span>
+                        </a>
+                        <div class="pj-gantt__track">
+                          ${monthTicks.map((m) => `<i class="pj-gantt__grid" style="inset-inline-start:${m.left}%"></i>`).join('')}
+                          <div class="pj-gantt__bar ais-tone--${toneOf(p)}" style="inset-inline-start:${l}%;width:${w}%" title="${escapeHtml(p.name)}">
+                            <span class="pj-gantt__fill" style="width:${p.progress}%"></span>
+                            <b>${toDigits(p.progress)}٪</b>
+                            <span class="tl-gantt__flag tl-gantt__flag--${drift >= 0 ? 'ahead' : 'behind'}" title="${drift >= 0 ? 'جلوتر از برنامه' : 'عقب‌تر از برنامه'}">${drift >= 0 ? '+' : '−'}${toDigits(Math.abs(Math.round(drift)))}٪</span>
+                          </div>
+                        </div>
+                      </div>`;
+                    })
+                    .join('')}
+                  <div class="pj-gantt__today" style="--today:${today.toFixed(2)}"><span>امروز</span></div>
+                </div>
+              </div>
+            </div>
           </section>
-          <div class="ais-grid">
-            ${card({ title: 'پیشرفت پروژه‌ها', icon: 'bar-chart', body: '<div class="chart" data-chart-owner="controller" data-tl="progress" style="min-height:340px"></div>' }).replace('<section class="card', '<section data-col="8" class="card')}
-            ${card({ title: 'وضعیت سلامت', icon: 'heart-pulse', body: '<div class="chart" data-chart-owner="controller" data-tl="health" style="min-height:340px"></div>' }).replace('<section class="card', '<section data-col="4" class="card')}
+
+          <div class="widget-grid tl-grid">
+            ${card({
+              span: 8,
+              icon: 'bar-chart-line',
+              title: 'پیشرفت در برابر زمان سپری‌شده',
+              subtitle: 'هر پروژه دو میله دارد: آنچه ساخته شده و آنچه از زمانش گذشته',
+              body: `<div class="chart" data-chart-owner="controller" data-tl="progress" style="min-height:360px"></div>`,
+              foot: `<div class="tl-insight"><i class="bi bi-lightbulb"></i> پروژه‌هایی که میله پیشرفتشان کوتاه‌تر از میله زمان است، در نیمه دوم نمودار فهرست شده‌اند.</div>`,
+            })}
+            ${card({
+              span: 4,
+              icon: 'heart-pulse',
+              title: 'وضعیت سلامت',
+              subtitle: `${toDigits(healthOf('good'))} پروژه سالم از ${toDigits(items.length)}`,
+              body: `<div class="chart" data-chart-owner="controller" data-tl="health" data-chart-height="220"></div>
+                <ul class="tl-health">
+                  <li class="tl-health__row"><span class="tl-health__dot tl-health__dot--good"></span><span>سالم</span><b class="numeric">${toDigits(healthOf('good'))}</b><small>${toDigits(pct(healthOf('good')))}٪</small></li>
+                  <li class="tl-health__row"><span class="tl-health__dot tl-health__dot--warn"></span><span>در معرض ریسک</span><b class="numeric">${toDigits(healthOf('at-risk'))}</b><small>${toDigits(pct(healthOf('at-risk')))}٪</small></li>
+                  <li class="tl-health__row"><span class="tl-health__dot tl-health__dot--bad"></span><span>بحرانی</span><b class="numeric">${toDigits(healthOf('critical'))}</b><small>${toDigits(pct(healthOf('critical')))}٪</small></li>
+                </ul>`,
+            })}
+
+            ${card({
+              span: 7,
+              icon: 'graph-up',
+              title: 'انحراف پیشرفت از برنامه',
+              subtitle: 'بالای خط = جلوتر از برنامه · پایین خط = عقب‌تر از برنامه',
+              body: `<ul class="tl-variance">${items
+                .map((p) => {
+                  const drift = Math.round(p.progress - elapsed(p));
+                  return `<li class="tl-variance__row">
+                    <span class="tl-variance__name" title="${escapeHtml(p.name)}">${escapeHtml(p.name.split(' — ')[0])}</span>
+                    <span class="tl-variance__track">
+                      <i class="tl-variance__zero" aria-hidden="true"></i>
+                      <i class="tl-variance__bar ${drift >= 0 ? 'is-ahead' : 'is-behind'}" style="--w:${Math.min(100, Math.abs(drift) * 1.6)}%;--dir:${drift >= 0 ? '1' : '-1'}"></i>
+                    </span>
+                    <b class="numeric ${drift >= 0 ? 'text-success' : 'text-danger'}">${drift >= 0 ? '+' : '−'}${toDigits(Math.abs(drift))}٪</b>
+                  </li>`;
+                })
+                .join('')}</ul>
+              <p class="tl-variance__note">میانگین انحراف ${toDigits(Math.round(items.reduce((sum, p) => sum + (p.progress - elapsed(p)), 0) / Math.max(1, items.length)))}٪ — عدد مثبت یعنی تیم جلوتر از نقشه راه است.</p>`,
+            })}
+
+            ${card({
+              span: 5,
+              className: 'tl-list-card',
+              icon: 'flag',
+              title: 'تحویل‌های پیش‌رو',
+              subtitle: 'پنج موعد نزدیک‌تر میان پروژه‌های باز',
+              flush: upcoming.length > 0,
+              body: upcoming.length
+                ? `<ul class="tl-upcoming">${upcoming
+                    .map((p) => {
+                      const days = Math.round((new Date(p.dueDate).getTime() - Date.now()) / DAY);
+                      const tone = days < 0 ? 'late' : days <= 14 ? 'soon' : 'ok';
+                      return `<li class="tl-upcoming__row">
+                        <span class="tl-upcoming__date tl-upcoming__date--${tone}"><b class="numeric">${toDigits(Math.abs(days))}</b><small>${days < 0 ? 'روز تأخیر' : 'روز مانده'}</small></span>
+                        <span class="tl-upcoming__main"><a href="projects/details.html?id=${escapeHtml(p.id)}">${escapeHtml(p.name)}</a><small>${escapeHtml(p.owner)} · ${escapeHtml(formatDate(p.dueDate, { format: 'medium' }))}</small></span>
+                        <span class="tl-upcoming__progress"><i style="--w:${Math.min(100, p.progress)}%"></i></span>
+                      </li>`;
+                    })
+                    .join('')}</ul>`
+                : emptyState({ title: 'تحویل نزدیکی وجود ندارد', text: 'همه پروژه‌های باز موعد دورتری دارند.', icon: 'calendar-check' }),
+            })}
           </div>
+
+          ${card({
+            className: 'mt-4 tl-list-card',
+            icon: 'list-check',
+            title: 'نقاط عطف پورتفوی',
+            subtitle: 'ریزتحویل‌های ثبت‌شده و وضعیت هرکدام',
+            flush: milestones.length > 0,
+            body: milestones.length
+              ? `<ul class="tl-milestones">${milestones
+                  .map(
+                    (milestone) => `<li class="tl-milestones__row">
+                      <span class="tl-milestones__state tl-milestones__state--${milestone.status === 'done' ? 'done' : milestone.status === 'in-progress' ? 'open' : 'planned'}"><i class="bi bi-${milestone.status === 'done' ? 'check2' : milestone.status === 'in-progress' ? 'hourglass-split' : 'circle'}" aria-hidden="true"></i></span>
+                      <span class="tl-milestones__main">${escapeHtml(milestone.title)}<small>${escapeHtml(milestone.project ?? '')} · موعد ${escapeHtml(formatDate(milestone.dueDate, { format: 'medium' }))}</small></span>
+                      ${statusBadge(milestone.status === 'done' ? 'انجام شد' : milestone.status === 'in-progress' ? 'در جریان' : 'برنامه‌ریزی‌شده', milestone.status === 'done' ? 'success' : milestone.status === 'in-progress' ? 'warning' : 'neutral')}
+                    </li>`,
+                  )
+                  .join('')}</ul>`
+              : emptyState({ title: 'نقطه عطفی ثبت نشده', text: 'برای پروژه‌های این نما نقطه عطفی تعریف نشده است.', icon: 'flag' }),
+          })}
         </div>`,
       );
-      /* Open the gantt on "today" instead of the timeline start (phones only show a slice). */
+
+      /* Open the gantt on "today" instead of the timeline start (phones only
+         show a slice) — the sticky project column stays out of the maths. */
       requestAnimationFrame(() => {
         const scroller = $('.pj-gantt-scroll', node);
         const marker = $('.pj-gantt__today', node);
@@ -1914,16 +2828,31 @@ async function initProjects() {
         const box = scroller.getBoundingClientRect();
         const label = $('.pj-gantt__head .pj-gantt__label', node)?.getBoundingClientRect();
         const labelW = label ? label.width : 0;
-        /* Centre "today" in the part of the scroller not covered by the sticky project column. */
         const rtl = getComputedStyle(scroller).direction === 'rtl';
         const freeStart = rtl ? box.left : box.left + labelW;
         const target = freeStart + (box.width - labelW) / 2;
         scroller.scrollLeft += marker.getBoundingClientRect().left - target;
       });
       await Promise.all([
-        chart($('[data-tl="progress"]', node), { type: 'bar', height: 340, labels: items.map((p) => p.name.split(' — ')[0]), series: [{ name: 'پیشرفت ٪', data: items.map((p) => p.progress) }, { name: 'زمان سپری‌شده ٪', data: items.map((p) => { const a = new Date(p.startDate).getTime(); const b = new Date(p.dueDate).getTime(); return Math.max(0, Math.min(100, Math.round(((Date.now() - a) / Math.max(1, b - a)) * 100))); }) }], colors: ['#6366f1', '#cbd5e1'] }),
-        chart($('[data-tl="health"]', node), { type: 'donut', height: 340, labels: ['سالم', 'در معرض ریسک', 'بحرانی'], series: ['good', 'at-risk', 'critical'].map((h) => items.filter((p) => p.health === h).length), colors: ['#10b981', '#f59e0b', '#ef4444'] }),
+        chart($('[data-tl="progress"]', node), {
+          type: 'bar',
+          height: 360,
+          labels: items.map((p) => p.name.split(' — ')[0]),
+          series: [
+            { name: 'پیشرفت ٪', data: items.map((p) => p.progress) },
+            { name: 'زمان سپری‌شده ٪', data: items.map((p) => elapsed(p)) },
+          ],
+          colors: ['#6366f1', '#cbd5e1'],
+        }),
+        chart($('[data-tl="health"]', node), {
+          type: 'donut',
+          height: 220,
+          labels: ['سالم', 'در معرض ریسک', 'بحرانی'],
+          series: ['good', 'at-risk', 'critical'].map(healthOf),
+          colors: ['#10b981', '#f59e0b', '#ef4444'],
+        }),
       ]);
+      exportable(node, 'projects');
       return;
     }
 
@@ -1931,28 +2860,310 @@ async function initProjects() {
     case 'projects/backlog.html': {
       const node = host();
       const isBacklog = page.endsWith('backlog.html');
-      const data = isBacklog ? await services.backlogService.list() : await services.taskService.list({ perPage: 12 });
-      const items = data.items ?? data;
+      const data = isBacklog ? await services.backlogService.list() : await services.taskService.list({ perPage: 100 });
+      const items = (data.items ?? data).slice();
+      const summary = data.summary ?? {};
+
+      /* ------------------------------------------------------------ labels */
+      const statusMeta = (id) => summary.statuses?.find((s) => s.id === id) ?? { id, label: id, tone: 'neutral' };
+      const priorityMeta = (id) => summary.priorities?.find((p) => p.id === id) ?? { id, label: id, tone: 'neutral' };
+      /**
+       * Backlog is a *priority* queue: urgent first, then by age. The tasks page
+       * keeps the collection order (due date, straight from the service).
+       */
+      items.sort((a, b) =>
+        isBacklog
+          ? (summary.priorities?.findIndex((p) => p.id === b.priority) ?? 0) - (summary.priorities?.findIndex((p) => p.id === a.priority) ?? 0) ||
+            new Date(a.createdAt) - new Date(b.createdAt)
+          : new Date(a.dueDate) - new Date(b.dueDate),
+      );
+
+      const DAY = 86400000;
+      const startOfDay = (value) => {
+        const date = new Date(value);
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+      };
+      const todayStart = startOfDay(Date.now());
+      /** Due-state drives the chip colour and the `data-state` filter buckets. */
+      const dueState = (task) => {
+        if (task.status === 'done') return 'done';
+        if (task.overdue || startOfDay(task.dueDate) < todayStart) return 'late';
+        if (startOfDay(task.dueDate) === todayStart) return 'today';
+        if (startOfDay(task.dueDate) - todayStart <= 3 * DAY) return 'soon';
+        return 'open';
+      };
+      const dueLabel = (task) => {
+        const days = Math.round((startOfDay(task.dueDate) - todayStart) / DAY);
+        if (task.status === 'done') return 'انجام شد';
+        if (days === 0) return 'امروز';
+        if (days === 1) return 'فردا';
+        if (days === -1) return 'دیروز';
+        if (days < 0) return `${toDigits(Math.abs(days))} روز تأخیر`;
+        return `${toDigits(days)} روز مانده`;
+      };
+
+      /* ------------------------------------------------------------- stats */
+      const open = items.filter((task) => task.status !== 'done');
+      const late = open.filter((task) => task.overdue);
+      const done = items.length - open.length;
+      const completion = items.length ? Math.round((done / items.length) * 100) : 0;
+      const urgent = open.filter((task) => task.priority === 'urgent');
+      const estimate = open.reduce((sum, task) => sum + (task.estimate ?? 0), 0);
+      const spent = open.reduce((sum, task) => sum + (task.spent ?? 0), 0);
+
+      /* ---------------------------------------------------------- workload */
+      const byOwner = new Map();
+      open.forEach((task) => {
+        const key = task.assignee ?? 'بدون مسئول';
+        const entry = byOwner.get(key) ?? { name: key, avatar: task.assigneeAvatar, count: 0, points: 0, late: 0 };
+        entry.count += 1;
+        entry.points += task.estimate ?? 0;
+        if (task.overdue) entry.late += 1;
+        byOwner.set(key, entry);
+      });
+      const workload = [...byOwner.values()].sort((a, b) => b.count - a.count);
+      const peakLoad = Math.max(1, ...workload.map((owner) => owner.count));
+
+      const priorityCounts = ['urgent', 'high', 'medium', 'low'].map((id) => {
+        const meta = priorityMeta(id);
+        const rows = open.filter((task) => task.priority === id);
+        return { ...meta, count: rows.length, points: rows.reduce((sum, task) => sum + (task.estimate ?? 0), 0) };
+      });
+      const maxPriority = Math.max(1, ...priorityCounts.map((row) => row.count));
+
+      /* ------------------------------------------------------------ markup */
+      const rowMarkup = (task) => {
+        const state = dueState(task);
+        const status = statusMeta(task.status);
+        const priority = priorityMeta(task.priority);
+        const progress = Math.max(0, Math.min(100, task.progress ?? 0));
+        return `<li class="task-row" data-task-row data-id="${escapeHtml(task.id)}" data-state="${state}" data-priority="${escapeHtml(task.priority)}" data-status="${escapeHtml(task.status)}" data-search="${escapeHtml(`${task.title} ${task.project ?? ''} ${task.assignee ?? ''} ${priority.label}`.toLowerCase())}">
+          <button type="button" class="task-row__check${task.status === 'done' ? ' is-done' : ''}" data-task-toggle="${escapeHtml(task.id)}" aria-pressed="${task.status === 'done'}" aria-label="تغییر وضعیت ${escapeHtml(task.title)}"><i class="bi bi-check-lg" aria-hidden="true"></i></button>
+          <span class="task-row__flag task-row__flag--${escapeHtml(priority.id === 'urgent' ? 'urgent' : priority.id === 'high' ? 'high' : 'normal')}" title="اولویت ${escapeHtml(priority.label)}"></span>
+          <div class="task-row__main">
+            <button type="button" class="task-row__title" data-task-open="${escapeHtml(task.id)}">${escapeHtml(task.title)}</button>
+            <div class="task-row__meta">
+              <span class="task-row__chip"><i class="bi bi-folder2" aria-hidden="true"></i> ${escapeHtml(task.project ?? '—')}</span>
+              <span class="task-row__chip task-due task-due--${state}"><i class="bi bi-calendar-event" aria-hidden="true"></i> ${escapeHtml(dueLabel(task))} · ${escapeHtml(formatDate(task.dueDate, { format: 'short' }))}</span>
+              ${task.comments ? `<span class="task-row__chip"><i class="bi bi-chat-dots" aria-hidden="true"></i> ${toDigits(task.comments)}</span>` : ''}
+              ${task.attachments ? `<span class="task-row__chip"><i class="bi bi-paperclip" aria-hidden="true"></i> ${toDigits(task.attachments)}</span>` : ''}
+              ${task.tags?.length ? `<span class="task-row__tags">${task.tags.map((tag) => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}</span>` : ''}
+            </div>
+          </div>
+          <div class="task-row__progress" title="پیشرفت ${toDigits(progress)}٪">
+            <span class="task-row__track"><span class="task-row__fill" style="--fill:${progress}%"></span></span>
+            <b class="numeric">${toDigits(progress)}٪</b>
+          </div>
+          <span class="badge badge--soft-${escapeHtml(priority.tone)} task-row__priority">${escapeHtml(priority.label)}</span>
+          <span class="badge badge--soft-${escapeHtml(status.tone)} task-row__status">${escapeHtml(status.label)}</span>
+          <span class="task-row__owner" title="${escapeHtml(task.assignee ?? 'بدون مسئول')}">
+            <img class="avatar avatar--xs" src="${escapeHtml(task.assigneeAvatar ?? 'assets/img/avatars/avatar-01.svg')}" alt="">
+            <span>${escapeHtml(task.assignee ?? 'بدون مسئول')}</span>
+          </span>
+          <div class="task-row__actions">
+            <button type="button" class="icon-btn icon-btn--sm" data-task-edit="${escapeHtml(task.id)}" aria-label="ویرایش تسک"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+            <a class="icon-btn icon-btn--sm" href="projects/details.html?id=${escapeHtml(task.projectId ?? '')}" aria-label="صفحه پروژه"><i class="bi bi-arrow-up-left" aria-hidden="true"></i></a>
+          </div>
+        </li>`;
+      };
+
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: isBacklog ? 'بک‌لاگ محصول' : 'فهرست تسک‌ها', subtitle: isBacklog ? 'موارد اولویت‌دار برای اسپرینت بعدی' : 'همه تسک‌ها با فیلتر وضعیت و اولویت', icon: 'list-task', actions: toolButtons({ create: 'تسک جدید', exportResource: 'tasks' }) })}
-          ${card({
-            flush: true,
-            body: `<ul class="list-group" data-task-list>${items
-              .map(
-                (task) => `<li class="list-item list-item--interactive" data-task="${escapeHtml(task.id)}">
-                  <span class="status-dot status-dot--${task.status === 'done' ? 'success' : task.status === 'in-progress' ? 'primary' : 'muted'}"></span>
-                  <span class="list-item__title">${escapeHtml(task.title)}<span class="list-item__sub">${escapeHtml(task.project ?? '')} • موعد: ${formatDate(task.dueDate, { format: 'short' })}</span></span>
-                  <span class="badge badge--soft-${task.priority === 'critical' || task.priority === 'high' ? 'danger' : task.priority === 'medium' ? 'warning' : 'neutral'}">${escapeHtml(task.priorityLabel ?? task.priority ?? '')}</span>
-                  <span class="list-item__meta"><img class="avatar avatar--xs" src="${escapeHtml(task.assigneeAvatar ?? 'assets/img/avatars/avatar-01.svg')}" alt="">${toDigits(task.progress ?? 0)}٪</span>
-                </li>`,
-              )
-              .join('')}</ul>`,
+        `<div class="dashboard-shell task-page">
+          ${pageHeader({
+            title: isBacklog ? 'بک‌لاگ محصول' : 'فهرست تسک‌ها',
+            subtitle: isBacklog ? 'صف اولویت‌دار کارها برای اسپرینت بعدی — از بحرانی به کم' : 'هر تسک با مسئول، موعد، پیشرفت و اولویت در یک نگاه',
+            icon: 'list-task',
+            badges: [
+              statusBadge(`${toDigits(open.length)} تسک باز`, 'primary'),
+              late.length ? statusBadge(`${toDigits(late.length)} عقب‌افتاده`, 'danger') : statusBadge('بدون تأخیر', 'success'),
+            ],
+            actions: toolButtons({ create: isBacklog ? 'افزودن به بک‌لاگ' : 'تسک جدید', exportResource: 'tasks' }),
           })}
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: isBacklog ? 'موارد بک‌لاگ' : 'کل تسک‌ها', value: toDigits(items.length), meta: `${toDigits(estimate)} واحد تخمین`, tone: 'primary', icon: 'list-task', id: 'task-total' })}
+            ${statCard({ label: 'در جریان', value: toDigits(open.length), meta: `${toDigits(spent)} واحد مصرف‌شده`, tone: 'info', icon: 'hourglass-split', id: 'task-open' })}
+            ${statCard({ label: 'عقب‌افتاده', value: toDigits(late.length), meta: late.length ? `${toDigits(Math.round((late.length / Math.max(1, open.length)) * 100))}٪ از کارهای باز` : 'همه‌چیز طبق برنامه', tone: late.length ? 'danger' : 'success', icon: 'alarm', id: 'task-late' })}
+            ${statCard({ label: 'نرخ تکمیل', value: `${toDigits(completion)}٪`, meta: `${toDigits(done)} تسک بسته‌شده`, tone: 'success', icon: 'check2-circle', id: 'task-done' })}
+          </div>
+
+          <div class="task-layout">
+            <section class="card task-board">
+              <header class="card__head">
+                <span class="card__icon"><i class="bi bi-kanban" aria-hidden="true"></i></span>
+                <div>
+                  <h2 class="card__title">${isBacklog ? 'صف بک‌لاگ' : 'کارهای جاری'}</h2>
+                  <p class="card__subtitle" data-task-count aria-live="polite">نمایش ${toDigits(Math.min(12, items.length))} از ${toDigits(items.length)} تسک</p>
+                </div>
+              </header>
+              <div class="card__body card__body--flush">
+                <div class="task-toolbar">
+                  <label class="task-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="form-control" data-task-search placeholder="جست‌وجوی عنوان، پروژه یا مسئول…" autocomplete="off">
+                  </label>
+                  <div class="task-filters" role="group" aria-label="فیلتر وضعیت" data-rail>
+                    <button type="button" class="task-filter is-active" data-task-filter="all">همه</button>
+                    <button type="button" class="task-filter" data-task-filter="open">باز</button>
+                    <button type="button" class="task-filter" data-task-filter="late">عقب‌افتاده</button>
+                    <button type="button" class="task-filter" data-task-filter="today">امروز</button>
+                    <button type="button" class="task-filter" data-task-filter="done">انجام‌شده</button>
+                  </div>
+                  <label class="task-select">
+                    <span class="visually-hidden">اولویت</span>
+                    <select class="form-select" data-task-priority>
+                      <option value="all">همه اولویت‌ها</option>
+                      ${priorityCounts.map((row) => `<option value="${escapeHtml(row.id)}">${escapeHtml(row.label)}</option>`).join('')}
+                    </select>
+                  </label>
+                </div>
+                <ul class="task-list" data-task-list></ul>
+                <div class="task-empty" data-task-empty hidden>
+                  ${emptyState({ title: 'تسکی با این فیلتر پیدا نشد', text: 'عبارت جست‌وجو را کوتاه‌تر کنید یا فیلترها را پاک کنید.', icon: 'search' })}
+                </div>
+              </div>
+              <footer class="card__foot task-board__foot">
+                <span class="text-muted fs-sm" data-task-foot></span>
+                <button type="button" class="btn btn-light btn-sm" data-task-more hidden>نمایش موارد بیشتر <i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+              </footer>
+            </section>
+
+            <aside class="task-side">
+              ${card({
+                icon: 'people',
+                title: 'توزیع بار کاری',
+                subtitle: `${toDigits(workload.length)} مسئول فعال روی ${toDigits(open.length)} تسک باز`,
+                body: workload.length
+                  ? `<ul class="task-load">${workload
+                      .slice(0, 6)
+                      .map(
+                        (owner) => `<li class="task-load__row">
+                          <img class="avatar avatar--xs" src="${escapeHtml(owner.avatar ?? 'assets/img/avatars/avatar-01.svg')}" alt="">
+                          <span class="task-load__name">${escapeHtml(owner.name)}<small>${toDigits(owner.points)} واحد تخمین${owner.late ? ` · ${toDigits(owner.late)} تأخیر` : ''}</small></span>
+                          <span class="task-load__bar" title="${toDigits(owner.count)} تسک باز"><i style="--w:${Math.round((owner.count / peakLoad) * 100)}%"></i></span>
+                          <b class="numeric">${toDigits(owner.count)}</b>
+                        </li>`,
+                      )
+                      .join('')}</ul>
+                    ${workload.length > 6 ? `<p class="task-side__more text-muted fs-sm">+ ${toDigits(workload.length - 6)} مسئول دیگر</p>` : ''}`
+                  : emptyState({ title: 'کار بازی باقی نمانده', text: 'همه تسک‌ها بسته شده‌اند.', icon: 'emoji-smile' }),
+              })}
+              ${card({
+                icon: 'flag',
+                title: 'ترکیب اولویت‌ها',
+                subtitle: `${toDigits(urgent.length)} مورد بحرانی نیازمند اقدام فوری`,
+                body: `<ul class="task-priority-list">${priorityCounts
+                  .map(
+                    (row) => `<li class="task-priority-list__row">
+                      <span class="task-priority-list__label">${escapeHtml(row.label)}<small>${toDigits(row.points)} واحد</small></span>
+                      <span class="task-priority-list__bar task-priority-list__bar--${escapeHtml(row.id)}"><i style="--w:${Math.round((row.count / maxPriority) * 100)}%"></i></span>
+                      <b class="numeric">${toDigits(row.count)}</b>
+                    </li>`,
+                  )
+                  .join('')}</ul>`,
+              })}
+            </aside>
+          </div>
         </div>`,
       );
-      on($('[data-create]', node), 'click', () => openRecordForm({ resource: 'tasks', title: 'افزودن تسک', fields: crudFields('tasks'), onSaved: () => window.location.reload() }));
+
+      /* ----------------------------------------------------------- behaviour */
+      const listNode = $('[data-task-list]', node);
+      const emptyNode = $('[data-task-empty]', node);
+      const footNode = $('[data-task-foot]', node);
+      const moreNode = $('[data-task-more]', node);
+      const countNode = $('[data-task-count]', node);
+      const searchNode = $('[data-task-search]', node);
+      const priorityNode = $('[data-task-priority]', node);
+      const STEP = 12;
+      const state = { filter: 'all', priority: 'all', term: '', visible: STEP };
+
+      const filtered = () => {
+        const term = state.term.trim().toLowerCase();
+        return items.filter((task) => {
+          const taskState = dueState(task);
+          if (state.priority !== 'all' && task.priority !== state.priority) return false;
+          if (state.filter === 'open' && task.status === 'done') return false;
+          if (state.filter === 'done' && task.status !== 'done') return false;
+          if (state.filter === 'late' && taskState !== 'late') return false;
+          if (state.filter === 'today' && taskState !== 'today') return false;
+          if (term && !`${task.title} ${task.project ?? ''} ${task.assignee ?? ''} ${priorityMeta(task.priority).label}`.toLowerCase().includes(term)) return false;
+          return true;
+        });
+      };
+
+      const paint = () => {
+        const rows = filtered();
+        const visible = rows.slice(0, state.visible);
+        listNode.innerHTML = visible.map(rowMarkup).join('');
+        emptyNode.hidden = rows.length > 0;
+        listNode.hidden = rows.length === 0;
+        countNode.textContent = `نمایش ${toDigits(visible.length)} از ${toDigits(rows.length)} تسک`;
+        footNode.textContent = rows.length
+          ? `${toDigits(rows.filter((task) => dueState(task) === 'late').length)} مورد عقب‌افتاده در این نما · مجموع تخمین ${toDigits(rows.reduce((sum, task) => sum + (task.estimate ?? 0), 0))} واحد`
+          : '';
+        moreNode.hidden = rows.length <= state.visible;
+        moreNode.innerHTML = `نمایش ${toDigits(Math.min(STEP, rows.length - state.visible))} مورد بیشتر <i class="bi bi-chevron-down" aria-hidden="true"></i>`;
+      };
+      paint();
+
+      on($('[data-task-filters]', node) ?? node, 'click', (event) => {
+        const filter = event.target.closest('[data-task-filter]');
+        if (filter) {
+          state.filter = filter.dataset.taskFilter;
+          state.visible = STEP;
+          $$('[data-task-filter]', node).forEach((button) => button.classList.toggle('is-active', button === filter));
+          paint();
+          return;
+        }
+        if (event.target.closest('[data-task-more]')) {
+          state.visible += STEP;
+          paint();
+          return;
+        }
+        const toggle = event.target.closest('[data-task-toggle]');
+        if (toggle) {
+          const task = items.find((item) => item.id === toggle.dataset.taskToggle);
+          if (!task) return;
+          const nowDone = task.status !== 'done';
+          toggle.classList.toggle('is-done', nowDone);
+          toggle.setAttribute('aria-pressed', String(nowDone));
+          services.taskService
+            .patch(task.id, nowDone ? { status: 'done', progress: 100 } : { status: 'todo' })
+            .then(() => {
+              task.status = nowDone ? 'done' : 'todo';
+              task.progress = nowDone ? 100 : task.progress;
+              toast.success(nowDone ? 'تسک بسته شد' : 'تسک باز شد', escapeHtml(task.title));
+              paint();
+            })
+            .catch(() => {
+              toggle.classList.toggle('is-done', !nowDone);
+              toggle.setAttribute('aria-pressed', String(!nowDone));
+              toast.danger('تغییر وضعیت انجام نشد', 'دوباره تلاش کنید.');
+            });
+          return;
+        }
+        const edit = event.target.closest('[data-task-edit]') ?? event.target.closest('[data-task-open]');
+        if (edit) {
+          const id = edit.dataset.taskEdit ?? edit.dataset.taskOpen;
+          openRecordForm({ resource: 'tasks', id, fields: crudFields('tasks'), title: 'ویرایش تسک', onSaved: () => paint() });
+        }
+      });
+
+      on(searchNode, 'input', () => {
+        state.term = searchNode.value;
+        state.visible = STEP;
+        paint();
+      });
+      on(priorityNode, 'change', () => {
+        state.priority = priorityNode.value;
+        state.visible = STEP;
+        paint();
+      });
+      on($('[data-create]', node), 'click', () =>
+        openRecordForm({ resource: 'tasks', title: isBacklog ? 'افزودن به بک‌لاگ' : 'تسک جدید', fields: crudFields('tasks'), onSaved: () => window.location.reload() }),
+      );
       exportable(node, 'tasks');
       return;
     }
@@ -2067,29 +3278,147 @@ async function initSupport() {
 
     case 'support/agents.html': {
       const node = host();
-      const [agents, sla] = await Promise.all([services.agentService.workload(), services.supportStatsService.sla()]);
+      const [agents, sla, satisfaction] = await Promise.all([
+        services.agentService.workload(),
+        services.supportStatsService.sla(),
+        services.supportStatsService.satisfaction(),
+      ]);
+
+      /* ------------------------------------------------------------- derived */
+      const buckets = Array.isArray(sla) ? sla : [];
+      const totalBuckets = buckets.reduce((sum, bucket) => sum + (bucket.count ?? 0), 0);
+      /** SLA compliance = share of tickets answered inside the first two (fastest) buckets. */
+      const inSla = (buckets[0]?.count ?? 0) + (buckets[1]?.count ?? 0);
+      const compliance = totalBuckets ? Math.round((inSla / totalBuckets) * 100) : 0;
+      const peakBucket = Math.max(1, ...buckets.map((bucket) => bucket.count ?? 0));
+      const roster = [...agents].sort((a, b) => (b.open ?? 0) - (a.open ?? 0));
+      const peakLoad = Math.max(1, ...roster.map((agent) => agent.open ?? 0));
+      const online = agents.filter((agent) => ['online', 'busy'].includes(agent.status)).length;
+      const openTickets = agents.reduce((sum, agent) => sum + (agent.open ?? 0), 0);
+      const avgLoad = agents.length ? (openTickets / agents.length).toFixed(1) : '0';
+      const avgCsat = agents.length ? Math.round(agents.reduce((sum, agent) => sum + (agent.csat ?? 0), 0) / agents.length) : 0;
+      const breached = agents.reduce((sum, agent) => sum + (agent.breached ?? 0), 0);
+      const langCount = new Map();
+      agents.forEach((agent) => (agent.languages ?? []).forEach((lang) => langCount.set(lang, (langCount.get(lang) ?? 0) + 1)));
+      const statusMeta = {
+        online: { label: 'آنلاین', tone: 'success', icon: 'broadcast' },
+        busy: { label: 'مشغول', tone: 'warning', icon: 'hourglass-split' },
+        away: { label: 'غایب', tone: 'info', icon: 'clock-history' },
+        offline: { label: 'آفلاین', tone: 'neutral', icon: 'moon-stars' },
+      };
+      const toneOf = (agent) => statusMeta[agent.status] ?? statusMeta.offline;
+      const loadTone = (load) => (load > peakLoad * 0.75 ? 'bad' : load > peakLoad * 0.45 ? 'warn' : 'good');
+      const rating = (value) => Math.max(0, Math.min(5, value ?? 0));
+
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'کارشناسان پشتیبانی', subtitle: 'توزیع بار کاری و کیفیت پاسخ‌دهی', icon: 'headset', badges: [statusBadge(`رعایت SLA: ${toDigits(sla.compliance ?? 0)}٪`, 'success')] })}
-          <div class="grid grid--cards">${agents
-            .map(
-              (agent) => `<article class="card">
-                <div class="card__body d-flex flex-column gap-3">
-                  <div class="d-flex align-items-center gap-3"><img class="avatar avatar--lg" src="${escapeHtml(agent.avatar)}" alt=""><div><h3 class="card__title">${escapeHtml(agent.name)}</h3><p class="card__subtitle">${escapeHtml(agent.role ?? 'کارشناس پشتیبانی')}</p></div>
-                  <span class="status-dot status-dot--${agent.status === 'online' ? 'online' : agent.status === 'busy' ? 'busy' : 'offline'} ms-auto"></span></div>
-                  ${infoRows([
-                    ['تیکت باز', toDigits(agent.open ?? 0)],
-                    ['حل‌شده امروز', toDigits(agent.resolvedToday ?? 0)],
-                    ['میانگین پاسخ', `${toDigits(agent.firstResponseMinutes ?? 0)} دقیقه`],
-                    ['رضایت', `${toDigits(agent.csat ?? 0)}٪`],
-                  ])}
-                </div>
-              </article>`,
-            )
-            .join('')}</div>
+        `<div class="dashboard-shell sup">
+          ${pageHeader({
+            title: 'کارشناسان پشتیبانی',
+            subtitle: 'توزیع بار کاری، سرعت پاسخ و کیفیت تجربه مشتری — به تفکیک کارشناس',
+            icon: 'headset',
+            badges: [
+              statusBadge(`${toDigits(online)} نفر در دسترس`, online ? 'success' : 'neutral'),
+              statusBadge(`رعایت SLA ${toDigits(compliance)}٪`, compliance >= 80 ? 'success' : compliance >= 60 ? 'warning' : 'danger'),
+            ],
+            actions: toolButtons({ create: 'کارشناس جدید', exportResource: 'agents' }),
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'تیکت‌های باز', value: toDigits(openTickets), meta: `میانگین ${toDigits(avgLoad)} تیکت برای هر کارشناس`, tone: 'primary', icon: 'inbox', id: 'sup-open' })}
+            ${statCard({ label: 'رعایت SLA', value: `${toDigits(compliance)}٪`, meta: breached ? `${toDigits(breached)} تیکت خارج از زمان` : 'بدون تیکت خارج از زمان', tone: compliance >= 80 ? 'success' : 'warning', icon: 'stopwatch', id: 'sup-sla' })}
+            ${statCard({ label: 'رضایت مشتری', value: `${toDigits(avgCsat)}٪`, meta: `از ${toDigits(satisfaction.volume ?? 0)} گفت‌وگوی ثبت‌شده`, tone: 'info', icon: 'emoji-smile', id: 'sup-csat' })}
+            ${statCard({ label: 'کارشناسان فعال', value: `${toDigits(online)}/${toDigits(agents.length)}`, meta: `${toDigits(langCount.size)} زبان پشتیبانی`, tone: 'success', icon: 'people', id: 'sup-team' })}
+          </div>
+
+          <div class="widget-grid sup-grid">
+            ${card({
+              span: 12,
+              className: 'sup-roster-card',
+              icon: 'person-badge',
+              title: 'ترکیب تیم و بار کاری',
+              subtitle: 'کارشناسان بر اساس تعداد تیکت باز مرتب شده‌اند — میله پررنگ‌تر یعنی فشار بیشتر',
+              body: `<div class="agent-grid">${roster
+                .map((agent) => {
+                  const meta = toneOf(agent);
+                  const load = Math.round(((agent.open ?? 0) / peakLoad) * 100);
+                  const first = (agent.avgResponse ?? '').replace(/[^۰-۹0-9]/g, '');
+                  return `<article class="agent-card">
+                    <header class="agent-card__head">
+                      <span class="agent-card__avatar">
+                        <img src="${escapeHtml(agent.avatar)}" alt="">
+                        <i class="agent-card__status agent-card__status--${escapeHtml(agent.status)}" title="${escapeHtml(meta.label)}"></i>
+                      </span>
+                      <div class="agent-card__id">
+                        <h3>${escapeHtml(agent.name)}</h3>
+                        <p>${escapeHtml(agent.team ?? 'کارشناس پشتیبانی')}</p>
+                      </div>
+                      <span class="badge badge--soft-${escapeHtml(meta.tone)}"><i class="bi bi-${escapeHtml(meta.icon)}"></i> ${escapeHtml(meta.label)}</span>
+                    </header>
+                    <div class="agent-card__load">
+                      <span class="agent-card__load-label">بار کاری</span>
+                      <span class="agent-card__load-bar agent-card__load-bar--${loadTone(agent.open ?? 0)}"><i style="--w:${load}%"></i></span>
+                      <b class="numeric">${toDigits(agent.open ?? 0)} تیکت باز</b>
+                    </div>
+                    <ul class="agent-card__stats">
+                      <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span>حل‌شده</span><b class="numeric">${toDigits(agent.resolved ?? 0)}</b></li>
+                      <li><i class="bi bi-stopwatch" aria-hidden="true"></i><span>میانگین پاسخ</span><b class="numeric">${escapeHtml(first || '—')} دقیقه</b></li>
+                      <li><i class="bi bi-star-fill" aria-hidden="true"></i><span>امتیاز رضایت</span><b class="numeric">${toDigits(rating(agent.satisfaction).toFixed(1))} از ۵</b></li>
+                      <li><i class="bi bi-speedometer" aria-hidden="true"></i><span>نرخ حل</span><b class="numeric">${toDigits(agent.csat ?? 0)}٪</b></li>
+                    </ul>
+                    <footer class="agent-card__foot">
+                      <span class="agent-card__langs">${(agent.languages ?? []).map((lang) => `<span class="agent-lang">${escapeHtml(lang)}</span>`).join('')}</span>
+                      ${agent.breached ? `<span class="agent-card__breach" title="تیکت خارج از SLA"><i class="bi bi-exclamation-triangle"></i> ${toDigits(agent.breached)}</span>` : '<span class="agent-card__ok"><i class="bi bi-shield-check"></i> در محدوده SLA</span>'}
+                    </footer>
+                  </article>`;
+                })
+                .join('')}</div>`,
+            })}
+
+            <div class="grid grid--cards sup-side">
+              ${card({
+                icon: 'speedometer2',
+                title: 'توزیع زمان پاسخ اولیه',
+                subtitle: `${toDigits(totalBuckets)} تیکت در ${toDigits(buckets.length)} بازه پاسخ`,
+                body: buckets.length
+                  ? `<ul class="sup-sla">
+                      ${buckets
+                        .map((bucket, index) => {
+                          const share = totalBuckets ? Math.round(((bucket.count ?? 0) / totalBuckets) * 100) : 0;
+                          const tone = index < 2 ? 'good' : index === 2 ? 'warn' : 'bad';
+                          return `<li class="sup-sla__row">
+                            <span class="sup-sla__label">${escapeHtml(bucket.label)}<small>${toDigits(share)}٪ از کل</small></span>
+                            <span class="sup-sla__bar sup-sla__bar--${tone}"><i style="--w:${Math.round(((bucket.count ?? 0) / peakBucket) * 100)}%"></i></span>
+                            <b class="numeric">${toDigits(bucket.count ?? 0)}</b>
+                          </li>`;
+                        })
+                        .join('')}
+                      <li class="sup-sla__foot"><i class="bi bi-shield-check"></i> ${toDigits(compliance)}٪ تیکت‌ها زیر ۴ ساعت پاسخ گرفته‌اند</li>
+                    </ul>`
+                  : emptyState({ title: 'داده‌ای برای SLA نیست', text: 'تیکتی در این دوره ثبت نشده است.', icon: 'stopwatch' }),
+              })}
+              ${card({
+                icon: 'emoji-heart-eyes',
+                title: 'کیفیت در یک نگاه',
+                subtitle: `${toDigits(satisfaction.reopened ?? 0)} بازگشایی مجدد در دوره`,
+                body: `<div class="sup-quality">
+                  <div class="sup-quality__ring" style="--value:${Math.min(100, avgCsat)}">
+                    <b class="numeric">${toDigits(avgCsat)}٪</b>
+                    <small>رضایت</small>
+                  </div>
+                  <ul class="sup-quality__list">
+                    <li><span>حجم گفت‌وگو</span><b class="numeric">${toDigits(satisfaction.volume ?? 0)}</b></li>
+                    <li><span>بازگشایی مجدد</span><b class="numeric">${toDigits(satisfaction.reopened ?? 0)}</b></li>
+                    <li><span>خارج از SLA</span><b class="numeric ${breached ? 'text-danger' : 'text-success'}">${toDigits(breached)}</b></li>
+                    <li><span>زبان‌های پوشش‌داده‌شده</span><b class="numeric">${toDigits(langCount.size)}</b></li>
+                  </ul>
+                </div>`,
+              })}
+            </div>
+          </div>
         </div>`,
       );
+      exportable(node, 'agents');
       return;
     }
 
@@ -2150,7 +3479,7 @@ async function initSupport() {
       const byViews = [...topics].sort((a, b) => b.views - a.views);
       await Promise.all([
         chart($('[data-kb-chart="share"]', node), { type: 'donut', height: 260, series: byViews.map((t) => t.views), labels: byViews.map((t) => t.category) }),
-        chart($('[data-kb-chart="csat"]', node), { type: 'area', height: 200, series: [{ name: 'رضایت ٪', data: satisfaction.series.map((r) => r.csat) }], labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'], colors: ['#10b981'] }),
+        chart($('[data-kb-chart="csat"]', node), { type: 'area', height: 200, series: [{ name: 'رضایت ٪', data: satisfaction.series.map((r) => r.csat) }], labels: monthNames12(), colors: ['#10b981'] }),
       ]);
 
       const list = $('[data-kb-list]', node);
@@ -2285,7 +3614,7 @@ async function initHr() {
         </div>`,
       );
       initCharts(node);
-      const clock = () => new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+      const clock = () => new Intl.DateTimeFormat(activeLang() === 'fa' ? 'fa-IR' : activeLang() === 'ar' ? 'ar-AE' : 'en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date());
       on($('[data-check-in]', node), 'click', async () => {
         await services.attendanceService.checkIn();
         toast.success('ورود ثبت شد', `ساعت ${clock()} ثبت گردید.`);
@@ -2528,7 +3857,7 @@ async function initHr() {
                           <tr><th style="color: var(--nv-text-muted);">تاریخ استخدام رسمی:</th><td class="numeric">${formatDate(employee.hiredAt, { format: 'long' })}</td></tr>
                           <tr><th style="color: var(--nv-text-muted);">نوع همکاری:</th><td><span class="badge badge--soft-primary">${escapeHtml(employee.type ?? 'تمام‌وقت')}</span> ${employee.remote ? '<span class="badge badge--soft-info ms-1">دورکاری</span>' : ''}</td></tr>
                           <tr><th style="color: var(--nv-text-muted);">پست الکترونیکی سازمانی:</th><td><a href="mailto:${escapeHtml(employee.email)}" class="text-primary">${escapeHtml(employee.email)}</a></td></tr>
-                          <tr><th style="color: var(--nv-text-muted);">شماره تماس همراه:</th><td class="numeric">${escapeHtml(employee.phone ?? '۰۹۱۲۳۴۵۶۷۸۹')}</td></tr>
+                          <tr><th style="color: var(--nv-text-muted);">شماره تماس همراه:</th><td><span class="text-ltr numeric" dir="ltr">${escapeHtml(employee.phone ?? '۰۹۱۲۳۴۵۶۷۸۹')}</span></td></tr>
                           <tr><th style="color: var(--nv-text-muted);">محل خدمت و سکونت:</th><td>${escapeHtml(employee.city ?? 'تهران')}، دفتر مرکزی</td></tr>
                         </tbody>
                       </table>
@@ -3174,7 +4503,7 @@ async function initLogistics() {
                   <img src="${v.avatar}" style="width:52px; height:52px; border-radius:50%; border:3px solid var(--nv-primary); object-fit:cover;">
                   <div>
                     <h4 style="margin:0; font-size:15px; font-weight:800;">${v.driver}</h4>
-                    <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">${v.phone} • گواهینامه پایه یک ترانزیت بین‌المللی</p>
+                    <p style="margin:0; font-size:12px; color:var(--nv-text-muted);"><span class="text-ltr" dir="ltr">${escapeHtml(v.phone)}</span> • گواهینامه پایه یک ترانزیت بین‌المللی</p>
                   </div>
                 </div>
                 <div style="text-align:end;">
@@ -3222,7 +4551,7 @@ async function initLogistics() {
           `,
           footer: `
             <div class="d-flex justify-content-between w-100">
-              <a class="btn btn-outline-primary btn-sm" href="tel:${v.phone}"><i class="bi bi-telephone me-1"></i> تماس با راننده</a>
+              <a class="btn btn-outline-primary btn-sm" href="tel:${escapeHtml(v.phone)}"><i class="bi bi-telephone me-1"></i> تماس با راننده</a>
               <button class="btn btn-primary btn-sm" type="button" data-modal-close>تأیید و بستن</button>
             </div>
           `,
@@ -3542,42 +4871,225 @@ async function initLogistics() {
 
     case 'logistics/shipments.html': {
       const node = host();
-      const { items, summary } = await services.shipmentService.list({ perPage: 12 });
+      /**
+       * All 40 shipments come from the service (12 per page would hide the
+       * delayed ones), and the second card ranks the *carriers* by on-time
+       * performance — the number logistics managers actually act on.
+       */
+      const { items, summary } = await services.shipmentService.list({ perPage: 100 });
+      const statusMeta = (id) => summary?.statuses?.find((status) => status.id === id) ?? { id, label: id, tone: 'neutral' };
+      const DAY = 86400000;
+      const sorted = [...items].sort((a, b) => {
+        const rank = (shipment) => (shipment.status === 'delayed' ? 0 : shipment.status === 'out-for-delivery' ? 1 : shipment.status === 'in-transit' ? 2 : 3);
+        return rank(a) - rank(b) || new Date(a.eta) - new Date(b.eta);
+      });
+      const delayed = items.filter((item) => item.status === 'delayed');
+      const inTransit = items.filter((item) => ['in-transit', 'out-for-delivery'].includes(item.status));
+      const delivered = items.filter((item) => item.status === 'delivered');
+      const costTotal = items.reduce((sum, item) => sum + (item.cost ?? 0), 0);
+      const onTime = summary?.onTimeRate ?? 0;
+      const avgCost = items.length ? Math.round(costTotal / items.length) : 0;
+      const etaOf = (item) => {
+        const days = Math.round((new Date(item.eta).getTime() - Date.now()) / DAY);
+        if (item.status === 'delivered') return { tone: 'done', text: 'تحویل شد' };
+        if (item.status === 'returned') return { tone: 'done', text: 'مرجوع شد' };
+        if (days < 0) return { tone: 'late', text: `${toDigits(Math.abs(days))} روز تأخیر` };
+        if (days === 0) return { tone: 'soon', text: 'امروز' };
+        if (days === 1) return { tone: 'soon', text: 'فردا' };
+        return { tone: days <= 3 ? 'soon' : 'ok', text: `${toDigits(days)} روز مانده` };
+      };
+      /** Steps of the delivery pipeline, mirrored from the seeded event list. */
+      const steps = ['ثبت', 'انبار', 'سورتینگ', 'مسیر', 'تحویل'];
+      const stepIndex = (item) => {
+        if (item.status === 'delivered') return steps.length - 1;
+        if (item.status === 'preparing') return 1;
+        if (item.status === 'returned') return 2;
+        return ['in-transit', 'delayed'].includes(item.status) ? 3 : 4;
+      };
+      const carriers = [...new Set(items.map((item) => item.carrier))].map((name) => {
+        const rows = items.filter((item) => item.carrier === name);
+        const late = rows.filter((item) => item.status === 'delayed').length;
+        const done = rows.filter((item) => item.status === 'delivered').length;
+        const performance = Math.round(((rows.length - late) / Math.max(1, rows.length)) * 100);
+        return { name, count: rows.length, late, done, performance, avgCost: rows.reduce((sum, item) => sum + (item.cost ?? 0), 0) / Math.max(1, rows.length) };
+      }).sort((a, b) => b.performance - a.performance);
+      const peakCarrier = Math.max(1, ...carriers.map((carrier) => carrier.count));
+      const statusCounts = (summary?.statuses ?? []).map((status) => ({ ...status, count: items.filter((item) => item.status === status.id).length })).filter((status) => status.count);
+      const maxStatus = Math.max(1, ...statusCounts.map((status) => status.count));
+
       render(
         node,
-        `<div class="dashboard-shell">
-          ${pageHeader({ title: 'محموله‌ها', subtitle: 'مدیریت چرخه ارسال از انبار تا تحویل', icon: 'truck', actions: toolButtons({ create: 'محموله جدید', exportResource: 'shipments' }) })}
-          ${statsFrom(summary ?? { active: items.length, delayed: items.filter((i) => i.status === 'delayed').length }, [
-            ['active', 'محموله فعال', 'number', 'primary', 'truck'],
-            ['delayed', 'تأخیری', 'number', 'danger', 'alarm'],
-            ['delivered', 'تحویل‌شده', 'number', 'success', 'check2-circle'],
-            ['onTime', 'به‌موقع', 'percent', 'info', 'stopwatch'],
-          ])}
-          ${card({ flush: true, body: `<table class="table table--hover"><thead><tr><th>کد رهگیری</th><th>مقصد</th><th>وضعیت</th><th>پیشرفت</th><th>زمان تخمینی</th><th></th></tr></thead><tbody>${items
-            .map(
-              (shipment) => `<tr><td class="numeric">${escapeHtml(shipment.tracking)}</td><td>${escapeHtml(shipment.destination ?? '')}</td>
-                <td>${statusBadge(shipment.statusLabel ?? shipment.status, shipment.status === 'delivered' ? 'success' : shipment.status === 'delayed' ? 'danger' : 'info')}</td>
-                <td><div class="progress progress--sm"><div class="progress-bar" style="width:${Math.min(100, shipment.progress ?? 40)}%"></div></div></td>
-                <td>${formatDate(shipment.eta, { format: 'short' })}</td>
-                <td><button class="btn btn-light btn-sm" type="button" data-advance-shipment="${escapeHtml(shipment.id)}">مرحله بعد</button></td></tr>`,
-            )
-            .join('')}</tbody></table>` })}
+        `<div class="dashboard-shell ship">
+          ${pageHeader({
+            title: 'محموله‌ها',
+            subtitle: 'چرخه ارسال از انبار تا تحویل مشتری — با تفکیک وضعیت، حامل و تأخیرها',
+            icon: 'truck',
+            badges: [
+              statusBadge(`${toDigits(inTransit.length)} در مسیر`, 'info'),
+              delayed.length ? statusBadge(`${toDigits(delayed.length)} تأخیری`, 'warning') : statusBadge('بدون تأخیر', 'success'),
+            ],
+            actions: toolButtons({ create: 'محموله جدید', exportResource: 'shipments' }),
+          })}
+
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'محموله فعال', value: toDigits(summary?.activeShipments ?? inTransit.length), meta: `${toDigits(items.length)} محموله در سامانه`, tone: 'primary', icon: 'truck', id: 'ship-active' })}
+            ${statCard({ label: 'تحویل‌شده', value: toDigits(delivered.length), meta: `امروز ${toDigits(summary?.deliveredToday ?? 0)} تحویل`, tone: 'success', icon: 'check2-circle', id: 'ship-done' })}
+            ${statCard({ label: 'تأخیری', value: toDigits(delayed.length), meta: delayed.length ? 'نیازمند تماس با حامل' : 'همه محموله‌ها طبق برنامه', tone: delayed.length ? 'danger' : 'success', icon: 'alarm', id: 'ship-late' })}
+            ${statCard({ label: 'تحویل به‌موقع', value: `${toDigits(onTime)}٪`, meta: `میانگین هزینه ${escapeHtml(formatCurrency(avgCost, 'IRR', { compact: true }))} هر محموله`, tone: 'info', icon: 'stopwatch', id: 'ship-ontime' })}
+          </div>
+
+          <div class="widget-grid">
+            ${card({
+              span: 12,
+              className: 'ship-table-card',
+              icon: 'box-seam',
+              title: 'پیگیری محموله‌ها',
+              subtitle: 'تأخیری‌ها در صدر فهرست — روی هر ردیف برای جزئیات رهگیری کلیک کنید',
+              flush: true,
+              body: `<div class="table-wrap">
+                <table class="table table--hover ship-table">
+                  <thead><tr><th>کد رهگیری</th><th>مقصد</th><th>وضعیت</th><th>پیشرفت</th><th>زمان تخمینی</th><th class="text-end">کرایه</th><th></th></tr></thead>
+                  <tbody>${sorted
+                    .map((shipment) => {
+                      const meta = statusMeta(shipment.status);
+                      const eta = etaOf(shipment);
+                      const index = stepIndex(shipment);
+                      return `<tr data-shipment="${escapeHtml(shipment.id)}" data-tracking="${escapeHtml(shipment.tracking)}" data-status="${escapeHtml(shipment.status)}">
+                        <td>
+                          <button type="button" class="ship-code" data-ship-track="${escapeHtml(shipment.tracking)}">${escapeHtml(shipment.tracking)}</button>
+                          <span class="ship-code__sub">${escapeHtml(shipment.customer ?? '')}</span>
+                        </td>
+                        <td>
+                          <span class="ship-route"><b>${escapeHtml(shipment.destination ?? '')}</b><small>${escapeHtml(shipment.origin ?? '')} → مقصد</small></span>
+                        </td>
+                        <td>
+                          <span class="ship-status ship-status--${escapeHtml(meta.tone)}"><i class="ship-status__dot"></i>${escapeHtml(meta.label)}</span>
+                          <span class="ship-carrier">${escapeHtml(shipment.carrier ?? '')}</span>
+                        </td>
+                        <td>
+                          <span class="ship-steps" title="${toDigits(shipment.progress ?? 0)}٪">${steps
+                            .map((step, stepIdx) => `<i class="${stepIdx <= index ? 'is-done' : ''}" title="${escapeHtml(step)}"></i>`)
+                            .join('')}</span>
+                          <span class="ship-steps__label">${escapeHtml(steps[index] ?? '')}</span>
+                        </td>
+                        <td>
+                          <span class="ship-eta ship-eta--${eta.tone}"><i class="bi bi-calendar-event"></i>${escapeHtml(eta.text)}</span>
+                          <span class="ship-eta__date">${escapeHtml(formatDate(shipment.eta, { format: 'short' }))}</span>
+                        </td>
+                        <td class="text-end numeric">${escapeHtml(formatCurrency(shipment.cost ?? 0, 'IRR', { compact: true }))}</td>
+                        <td>
+                          <div class="ship-row-actions">
+                            <button type="button" class="icon-btn icon-btn--sm" data-ship-track="${escapeHtml(shipment.tracking)}" aria-label="رهگیری"><i class="bi bi-geo-alt"></i></button>
+                            ${shipment.status === 'delivered' || shipment.status === 'returned' ? '' : `<button type="button" class="icon-btn icon-btn--sm" data-advance-shipment="${escapeHtml(shipment.id)}" aria-label="مرحله بعد"><i class="bi bi-arrow-left-right"></i></button>`}
+                          </div>
+                        </td>
+                      </tr>`;
+                    })
+                    .join('')}</tbody>
+                </table>
+              </div>`,
+            })}
+
+            <div class="grid grid--cards ship-side">
+              ${card({
+                icon: 'building-up',
+                title: 'عملکرد حامل‌ها',
+                subtitle: `${toDigits(carriers.length)} حامل فعال روی ${toDigits(items.length)} محموله`,
+                body: `<ul class="ship-carriers">${carriers
+                  .map(
+                    (carrier) => `<li class="ship-carriers__row">
+                      <span class="ship-carriers__name">${escapeHtml(carrier.name)}<small>${toDigits(carrier.count)} محموله · میانگین ${escapeHtml(formatCurrency(carrier.avgCost, 'IRR', { compact: true }))}</small></span>
+                      <span class="ship-carriers__bar"><i style="--w:${Math.round((carrier.count / peakCarrier) * 100)}%"></i></span>
+                      <span class="ship-carriers__perf ship-carriers__perf--${carrier.performance >= 90 ? 'good' : carrier.performance >= 75 ? 'warn' : 'bad'}">${toDigits(carrier.performance)}٪</span>
+                    </li>`,
+                  )
+                  .join('')}</ul>
+                <p class="ship-carriers__note"><i class="bi bi-info-circle"></i> درصدها = سهم محموله‌های بدون تأخیر از کل محموله‌های آن حامل.</p>`,
+              })}
+              ${card({
+                icon: 'pie-chart',
+                title: 'ترکیب وضعیت‌ها',
+                subtitle: `${toDigits(statusCounts.length)} وضعیت فعال در دوره`,
+                body: `<ul class="ship-status-mix">${statusCounts
+                  .map(
+                    (status) => `<li class="ship-status-mix__row">
+                      <span class="ship-status-mix__label"><i class="ship-status__dot ship-status__dot--${escapeHtml(status.tone)}"></i> ${escapeHtml(status.label)}</span>
+                      <span class="ship-status-mix__bar"><i style="--w:${Math.round((status.count / maxStatus) * 100)}%"></i></span>
+                      <b class="numeric">${toDigits(status.count)}</b>
+                    </li>`,
+                  )
+                  .join('')}</ul>
+                <div class="ship-cost">
+                  <span>مجموع کرایه دوره</span>
+                  <strong class="numeric">${escapeHtml(formatCurrency(costTotal, 'IRR', { compact: true }))}</strong>
+                </div>`,
+              })}
+            </div>
+          </div>
         </div>`,
       );
+
+      /* ------------------------------------------------------------------- */
       on(node, 'click', async (event) => {
+        const track = event.target.closest('[data-ship-track]');
+        if (track) {
+          const shipment = await services.shipmentActions.track(track.dataset.shipTrack);
+          const events = shipment.timeline ?? shipment.events ?? [];
+          modal.open({
+            title: `رهگیری ${escapeHtml(shipment.tracking ?? '')}`,
+            subtitle: `${escapeHtml(shipment.origin ?? '')} → ${escapeHtml(shipment.destination ?? '')} · ${escapeHtml(shipment.carrier ?? '')}`,
+            size: 'md',
+            content: `<div class="ship-track">
+              <div class="ship-track__meta">
+                ${infoRows([
+                  ['وضعیت', statusBadge(shipment.statusLabel ?? shipment.status ?? '', shipment.tone ?? 'info')],
+                  ['رانه/راننده', escapeHtml(shipment.driver ?? '—')],
+                  ['وزن', escapeHtml(shipment.weight ?? '—')],
+                  ['تعداد بسته', toDigits(shipment.packages ?? 0)],
+                  ['مسافت', escapeHtml(shipment.distance ?? '—')],
+                  ['زمان تخمینی', escapeHtml(formatDate(shipment.eta, { format: 'medium' }))],
+                ])}
+              </div>
+              <ol class="ship-track__timeline">${events
+                .map(
+                  (step, index) => `<li class="ship-track__step${step.done ? ' is-done' : ''}${index === events.filter((s) => s.done).length - 1 ? ' is-current' : ''}">
+                    <span class="ship-track__bullet"><i class="bi bi-${step.done ? 'check2' : 'circle'}" aria-hidden="true"></i></span>
+                    <span class="ship-track__body"><b>${escapeHtml(step.label ?? '')}</b><small>${escapeHtml(formatDate(step.at, { format: 'medium' }))}</small></span>
+                  </li>`,
+                )
+                .join('')}</ol>
+            </div>`,
+            footer: '<button type="button" class="btn btn-light" data-modal-close>بستن</button>',
+          });
+          return;
+        }
         const button = event.target.closest('[data-advance-shipment]');
         if (!button) return;
-        const result = await services.shipmentActions.advance(button.dataset.advanceShipment);
-        toast.success('وضعیت محموله تغییر کرد', `وضعیت جدید: ${result.statusLabel ?? result.status ?? 'به‌روزرسانی شد'}`);
-        button.closest('tr').querySelector('td:nth-child(3)').innerHTML = statusBadge(result.statusLabel ?? result.status ?? '', 'info');
+        const row = button.closest('tr');
+        button.classList.add('is-loading');
+        try {
+          const result = await services.shipmentActions.advance(button.dataset.advanceShipment);
+          const meta = statusMeta(result.status);
+          const statusCell = row?.querySelector('.ship-status');
+          if (statusCell) {
+            statusCell.className = `ship-status ship-status--${meta.tone}`;
+            statusCell.innerHTML = `<i class="ship-status__dot"></i>${escapeHtml(result.statusLabel ?? meta.label)}`;
+          }
+          row?.setAttribute('data-status', result.status ?? '');
+          toast.success('وضعیت محموله به‌روزرسانی شد', `وضعیت جدید: ${result.statusLabel ?? meta.label}`);
+        } catch (error) {
+          toast.danger('به‌روزرسانی نشد', error?.message ?? 'دوباره تلاش کنید.');
+        } finally {
+          button.classList.remove('is-loading');
+        }
       });
-      on($('[data-create]', node), 'click', () => openRecordForm({ resource: 'shipments', title: 'محموله جدید', fields: crudFields('shipments'), onSaved: () => window.location.reload() }));
+      on($('[data-create]', node), 'click', () =>
+        openRecordForm({ resource: 'shipments', title: 'محموله جدید', fields: crudFields('shipments'), onSaved: () => window.location.reload() }),
+      );
       exportable(node, 'shipments');
       return;
     }
 
-    default:
-      return;
   }
 }
 
@@ -3627,6 +5139,7 @@ function badgeToneFor(label) {
   if (/refund|cancel|overdue|lost|breach|delayed|terminated|unpaid|مرجوع|لغو|معوق|تأخیر|اخذ/.test(text)) return 'danger';
   return 'neutral';
 }
+
 
 async function initReports() {
   const page = kit.pageId();
@@ -3789,6 +5302,33 @@ function reportTable(report) {
 }
 
 /* ===================================================================== Users */
+
+/** Persian labels for the modules the permission matrix covers. */
+const MODULE_LABELS = {
+  users: 'کاربران',
+  products: 'محصولات',
+  orders: 'سفارش‌ها',
+  invoices: 'صورت‌حساب‌ها',
+  projects: 'پروژه‌ها',
+  tickets: 'تیکت‌ها',
+  reports: 'گزارش‌ها',
+  settings: 'تنظیمات',
+  inventory: 'انبار',
+  shipments: 'محموله‌ها',
+  payroll: 'حقوق و دستمزد',
+  cms: 'مدیریت محتوا',
+};
+
+/** Icon for each permission verb in the matrix legend. */
+const PERMISSION_ICONS = {
+  view: 'eye',
+  create: 'plus-circle',
+  edit: 'pencil-square',
+  delete: 'trash3',
+  export: 'download',
+  approve: 'check2-circle',
+  impersonate: 'person-badge',
+};
 
 /** Human labels for the permission verbs the matrix speaks. */
 const PERMISSION_LABELS = {
@@ -4260,83 +5800,299 @@ async function initUsers() {
 
     case 'users/permissions.html': {
       const node = host();
-      const matrix = await services.roleService.matrix();
-      const modules = matrix.modules.map((module) => (typeof module === 'string' ? { id: module, label: module } : module));
+      const [matrix, userList] = await Promise.all([services.roleService.matrix(), services.userService.list({ perPage: 200 })]);
+      /** Role → number of accounts, so chips and the summary show real figures. */
+      const userCount = (roleId) => (userList.items ?? userList).filter((user) => user.role === roleId).length;
+      const modules = matrix.modules.map((module) => (typeof module === 'string' ? { id: module, label: MODULE_LABELS[module] ?? module } : module));
       const permissions = matrix.permissions.map((permission) => (typeof permission === 'string' ? { id: permission, label: PERMISSION_LABELS[permission] ?? permission } : permission));
-      const holders = (permissionId) =>
-        matrix.roles
-          .map((role) => ({ role, modules: Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permissionId)).map(([id]) => id) }))
-          .filter((entry) => entry.modules.length);
+      const roles = matrix.roles.map((role) => ({ ...role, grants: role.grants ?? {} }));
+      const CELLS = modules.length * permissions.length;
+
+      /**
+       * Edits are optimistic: the switch flips immediately, a single overlay
+       * map remembers the new state, and the API call runs in the background —
+       * if it fails the switch snaps back and a toast explains why.
+       */
+      const overrides = new Map();
+      const keyOf = (roleId, moduleId, permissionId) => `${roleId}|${moduleId}|${permissionId}`;
+      const granted = (role, moduleId, permissionId) => {
+        const override = overrides.get(keyOf(role.id, moduleId, permissionId));
+        if (override !== undefined) return override;
+        return (role.grants?.[moduleId] ?? []).includes(permissionId);
+      };
+      const grantsOf = (role) => modules.reduce((sum, module) => sum + permissions.filter((permission) => granted(role, module.id, permission.id)).length, 0);
+      const coverageOf = (role) => (CELLS ? Math.round((grantsOf(role) / CELLS) * 100) : 0);
+      const levelTone = (role) => role.tone ?? 'primary';
+
+      const state = { roleId: roles[0]?.id ?? '', term: '', onlyGranted: false };
+      const currentRole = () => roles.find((role) => role.id === state.roleId) ?? roles[0];
+
+      /* ------------------------------------------------------------- markup */
+      const roleChips = () =>
+        roles
+          .map((role) => {
+            const coverage = coverageOf(role);
+            return `<button type="button" class="perm-role${role.id === state.roleId ? ' is-active' : ''}" data-role-tab="${escapeHtml(role.id)}" role="tab" aria-selected="${role.id === state.roleId}">
+              <span class="perm-role__dot perm-role__dot--${escapeHtml(levelTone(role))}"></span>
+              <span class="perm-role__body"><b>${escapeHtml(role.label ?? role.id)}</b><small>${toDigits(userCount(role.id))} کاربر · ${toDigits(coverage)}٪ پوشش</small></span>
+            </button>`;
+          })
+          .join('');
+
+      const rows = () => {
+        const role = currentRole();
+        const term = state.term.trim().toLowerCase();
+        return modules
+          .filter((module) => (term ? `${module.label} ${module.id}`.toLowerCase().includes(term) : true))
+          .filter((module) => (state.onlyGranted ? permissions.some((permission) => granted(role, module.id, permission.id)) : true))
+          .map((module) => {
+            const all = permissions.every((permission) => granted(role, module.id, permission.id));
+            const some = permissions.some((permission) => granted(role, module.id, permission.id));
+            return `<tr data-perm-row="${escapeHtml(module.id)}">
+              <th scope="row" class="perm-module">
+                <span class="perm-module__name">${escapeHtml(module.label)}</span>
+                <code class="perm-module__id">${escapeHtml(module.id)}</code>
+              </th>
+              ${permissions
+                .map(
+                  (permission) => `<td class="perm-cell">
+                    <label class="perm-switch${granted(role, module.id, permission.id) ? ' is-on' : ''}" title="${escapeHtml(permission.label)}">
+                      <input type="checkbox" data-perm-cell data-role="${escapeHtml(role.id)}" data-module="${escapeHtml(module.id)}" data-permission="${escapeHtml(permission.id)}" ${granted(role, module.id, permission.id) ? 'checked' : ''}>
+                      <span class="perm-switch__track" aria-hidden="true"><span class="perm-switch__knob"></span></span>
+                      <span class="visually-hidden">${escapeHtml(permission.label)} در ${escapeHtml(module.label)}</span>
+                    </label>
+                  </td>`,
+                )
+                .join('')}
+              <td class="perm-cell perm-cell--all">
+                <button type="button" class="perm-all${all ? ' is-on' : ''}${!all && some ? ' is-partial' : ''}" data-module-all="${escapeHtml(module.id)}">
+                  <i class="bi bi-${all ? 'check2-all' : 'slash-circle'}" aria-hidden="true"></i>
+                  <span>${all ? 'همه' : some ? 'ناقص' : 'هیچ'}</span>
+                </button>
+              </td>
+            </tr>`;
+          })
+          .join('');
+      };
+      const rowCount = () => {
+        const role = currentRole();
+        const term = state.term.trim().toLowerCase();
+        return modules.filter((module) => (term ? `${module.label} ${module.id}`.toLowerCase().includes(term) : true)).filter((module) => (state.onlyGranted ? permissions.some((permission) => granted(role, module.id, permission.id)) : true)).length;
+      };
 
       render(
         node,
-        `<div class="dashboard-shell">
+        `<div class="dashboard-shell perm">
           ${pageHeader({
-            title: 'مدیریت مجوزها و دسترسی‌های خرد',
-            subtitle: 'کنترل دقیق قابلیت‌های خواندن، ایجاد، ویرایش، حذف و خروجی داده‌ها به تفکیک ماژول‌ها',
+            title: 'مدیریت مجوزها و دسترسی‌ها',
+            subtitle: 'کنترل نقش‌به‌نقش دسترسی به ماژول‌ها — با همان کلیک، تغییر بلافاصله اعمال می‌شود',
             icon: 'key-fill',
+            badges: [statusBadge(`${toDigits(modules.length)} ماژول × ${toDigits(permissions.length)} مجوز`, 'primary'), statusBadge(`${toDigits(roles.length)} نقش کاربری`, 'info')],
             actions: '<button class="btn btn-primary" type="button" data-custom-perm><i class="bi bi-plus-lg"></i> تعریف مجوز سفارشی</button>',
           })}
-          <div class="kpi-row grid grid--4 mb-4">
-            ${statCard({ label: 'کل مجوزهای تعریف‌شده', value: toDigits(permissions.length), hint: 'انواع عملیات مجاز', tone: 'primary', icon: 'key' })}
-            ${statCard({ label: 'نقش‌های دریافت‌کننده', value: toDigits(matrix.roles.length), hint: 'نقش‌های دارای مجوز', tone: 'info', icon: 'shield-lock' })}
-            ${statCard({ label: 'ماژول‌های دارای دسترسی', value: toDigits(modules.length), hint: 'پوشش کامل بخش‌ها', tone: 'success', icon: 'grid-3x3-gap' })}
-            ${statCard({ label: 'مجوزهای پرکاربرد', value: 'view, create', hint: 'اعطا شده به اغلب نقش‌ها', tone: 'warning', icon: 'award' })}
-          </div>
-          ${card({
-            title: 'پوشش مجوزها در ماژول‌های سامانه',
-            subtitle: 'عدد هر خانه = تعداد ماژول‌هایی که این نقش با این مجوز مشاهده یا ویرایش می‌کند',
-            flush: true,
-            body: `<div class="table-responsive"><table class="table table--hover table--bordered">
-              <thead><tr><th>نقش کاربری</th>${permissions
-                .map((permission) => `<th class="text-center">${escapeHtml(permission.label)}</th>`)
-                .join('')}<th class="text-center">مجموع گرنت‌ها</th></tr></thead>
-              <tbody>${matrix.roles
-                .map((role) => {
-                  const cells = permissions.map((permission) =>
-                    Object.entries(role.grants ?? {}).filter(([, list]) => list.includes(permission.id)).length,
-                  );
-                  const total = cells.reduce((sum, value) => sum + value, 0);
-                  return `<tr><th scope="row">${escapeHtml(role.label ?? role.id)}<span class="table__primary-sub">${toDigits(role.users ?? 0)} کاربر</span></th>${cells
-                    .map(
-                      (value) =>
-                        `<td class="text-center">${value ? `<span class="badge badge--soft-success rounded-pill">${toDigits(value)}</span>` : '<span class="text-muted">—</span>'}</td>`,
-                    )
-                    .join('')}<td class="text-center"><strong class="numeric text-primary">${toDigits(total)}</strong></td></tr>`;
-                })
-                .join('')}</tbody></table></div>`,
-          })}
 
-          <div class="grid grid--cards mt-4">${permissions
-            .map((permission) => {
-              const owners = holders(permission.id);
-              const share = matrix.roles.length ? Math.round((owners.length / matrix.roles.length) * 100) : 0;
-              return `<article class="card" data-permission="${escapeHtml(permission.id)}">
-                <div class="card__head" style="padding:16px 20px; border-bottom:1px solid var(--nv-border); display:flex; justify-content:space-between; align-items:center;">
-                  <div><h3 class="card__title" style="margin:0; font-size:14px; font-weight:800;">${escapeHtml(permission.label)}</h3><p class="card__subtitle" style="margin:0; font-size:11px;">${toDigits(owners.reduce((sum, entry) => sum + entry.modules.length, 0))} گرنت روی ${toDigits(new Set(owners.flatMap((entry) => entry.modules)).size)} ماژول</p></div>
-                  <span class="badge badge--soft-${share > 60 ? 'success' : share > 20 ? 'warning' : 'danger'} rounded-pill">${toDigits(share)}٪ نقش‌ها</span>
+          <div class="kpi-row grid grid--4 mb-4">
+            ${statCard({ label: 'ماژول‌های تحت کنترل', value: toDigits(modules.length), meta: `${toDigits(CELLS)} ترکیب نقش × دسترسی`, tone: 'primary', icon: 'grid-3x3-gap', id: 'perm-modules' })}
+            ${statCard({ label: 'انواع مجوز', value: toDigits(permissions.length), meta: 'مشاهده تا خروجی گرفتن', tone: 'info', icon: 'key', id: 'perm-types' })}
+            ${statCard({ label: 'نقش‌های کاربری', value: toDigits(roles.length), meta: `${toDigits((userList.items ?? userList).length)} کاربر فعال`, tone: 'success', icon: 'shield-lock', id: 'perm-roles' })}
+            ${statCard({ label: 'بیشترین پوشش', value: `${toDigits(Math.max(0, ...roles.map(coverageOf)))}٪`, meta: escapeHtml(roles.slice().sort((a, b) => coverageOf(b) - coverageOf(a))[0]?.label ?? '—'), tone: 'warning', icon: 'award', id: 'perm-coverage' })}
+          </div>
+
+          <div class="widget-grid">
+            ${card({
+              span: 12,
+              className: 'perm-board',
+              icon: 'sliders',
+              title: 'ماتریس دسترسی',
+              subtitle: 'نقش را انتخاب کنید و کلیدهای هر ماژول را روشن یا خاموش کنید',
+              bodyClass: 'perm-board__body',
+              body: `<div class="perm-roles" role="tablist" aria-label="نقش‌های کاربری" data-perm-roles data-rail>${roleChips()}</div>
+                <div class="perm-toolbar">
+                  <label class="perm-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="form-control" data-perm-search placeholder="جست‌وجوی ماژول…" autocomplete="off">
+                  </label>
+                  <label class="perm-toggle">
+                    <input type="checkbox" data-perm-only-granted>
+                    <span>فقط ماژول‌های دارای دسترسی</span>
+                  </label>
+                  <div class="perm-toolbar__actions">
+                    <button type="button" class="btn btn-light btn-sm" data-perm-all-on><i class="bi bi-check2-square"></i> فعال‌سازی همه</button>
+                    <button type="button" class="btn btn-light btn-sm" data-perm-all-off><i class="bi bi-x-square"></i> پاک‌کردن همه</button>
+                  </div>
                 </div>
-                <div class="card__body" style="padding:18px 20px;">
-                  <div class="progress progress--sm"><div class="progress-bar ${share > 60 ? 'bg-success' : 'bg-primary'}" style="width:${share}%"></div></div>
-                  <p class="card__subtitle mt-3" style="font-size:12px; color:var(--nv-text-muted);">${escapeHtml(permission.description ?? PERMISSION_NOTES[permission.id] ?? '')}</p>
-                  ${owners.length
-                    ? `<ul class="list-group list-group--flush mt-2">${owners
-                        .map(
-                          (entry) => `<li class="list-group__item" style="padding:8px 12px; display:flex; justify-content:space-between;"><span class="list-item__title" style="font-size:12px; font-weight:700;">${escapeHtml(entry.role.label ?? entry.role.id)}</span><span class="list-item__meta numeric" style="font-size:11px;">${toDigits(entry.modules.length)} ماژول</span></li>`,
-                        )
-                        .join('')}</ul>`
-                    : emptyState({ title: 'هیچ نقشی این مجوز را ندارد', text: 'برای ایمن‌سازی، این مجوز را به نقش مدیر بدهید.', icon: 'shield-exclamation' })}
+                <p class="perm-hint" data-perm-hint></p>
+                <div class="table-wrap perm-table-wrap">
+                  <table class="table perm-table">
+                    <thead><tr>
+                      <th scope="col" class="perm-table__module">ماژول</th>
+                      ${permissions.map((permission) => `<th scope="col" class="perm-cell" title="${escapeHtml(PERMISSION_NOTES[permission.id] ?? '')}">${escapeHtml(permission.label)}</th>`).join('')}
+                      <th scope="col" class="perm-cell perm-cell--all">کل ماژول</th>
+                    </tr></thead>
+                    <tbody data-perm-rows></tbody>
+                  </table>
                 </div>
-              </article>`;
-            })
-            .join('')}</div>
+                <div class="perm-empty" data-perm-empty hidden>
+                  ${emptyState({ title: 'ماژولی مطابق این فیلتر نیست', text: 'عبارت را کوتاه‌تر کنید یا فیلتر «فقط دارای دسترسی» را بردارید.', icon: 'search' })}
+                </div>
+                <p class="perm-mobile-note"><i class="bi bi-arrows-move"></i> برای ویرایش، جدول را افقی بکشید.</p>`,
+            })}
+
+            <div class="grid grid--cards perm-side">
+              ${card({
+                icon: 'people',
+                title: 'خلاصه نقش‌ها',
+                subtitle: 'برای دیدن ماتریس، روی هر نقش کلیک کنید',
+                body: `<ul class="perm-summary">${roles
+                  .map((role) => {
+                    const coverage = coverageOf(role);
+                    return `<li class="perm-summary__row${role.id === state.roleId ? ' is-active' : ''}" data-role-row="${escapeHtml(role.id)}">
+                      <span class="perm-role__dot perm-role__dot--${escapeHtml(levelTone(role))}"></span>
+                      <span class="perm-summary__name">${escapeHtml(role.label ?? role.id)}<small>سطح ${toDigits(role.level ?? 0)} · ${toDigits(userCount(role.id))} کاربر</small></span>
+                      <span class="perm-summary__meter"><i style="--w:${coverage}%"></i></span>
+                      <b class="numeric" data-role-grants="${escapeHtml(role.id)}">${toDigits(coverage)}٪</b>
+                    </li>`;
+                  })
+                  .join('')}</ul>`,
+              })}
+              ${card({
+                icon: 'shield-check',
+                title: 'راهنمای مجوزها',
+                subtitle: 'هر کلید چه کاری می‌دهد',
+                body: `<ul class="perm-legend">${permissions
+                  .map(
+                    (permission) => `<li class="perm-legend__row">
+                      <span class="perm-legend__icon"><i class="bi bi-${escapeHtml(PERMISSION_ICONS[permission.id] ?? 'key')}" aria-hidden="true"></i></span>
+                      <span class="perm-legend__body"><b>${escapeHtml(permission.label)}</b><small>${escapeHtml(PERMISSION_NOTES[permission.id] ?? '')}</small></span>
+                    </li>`,
+                  )
+                  .join('')}</ul>`,
+              })}
+            </div>
+          </div>
         </div>`,
       );
 
-      on(node, 'click', (e) => {
-        if (e.target.closest('[data-custom-perm]')) {
-          toast.info('تعریف مجوز', 'فرم ایجاد مجوز سفارشی باز شد.');
+      /* ---------------------------------------------------------- rendering */
+      const tbody = $('[data-perm-rows]', node);
+      const emptyNode = $('[data-perm-empty]', node);
+      const hintNode = $('[data-perm-hint]', node);
+      const tableWrap = $('.perm-table-wrap', node);
+      const paintRows = () => {
+        tbody.innerHTML = rows();
+        const count = rowCount();
+        emptyNode.hidden = count > 0;
+        tableWrap.hidden = count === 0;
+        const role = currentRole();
+        hintNode.innerHTML = `در حال ویرایش <strong>${escapeHtml(role.label ?? role.id)}</strong> — ${toDigits(grantsOf(role))} دسترسی از ${toDigits(CELLS)} فعال است (${toDigits(coverageOf(role))}٪).`;
+      };
+      paintRows();
+
+      const repaintSummaries = () => {
+        roles.forEach((role) => {
+          const node2 = $(`[data-role-grants="${role.id}"]`, node);
+          if (node2) node2.textContent = `${toDigits(coverageOf(role))}٪`;
+          const meter = node2?.closest('.perm-summary__row')?.querySelector('.perm-summary__meter i');
+          if (meter) meter.style.setProperty('--w', `${coverageOf(role)}%`);
+        });
+      };
+
+      const selectRole = (roleId) => {
+        if (!roleId || roleId === state.roleId) return;
+        state.roleId = roleId;
+        $$('[data-role-tab]', node).forEach((chip) => {
+          const active = chip.dataset.roleTab === roleId;
+          chip.classList.toggle('is-active', active);
+          chip.setAttribute('aria-selected', String(active));
+        });
+        $$('[data-role-row]', node).forEach((row) => row.classList.toggle('is-active', row.dataset.roleRow === roleId));
+        paintRows();
+      };
+
+      /** One switch = one API call; failures roll the UI back. */
+      const applyCell = (input, enabled) => {
+        const { role, module: moduleId, permission } = input.dataset;
+        overrides.set(keyOf(role, moduleId, permission), enabled);
+        const switchNode = input.closest('.perm-switch');
+        switchNode?.classList.toggle('is-on', enabled);
+        const row = input.closest('tr');
+        const switches = $$('[data-perm-cell]', row).map((cell) => cell.checked);
+        const allNode = $('[data-module-all]', row);
+        if (allNode) {
+          const all = switches.every(Boolean);
+          const some = switches.some(Boolean);
+          allNode.classList.toggle('is-on', all);
+          allNode.classList.toggle('is-partial', !all && some);
+          allNode.innerHTML = `<i class="bi bi-${all ? 'check2-all' : 'slash-circle'}" aria-hidden="true"></i><span>${all ? 'همه' : some ? 'ناقص' : 'هیچ'}</span>`;
         }
+        repaintSummaries();
+        const roleMeta = roles.find((entry) => entry.id === role);
+        if (roleMeta) $('[data-perm-hint]', node).innerHTML = `در حال ویرایش <strong>${escapeHtml(roleMeta.label ?? roleMeta.id)}</strong> — ${toDigits(grantsOf(roleMeta))} دسترسی از ${toDigits(CELLS)} فعال است (${toDigits(coverageOf(roleMeta))}٪).`;
+        services.roleService
+          .update(role, moduleId, permission, enabled)
+          .catch((error) => {
+            overrides.set(keyOf(role, moduleId, permission), !enabled);
+            input.checked = !enabled;
+            switchNode?.classList.toggle('is-on', !enabled);
+            repaintSummaries();
+            toast.danger('ذخیره نشد', error?.message ?? 'دسترسی تغییر نکرد؛ دوباره تلاش کنید.');
+          });
+      };
+
+      /* --------------------------------------------------------- behaviour */
+      on(node, 'click', (event) => {
+        const tab = event.target.closest('[data-role-tab]');
+        if (tab) {
+          selectRole(tab.dataset.roleTab);
+          return;
+        }
+        const roleRow = event.target.closest('[data-role-row]');
+        if (roleRow) {
+          selectRole(roleRow.dataset.roleRow);
+          return;
+        }
+        const allNode = event.target.closest('[data-module-all]');
+        if (allNode) {
+          const row = allNode.closest('tr');
+          const inputs = $$('[data-perm-cell]', row);
+          const enable = !inputs.every((input) => input.checked);
+          inputs.forEach((input) => {
+            if (input.checked !== enable) {
+              input.checked = enable;
+              applyCell(input, enable);
+            }
+          });
+          toast.info(enable ? 'دسترسی ماژول فعال شد' : 'دسترسی ماژول پاک شد', `${toDigits(inputs.length)} مجوز برای ${escapeHtml(row.querySelector('.perm-module__name')?.textContent ?? '')}`);
+          return;
+        }
+        if (event.target.closest('[data-perm-all-on]') || event.target.closest('[data-perm-all-off]')) {
+          const enable = Boolean(event.target.closest('[data-perm-all-on]'));
+          const inputs = $$('[data-perm-cell]', tbody);
+          inputs.forEach((input) => {
+            if (input.checked !== enable) {
+              input.checked = enable;
+              applyCell(input, enable);
+            }
+          });
+          toast.info(enable ? 'همه دسترسی‌ها فعال شد' : 'همه دسترسی‌ها پاک شد', `نقش ${escapeHtml(currentRole()?.label ?? '')} به‌روزرسانی شد.`);
+          return;
+        }
+        if (event.target.closest('[data-custom-perm]')) {
+          toast.info('تعریف مجوز سفارشی', 'برای افزودن مجوز جدید، با مدیر ارشد هماهنگ کنید.');
+        }
+      });
+      on(node, 'change', (event) => {
+        const input = event.target.closest('[data-perm-cell]');
+        if (!input) return;
+        applyCell(input, input.checked);
+      });
+      on($('[data-perm-search]', node), 'input', (event) => {
+        state.term = event.target.value;
+        paintRows();
+      });
+      on($('[data-perm-only-granted]', node), 'change', (event) => {
+        state.onlyGranted = event.target.checked;
+        paintRows();
       });
       exportable(node, 'permissions');
       return;
@@ -4815,12 +6571,21 @@ function crudFields(resource) {
     ],
     brands: [
       { name: 'name', label: 'نام برند', required: true },
-      { name: 'country', label: 'کشور', type: 'select', options: ['ایران', 'آلمان', 'چین', 'ژاپن'] },
+      { name: 'tier', label: 'جایگاه', type: 'select', options: ['برتر', 'حرفه‌ای', 'اقتصادی', 'جدید'] },
+      { name: 'country', label: 'کشور مبدأ', type: 'select', options: ['ایران', 'آلمان', 'چین', 'ترکیه', 'امارات', 'ژاپن'] },
+      { name: 'city', label: 'شهر' },
+      { name: 'since', label: 'سال تأسیس', type: 'number', inputMode: 'numeric' },
       { name: 'website', label: 'وبسایت', rule: 'url', placeholder: 'https://example.com' },
+      { name: 'status', label: 'وضعیت', type: 'select', options: [{ value: 'active', label: 'فعال' }, { value: 'inactive', label: 'غیرفعال' }] },
+      { name: 'description', label: 'معرفی برند', type: 'textarea', col: 2, rows: 3 },
     ],
     tags: [
       { name: 'name', label: 'برچسب', required: true },
-      { name: 'color', label: 'رنگ', type: 'select', options: ['primary', 'success', 'warning', 'danger', 'info'] },
+      { name: 'slug', label: 'اسلاگ', placeholder: 'bestseller', hint: 'حروف لاتین، بدون فاصله' },
+      { name: 'kind', label: 'نوع انتساب', type: 'select', options: [{ value: 'auto', label: 'خودکار (قاعده)' }, { value: 'manual', label: 'دستی' }] },
+      { name: 'color', label: 'رنگ', type: 'select', options: ['primary', 'success', 'warning', 'danger', 'info', 'violet', 'neutral'] },
+      { name: 'status', label: 'وضعیت', type: 'select', options: [{ value: 'active', label: 'فعال' }, { value: 'archived', label: 'بایگانی‌شده' }] },
+      { name: 'description', label: 'توضیح کاربرد', type: 'textarea', col: 2, rows: 3 },
     ],
     coupons: [
       { name: 'code', label: 'کد تخفیف', required: true },

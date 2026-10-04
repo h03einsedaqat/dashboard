@@ -13,7 +13,7 @@
 import { $, $$, create, render, escapeHtml } from '../core/dom.js';
 import { toast } from '../core/toast.js';
 import { formatCurrency, formatNumber, toDigits } from '../core/numbers.js';
-import { formatDate, relativeTime } from '../core/jalali.js';
+import { formatDate, relativeTime, monthNames12, system } from '../core/jalali.js';
 import { initCharts } from '../core/charts.js';
 import { withState } from '../core/load.js';
 import { createDataTable, initDataTables } from '../core/datatable.js';
@@ -137,14 +137,24 @@ function persianMonthIndex(value) {
   }
 }
 
-const PERSIAN_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+/**
+ * Real monthly buckets built from the records' own dates, in the calendar the
+ * interface reads (Jalali month numbers under a Persian UI, Gregorian month
+ * numbers under English/Arabic).
+ */
+function monthIndex(value) {
+  if (system() === 'gregorian') {
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.getMonth() + 1;
+  }
+  return persianMonthIndex(value);
+}
 
-/** Real monthly buckets built from the records' own dates. */
 function monthlyBuckets(items, valueKeys) {
-  const buckets = PERSIAN_MONTHS.map((label) => ({ label, value: 0, count: 0 }));
+  const buckets = monthNames12().map((label) => ({ label, value: 0, count: 0 }));
   items.forEach((item) => {
     const when = valueKeys.dates.map((key) => item?.[key]).find(Boolean);
-    const index = persianMonthIndex(when);
+    const index = monthIndex(when);
     if (!index) return;
     const amount = valueKeys.amounts.map((key) => Number(item?.[key])).find((value) => Number.isFinite(value) && value !== 0) ?? 1;
     buckets[index - 1].value += Math.abs(amount);
@@ -172,7 +182,7 @@ function overviewCharts(resource, title, items) {
     amounts: ['total', 'amount', 'value', 'price', 'quantity', 'sold'],
   });
   const hasData = buckets.some((bucket) => bucket.count > 0);
-  const labels = hasData ? buckets.map((bucket) => bucket.label) : PERSIAN_MONTHS.slice(0, 7);
+  const labels = hasData ? buckets.map((bucket) => bucket.label) : monthNames12().slice(0, 7);
   const data = hasData ? buckets.map((bucket) => bucket.value) : [0, 0, 0, 0, 0, 0, 0];
   const breakdown = statusBreakdown(items);
   const chartSeries = JSON.stringify([{ name: title, data }]);

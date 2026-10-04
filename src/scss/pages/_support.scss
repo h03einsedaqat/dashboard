@@ -1,0 +1,364 @@
+/* ==========================================================================
+   NOVAADMIN — support experts (`support/agents.html`)
+   --------------------------------------------------------------------------
+   A roster of agent cards: presence ring, workload meter, four performance
+   stats, language chips and an SLA badge — plus two side cards (SLA buckets and
+   a quality ring). Card grid is auto-responsive, so nothing overflows on
+   phones and nothing stretches awkwardly on 1920px screens.
+   ========================================================================== */
+
+.sup .badge i {
+  margin-inline-end: 0.25rem;
+}
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: var(--nv-card-gap);
+}
+
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-4);
+  padding: var(--nv-space-5);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), box-shadow var(--nv-dur) var(--nv-ease),
+    transform var(--nv-dur) var(--nv-ease);
+}
+.agent-card:hover {
+  border-color: color-mix(in srgb, var(--nv-primary) 35%, var(--nv-border));
+  box-shadow: var(--nv-shadow-md);
+  transform: translateY(-2px);
+}
+
+.agent-card__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+.agent-card__avatar {
+  position: relative;
+  display: inline-grid;
+}
+.agent-card__avatar img {
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: var(--nv-radius-circle);
+  object-fit: cover;
+  background: var(--nv-surface-2);
+}
+.agent-card__status {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  inline-size: 0.85rem;
+  block-size: 0.85rem;
+  border: 2px solid var(--nv-surface);
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-neutral);
+}
+.agent-card__status--online {
+  background: var(--nv-success);
+}
+.agent-card__status--busy {
+  background: var(--nv-warning);
+}
+.agent-card__status--away {
+  background: var(--nv-info);
+}
+.agent-card__status--offline {
+  background: var(--nv-text-disabled);
+}
+.agent-card__id {
+  min-width: 0;
+}
+.agent-card__id h3 {
+  margin: 0;
+  font-size: var(--nv-text-body);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-card__id p {
+  margin: 0.15rem 0 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+.agent-card__load {
+  display: grid;
+  grid-template-columns: auto minmax(3rem, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+.agent-card__load-label {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.agent-card__load-bar {
+  display: block;
+  block-size: 8px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.agent-card__load-bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+  transition: inline-size var(--nv-dur-slow) var(--nv-ease-out);
+}
+.agent-card__load-bar--good i {
+  background: linear-gradient(90deg, var(--nv-success), color-mix(in srgb, var(--nv-success) 55%, var(--nv-info)));
+}
+.agent-card__load-bar--warn i {
+  background: linear-gradient(90deg, var(--nv-warning), color-mix(in srgb, var(--nv-warning) 55%, var(--nv-danger)));
+}
+.agent-card__load-bar--bad i {
+  background: linear-gradient(90deg, var(--nv-danger), color-mix(in srgb, var(--nv-danger) 55%, var(--nv-warning)));
+}
+.agent-card__load b {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-2);
+  white-space: nowrap;
+}
+
+.agent-card__stats {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agent-card__stats li {
+  display: grid;
+  grid-template-columns: 1rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.agent-card__stats i {
+  color: var(--nv-text-muted);
+  font-size: 0.85rem;
+}
+.agent-card__stats b {
+  color: var(--nv-heading);
+}
+
+.agent-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-block-start: auto;
+  padding-block-start: var(--nv-space-3);
+  border-block-start: 1px dashed var(--nv-divider);
+}
+.agent-card__langs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.agent-lang {
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-2);
+  color: var(--nv-text-2);
+  font-size: 0.68rem;
+}
+.agent-card__ok,
+.agent-card__breach {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--nv-text-micro);
+  white-space: nowrap;
+}
+.agent-card__ok {
+  color: var(--nv-success);
+}
+.agent-card__breach {
+  color: var(--nv-danger);
+  font-weight: var(--nv-fw-semibold);
+}
+
+/* --------------------------------------------------------------- side rail -- */
+.sup-side {
+  display: grid;
+  gap: var(--nv-card-gap);
+}
+
+.sup-sla {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sup-sla__row {
+  display: grid;
+  grid-template-columns: 7rem minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+.sup-sla__label {
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.sup-sla__label small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-regular);
+  color: var(--nv-text-muted);
+}
+.sup-sla__bar {
+  display: block;
+  block-size: 10px;
+  border-radius: var(--nv-radius-sm);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.sup-sla__bar i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: var(--nv-info);
+}
+.sup-sla__bar--good i {
+  background: var(--nv-success);
+}
+.sup-sla__bar--warn i {
+  background: var(--nv-warning);
+}
+.sup-sla__bar--bad i {
+  background: var(--nv-danger);
+}
+.sup-sla__row b {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-heading);
+}
+.sup-sla__foot {
+  padding-block-start: var(--nv-space-3);
+  border-block-start: 1px dashed var(--nv-divider);
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-2);
+}
+
+/* ---------------------------------------------------------------- quality -- */
+.sup-quality {
+  display: flex;
+  align-items: center;
+  gap: var(--nv-space-5);
+  flex-wrap: wrap;
+}
+.sup-quality__ring {
+  --value: 80;
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 7rem;
+  block-size: 7rem;
+  border-radius: var(--nv-radius-circle);
+  background: conic-gradient(var(--nv-success) calc(var(--value) * 1%), var(--nv-surface-3, var(--nv-neutral-soft)) 0);
+  flex: 0 0 auto;
+}
+.sup-quality__ring::after {
+  content: '';
+  position: absolute;
+  inset: 0.6rem;
+  border-radius: inherit;
+  background: var(--nv-surface);
+}
+.sup-quality__ring b,
+.sup-quality__ring small {
+  position: relative;
+  z-index: 1;
+  grid-area: 1 / 1;
+}
+.sup-quality__ring b {
+  font-size: var(--nv-text-h3);
+  color: var(--nv-heading);
+  transform: translateY(-0.4rem);
+}
+.sup-quality__ring small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  transform: translateY(1rem);
+}
+.sup-quality__list {
+  flex: 1 1 9rem;
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sup-quality__list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+}
+.sup-quality__list b {
+  color: var(--nv-heading);
+}
+
+@media (max-width: 575.98px) {
+  .agent-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agent-card__head {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0.5rem;
+  }
+  .agent-card__head .badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .sup-sla__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .sup-sla__bar {
+    grid-column: 1 / -1;
+  }
+  .sup-quality {
+    gap: var(--nv-space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-card,
+  .agent-card__load-bar i {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ layout --
+   The roster card is the page: it takes the full width and the two summary
+   cards flow underneath it (the knowledge-base rhythm), instead of squeezing
+   the roster into half the viewport on large screens. */
+.sup-grid {
+  align-items: start;
+}
+.sup-roster-card .card__body {
+  padding: var(--nv-space-5);
+}
+.sup-roster-card .agent-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20.5rem), 1fr));
+}
+.sup-side {
+  align-items: start;
+}

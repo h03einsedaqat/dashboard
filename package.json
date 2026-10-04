@@ -2,7 +2,7 @@
   "name": "novaadmin",
   "productName": "NOVAADMIN",
   "version": "1.1.0",
-  "description": "NOVAADMIN — Premium Persian-First Multi-Purpose HTML Admin Dashboard Template (RTL/LTR, Jalali, Dark Mode, AI Workspace, 130+ pages).",
+  "description": "NOVAADMIN \u2014 Premium Persian-First Multi-Purpose HTML Admin Dashboard Template (RTL/LTR, Jalali, Dark Mode, AI Workspace, 130+ pages).",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.txt",
   "private": true,
@@ -35,7 +35,8 @@
     "qa:i18n": "node tools/qa-i18n.mjs",
     "package": "node tools/package.mjs",
     "gen:all": "npm run gen:docs && npm run gen:pages && npm run gen:assets && npm run gen:nav && npm run gen:previews",
-    "qa:toggles": "node tools/qa-toggles.mjs --jobs 5"
+    "qa:toggles": "node tools/qa-toggles.mjs --jobs 5",
+    "restore": "node tools/restore.mjs"
   },
   "dependencies": {
     "apexcharts": "^3.54.1",

@@ -394,8 +394,6 @@
   gap: 10px;
   overflow-x: auto;
   padding-block: 4px;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
 }
 
 .chat-presence {
@@ -1431,7 +1429,7 @@
 }
 
 /* hide horizontal scrollbar for topnav and others */
-.topnav__inner, .chat-presence-row, .cms-builder__blocks {
+.topnav__inner, .cms-builder__blocks {
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }

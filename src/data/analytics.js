@@ -6,6 +6,9 @@
  * always have believable shapes (weekly seasonality + gentle growth).
  */
 import { makeHelpers } from './rng.js';
+/* Month labels are chart axes, so they must read in the interface's calendar
+   (Jalali in Persian, Gregorian in English and Arabic). */
+import { monthNames12 } from '../js/core/jalali.js';
 
 const { int, float, pick, picks } = makeHelpers(9009);
 
@@ -55,7 +58,7 @@ function labelsFor(spec) {
   if (spec.step === 'week') {
     return Array.from({ length: spec.points }, (_, i) => `هفته ${i + 1}`);
   }
-  return jalaliMonths.slice(0, spec.points);
+  return monthNames12().slice(0, spec.points);
 }
 
 export function makeSeries(range = '30d', { min = 40, max = 220, growth = 0.22, noise = 0.16, seedOffset = 1 } = {}) {
@@ -243,7 +246,13 @@ export const geo = [
 ];
 
 export const cohorts = Array.from({ length: 6 }).map((_, row) => ({
-  label: `گروه ${jalaliMonths[row]}`,
+  /* Resolved on access, so the cohort is named after the month in the calendar
+     the reader is actually using (Jalali ↔ Gregorian) rather than the Persian
+     list frozen at import time. */
+  get label() {
+    return monthNames12()[row] ?? jalaliMonths[row] ?? '';
+  },
+  kind: 'month',
   size: int(180, 640),
   retention: Array.from({ length: 6 - row }).map((__, i) => (i === 0 ? 100 : int(28, 92))),
 }));

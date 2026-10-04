@@ -302,39 +302,246 @@
 }
 
 /* ------------------------------------------------------------ back to top */
-[data-back-to-top] {
+/* --------------------------------------------------------- back to top ----- */
+/*
+ * Landing-only control. Resting state: a soft disc with a hairline reading
+ * progress ring. Hover / focus: the disc grows into a pill with the primary
+ * gradient, an icon set into a glass well and the label sliding in.
+ *
+ * Notes on the geometry:
+ *   • `grid-template-columns` animates the expansion (0fr → 1fr). Animating
+ *     `inline-size: auto` snaps, which is what made the old hover feel broken.
+ *   • The icon always occupies column 2, and that column is the one touching
+ *     the screen edge (`inset-inline-end`), so the glyph stays put and the pill
+ *     opens toward the page in both RTL and LTR.
+ *   • The ring is masked to a 2.5px hairline *inside* the button, so it reads as
+ *     a border instead of a floating capsule.
+ */
+[data-back-to-top],
+.back-to-top {
+  --nv-progress: 0;
+  --bt-size: 3.2rem;
   position: fixed;
-  inset-block-end: var(--nv-space-6);
-  inset-inline-end: var(--nv-space-6);
+  inset-block-end: clamp(1rem, 3vw, 2rem);
+  inset-inline-end: clamp(1rem, 3vw, 2rem);
   z-index: var(--nv-z-header);
   display: grid;
-  place-items: center;
-  inline-size: 2.75rem;
-  block-size: 2.75rem;
-  border: 1px solid var(--nv-border);
+  /* `auto` lets the label's own width drive the track, so the pill grows to fit
+     the copy and the transition on `max-inline-size` animates it smoothly. */
+  grid-template-columns: auto var(--bt-size);
+  align-items: center;
+  block-size: var(--bt-size);
+  padding: 0;
+  border: 0;
   border-radius: var(--nv-radius-pill);
-  background: var(--nv-surface);
-  color: var(--nv-text-2);
-  box-shadow: var(--nv-shadow-md);
+  background: radial-gradient(130% 130% at 50% 0%, color-mix(in srgb, var(--nv-primary) 7%, var(--nv-surface)), var(--nv-surface) 72%);
+  color: var(--nv-heading);
+  box-shadow:
+    0 12px 26px -14px rgba(18, 18, 48, 0.42),
+    0 3px 8px -4px rgba(18, 18, 48, 0.2),
+    0 0 0 1px color-mix(in srgb, var(--nv-border) 85%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent);
+  cursor: pointer;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px);
-  transition: opacity var(--nv-dur) var(--nv-ease), transform var(--nv-dur) var(--nv-ease), visibility var(--nv-dur);
+  transform: translateY(14px) scale(0.9);
+  transition:
+    opacity 0.32s ease,
+    transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.4s ease,
+    background 0.4s ease,
+    color 0.28s ease,
+    visibility 0.32s;
 }
 
-[data-back-to-top].is-visible {
+[data-back-to-top].is-visible,
+.back-to-top.is-visible {
   opacity: 1;
   visibility: visible;
   transform: none;
 }
 
-[data-back-to-top]:hover {
-  color: var(--nv-primary);
-  border-color: var(--nv-primary);
+/* Reading progress: a hairline hoop drawn inside the button edge. */
+[data-back-to-top] .back-to-top__progress,
+.back-to-top .back-to-top__progress {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: var(--bt-size);
+  block-size: var(--bt-size);
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--nv-primary) calc(var(--nv-progress) * 360deg),
+    color-mix(in srgb, var(--nv-primary) 10%, var(--nv-border)) 0
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  opacity: 0.9;
+  pointer-events: none;
+  transition: background 0.35s ease, opacity 0.35s ease;
+}
+
+[data-back-to-top] .back-to-top__icon,
+.back-to-top .back-to-top__icon {
+  grid-area: 1 / 2;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  inline-size: var(--bt-size);
+  block-size: var(--bt-size);
+  border-radius: inherit;
+  font-size: 1.1rem;
+  transition: color 0.28s ease;
+}
+/* Glass well behind the glyph — invisible at rest, lit on hover. */
+[data-back-to-top] .back-to-top__icon::before,
+.back-to-top .back-to-top__icon::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: var(--nv-radius-pill);
+  background: transparent;
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+[data-back-to-top] .back-to-top__icon i,
+.back-to-top .back-to-top__icon i {
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+[data-back-to-top] .back-to-top__label,
+.back-to-top .back-to-top__label {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
+  min-inline-size: 0;
+  max-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  /* `text-align: end` points at the icon in both writing directions. */
+  text-align: end;
+  font-size: var(--nv-text-caption);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  transform: translateX(-0.4rem);
+  transition:
+    max-inline-size 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.26s ease 0.06s,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+    padding 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[dir='ltr'] [data-back-to-top] .back-to-top__label,
+[dir='ltr'] .back-to-top .back-to-top__label {
+  transform: translateX(0.4rem);
+}
+
+/* ------------------------------------------------------------ hover / focus */
+[data-back-to-top]:hover,
+[data-back-to-top]:focus-visible,
+.back-to-top:hover,
+.back-to-top:focus-visible {
+  color: #fff;
+  background:
+    radial-gradient(130% 150% at 50% 0%, rgba(255, 255, 255, 0.22), transparent 62%),
+    linear-gradient(135deg, color-mix(in srgb, var(--nv-primary) 84%, #fff) 0%, var(--nv-primary) 48%, color-mix(in srgb, var(--nv-primary) 60%, #171043) 100%);
+  box-shadow:
+    0 20px 40px -18px color-mix(in srgb, var(--nv-primary) 78%, transparent),
+    0 8px 18px -10px rgba(0, 0, 0, 0.35),
+    0 0 32px -10px color-mix(in srgb, var(--nv-primary) 65%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--nv-primary) 42%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -14px 24px -18px rgba(0, 0, 0, 0.55);
+  transform: translateY(-3px) scale(1.015);
+}
+[data-back-to-top]:hover .back-to-top__progress,
+[data-back-to-top]:focus-visible .back-to-top__progress,
+.back-to-top:hover .back-to-top__progress,
+.back-to-top:focus-visible .back-to-top__progress {
+  opacity: 0;
+}
+[data-back-to-top]:hover .back-to-top__icon::before,
+[data-back-to-top]:focus-visible .back-to-top__icon::before,
+.back-to-top:hover .back-to-top__icon::before,
+.back-to-top:focus-visible .back-to-top__icon::before {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+[data-back-to-top]:hover .back-to-top__icon i,
+[data-back-to-top]:focus-visible .back-to-top__icon i,
+.back-to-top:hover .back-to-top__icon i,
+.back-to-top:focus-visible .back-to-top__icon i {
+  transform: translateY(-2px);
+}
+[data-back-to-top]:hover .back-to-top__label,
+[data-back-to-top]:focus-visible .back-to-top__label,
+.back-to-top:hover .back-to-top__label,
+.back-to-top:focus-visible .back-to-top__label {
+  max-inline-size: 11rem;
+  /* `inline-end` = the pill's outer rim, `inline-start` = the gap to the glyph;
+     both are logical, so RTL and LTR stay symmetric. */
+  padding-inline: 1.15rem 0.9rem;
+  opacity: 1;
+  transform: none;
+}
+[data-back-to-top]:focus-visible,
+.back-to-top:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--nv-primary) 55%, #fff);
+  outline-offset: 3px;
+}
+[data-back-to-top]:active,
+.back-to-top:active {
+  transform: translateY(-1px) scale(0.985);
+  transition-duration: 0.12s;
+}
+
+@media (hover: none) {
+  /* Touch has no hover: the pill opens while pressed and closes afterwards. */
+  [data-back-to-top]:active,
+  .back-to-top:active {
+    transform: translateY(-2px) scale(1);
+  }
+  [data-back-to-top]:active .back-to-top__label,
+  .back-to-top:active .back-to-top__label {
+    max-inline-size: 11rem;
+    padding-inline: 1.15rem 0.9rem;
+    opacity: 1;
+    transform: none;
+  }
+  [data-back-to-top]:active .back-to-top__icon::before,
+  .back-to-top:active .back-to-top__icon::before {
+    background: rgba(255, 255, 255, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-back-to-top],
+  .back-to-top,
+  [data-back-to-top] .back-to-top__icon,
+  [data-back-to-top] .back-to-top__icon i,
+  [data-back-to-top] .back-to-top__label,
+  .back-to-top .back-to-top__icon,
+  .back-to-top .back-to-top__icon i,
+  .back-to-top .back-to-top__label {
+    transition-duration: 0.01ms;
+  }
+  [data-back-to-top],
+  .back-to-top {
+    transform: none;
+  }
+  [data-back-to-top]:hover,
+  [data-back-to-top]:focus-visible,
+  .back-to-top:hover,
+  .back-to-top:focus-visible {
+    transform: none;
+  }
 }
 
 @media print {
-  [data-back-to-top] {
+  [data-back-to-top],
+  .back-to-top {
     display: none !important;
   }
 }
@@ -422,4 +629,23 @@
 /* ------------------------------------------------------------- toast pause */
 .nv-toast__progress.is-paused {
   animation-play-state: paused;
+}
+
+/* ------------------------------------------------------------------ LTR text */
+/* Phone numbers, e-mails and codes must not be re-ordered by the RTL flow.
+   `isolate` keeps the surrounding Persian sentence intact on both sides. */
+.text-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+  text-align: start;
+}
+a.text-ltr {
+  color: inherit;
+  text-decoration: none;
+}
+a.text-ltr:hover {
+  color: var(--nv-primary);
 }

@@ -34,6 +34,16 @@ import { formatDate, relativeTime } from './jalali.js';
 import * as services from '../../services/index.js';
 import { COLUMNS } from './columns.js';
 import { openRecordView, openRecordEdit, statusLabel, FIELD_LABELS } from './record-dialogs.js';
+import { goTo } from './links.js';
+
+/**
+ * Resources whose edit action belongs on a dedicated form page instead of the
+ * generic modal — the page owns their richer editors (the image gallery with
+ * add/remove/reorder for products, wizard steps elsewhere).
+ */
+const FORM_PAGES = {
+  products: 'ecommerce/product-create.html',
+};
 
 const tables = new WeakMap();
 
@@ -60,8 +70,37 @@ const TONE_COLORS = {
   violet: ['#8b5cf6', 'بنفش'],
 };
 
+/* Phone-ish strings (digits, +, dashes, parens, spaces, Persian digits) must be
+   laid out left-to-right: in an RTL table an unisolated «۰۹۱۲۳۴۵۶۷۸۹» can be
+   re-ordered and read backwards. Detecting them here keeps every table honest
+   without having to special-case each column definition. */
+const PHONE_RE = /^[+()\u06F0-\u06F9\d][+()\-\s\u06F0-\u06F9\d]{5,}$/;
+function ltr(value) {
+  return `<span class="text-ltr" dir="ltr">${escapeHtml(value)}</span>`;
+}
+
 const renderers = {
-  text: (row, column) => escapeHtml(resolve(row, column) ?? '—'),
+  text: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    const text = String(value);
+    return PHONE_RE.test(text.trim()) ? ltr(text) : escapeHtml(text);
+  },
+  phone: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return ltr(String(value));
+  },
+  email: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return `<a class="text-ltr" dir="ltr" href="mailto:${escapeHtml(String(value))}">${escapeHtml(String(value))}</a>`;
+  },
+  code: (row, column) => {
+    const value = resolve(row, column);
+    if (value == null || value === '') return '—';
+    return `<code class="text-ltr" dir="ltr">${escapeHtml(String(value))}</code>`;
+  },
   primary: (row, column) => {
     const primary = resolve(row, column) ?? '—';
     const sub = column.sub && resolve(row, column.sub);
@@ -72,6 +111,7 @@ const renderers = {
     </div>`;
   },
   currency: (row, column) => `<span class="numeric">${formatCurrency(resolve(row, column) ?? 0, column.currency ?? 'IRR', { compact: Boolean(column.compact) })}</span>`,
+  share: (row, column) => `<span class="numeric">${formatPercent(Number(resolve(row, column) ?? 0), { decimals: column.decimals ?? 1 })}</span>`,
   number: (row, column) => `<span class="numeric">${formatNumber(resolve(row, column) ?? 0)}</span>`,
   percent: (row, column) => {
     const value = Number(resolve(row, column) ?? 0);
@@ -259,6 +299,18 @@ export function createDataTable(root, options = {}) {
   bindPageHead();
 
   buildShell(instance);
+  /* Deep links such as «همه محصولات این برند» open a list with ?q=… — the term
+     is applied to the freshly built search box so the page shows what was
+     requested (and the toolbar explains why the list is filtered). */
+  const seed =
+    options.search ??
+    (typeof URLSearchParams === 'function' ? new URLSearchParams(window.location?.search ?? '').get('q') : '') ??
+    '';
+  if (seed) {
+    instance.state.search = seed;
+    const input = $('[data-datatable-search]', root);
+    if (input) input.value = seed;
+  }
   bindEvents(instance);
   attachLoad(instance);
   instance.load();
@@ -603,6 +655,16 @@ function attachLoad(instance) {
       return;
     }
     if (handled === true) return;
+    /**
+     * Some resources have a *real* form page (products ship the media studio
+     * with the add/remove carousel). Sending the pencil there gives the same
+     * experience as «افزودن محصول» — the compact modal can never edit photos.
+     */
+    const formPage = FORM_PAGES[instance.resource];
+    if (formPage) {
+      goTo(`${formPage}?id=${encodeURIComponent(id)}`);
+      return;
+    }
     const record = await findRow(id);
     if (!record) {
       toast.warning('رکورد پیدا نشد', 'ممکن است پیش‌تر حذف شده باشد.');

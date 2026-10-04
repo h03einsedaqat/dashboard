@@ -42,7 +42,6 @@ export default {
     more: 'More',
     less: 'Less',
     loading: 'Loading…',
-    processing: 'Processing…',
     saving: 'Saving…',
     sending: 'Sending…',
     upload: 'Upload',

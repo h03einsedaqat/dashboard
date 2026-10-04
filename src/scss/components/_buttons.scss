@@ -361,6 +361,12 @@
   font-weight: var(--nv-fw-semibold);
   box-shadow: var(--nv-shadow-xs);
 }
+.segmented.is-disabled {
+  opacity: 0.55;
+}
+.segmented.is-disabled .segmented__item {
+  cursor: not-allowed;
+}
 .segmented--sm .segmented__item {
   min-height: 1.75rem;
   font-size: var(--nv-text-micro);

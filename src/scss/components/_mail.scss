@@ -318,9 +318,12 @@
     padding: 0 0 0.25rem;
     overflow-x: auto;
     scroll-snap-type: x proximity;
-    scrollbar-width: none;
+    /* The bottom overflow bar is drawn by `components/_rail.scss` — a phone
+       user has to *see* that the rest of the folders exist. It used to be
+       switched off here, which left the strip reachable only by an arrow that
+       iOS ignored. */
+    padding-block-end: 0.5rem;
   }
-  .mail-layout .mail-nav__list[data-mail-folders]::-webkit-scrollbar { display: none; }
   .mail-layout .mail-nav__list[data-mail-folders] > li { flex: 0 0 auto; scroll-snap-align: start; }
   .mail-layout .mail-nav__list[data-mail-folders] .mail-nav__link {
     gap: 0.4rem;

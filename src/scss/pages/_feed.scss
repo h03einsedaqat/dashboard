@@ -1,0 +1,246 @@
+/* ==========================================================================
+   NOVAADMIN — notification & system-event center (`apps/notifications.html`)
+   --------------------------------------------------------------------------
+   One scroller, one instance: the header filter strip scrolls horizontally
+   (rail-aware), and the list itself is a `<details>` feed — a clean card per
+   event on desktop, a collapsible drawer per event on phones, so a long
+   history never turns into an endless wall of text.
+   ========================================================================== */
+
+.feed .widget-grid {
+  align-items: start;
+}
+.feed-board {
+  overflow: visible;
+}
+.feed-board__head {
+  flex-wrap: wrap;
+  gap: var(--nv-space-3) var(--nv-space-4);
+}
+.feed-board__head .card__actions {
+  margin-inline-start: auto;
+  max-inline-size: 100%;
+}
+
+/* ------------------------------------------------------------- filter rail -- */
+.feed-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-inline-size: 0;
+}
+.feed-filters::-webkit-scrollbar {
+  display: none;
+}
+.feed-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  padding: 0.4rem 0.8rem;
+  border: 0;
+  border-radius: var(--nv-radius-pill);
+  background: transparent;
+  color: var(--nv-text-2);
+  font-family: inherit;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease);
+}
+.feed-filter > span {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 1.35rem;
+  padding-inline: 0.25rem;
+  border-radius: var(--nv-radius-pill);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 0.68rem;
+}
+.feed-filter:hover {
+  background: var(--nv-surface);
+  color: var(--nv-heading);
+}
+.feed-filter.is-active {
+  background: var(--nv-primary);
+  color: var(--nv-primary-contrast);
+  box-shadow: 0 4px 12px -6px rgba(var(--nv-primary-rgb), 0.8);
+}
+
+/* --------------------------------------------------------------- the feed -- */
+.feed-list {
+  display: grid;
+  gap: var(--nv-space-3);
+  padding: var(--nv-space-4) var(--nv-card-pad) var(--nv-space-5);
+}
+
+.feed-item {
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  overflow: hidden;
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), box-shadow var(--nv-dur-fast) var(--nv-ease);
+}
+.feed-item:hover {
+  border-color: color-mix(in srgb, var(--nv-primary) 28%, var(--nv-border));
+}
+.feed-item[open] {
+  box-shadow: var(--nv-shadow-xs);
+}
+.feed-item.is-unread {
+  border-color: color-mix(in srgb, var(--nv-primary) 45%, var(--nv-border));
+  background: linear-gradient(to left, var(--nv-primary-soft), var(--nv-surface) 55%);
+}
+
+.feed-item__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: var(--nv-space-4);
+  cursor: pointer;
+  list-style: none;
+}
+.feed-item__head::-webkit-details-marker {
+  display: none;
+}
+.feed-item__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 2.6rem;
+  block-size: 2.6rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+  color: var(--nv-primary);
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+.feed-item__icon--success {
+  background: var(--nv-success-soft);
+  color: var(--nv-success-soft-fg);
+}
+.feed-item__icon--danger {
+  background: var(--nv-danger-soft);
+  color: var(--nv-danger-soft-fg);
+}
+.feed-item__icon--warning {
+  background: var(--nv-warning-soft);
+  color: var(--nv-warning-soft-fg);
+}
+.feed-item__icon--info {
+  background: var(--nv-info-soft);
+  color: var(--nv-info-soft-fg);
+}
+.feed-item__headline {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.feed-item__title {
+  font-size: var(--nv-text-body-sm);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-heading);
+  line-height: 1.45;
+}
+.feed-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.feed-item__unread {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--nv-primary);
+  font-weight: var(--nv-fw-bold);
+}
+.feed-item__unread::before {
+  content: '';
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-primary);
+}
+.feed-item__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.feed-item__caret {
+  color: var(--nv-text-muted);
+  transition: transform var(--nv-dur-fast) var(--nv-ease);
+}
+.feed-item[open] .feed-item__caret {
+  transform: rotate(180deg);
+}
+.feed-item__body {
+  padding: 0 var(--nv-space-4) var(--nv-space-4);
+  border-block-start: 1px dashed var(--nv-divider);
+  margin-block-start: calc(var(--nv-space-4) * -0.2);
+  padding-block-start: var(--nv-space-4);
+}
+.feed-item__text {
+  margin: 0 0 var(--nv-space-3);
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+  line-height: var(--nv-lh-content);
+}
+.feed-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ------------------------------------------------------------------ phone -- */
+@media (max-width: 767.98px) {
+  .feed-board__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .feed-board__head .card__actions {
+    margin-inline-start: 0;
+  }
+  .feed-filters {
+    border-radius: var(--nv-radius-md);
+  }
+  .feed-list {
+    gap: var(--nv-space-2);
+    padding: var(--nv-space-3) var(--nv-space-3) var(--nv-space-4);
+  }
+  .feed-item__head {
+    padding: 0.85rem;
+    gap: 0.65rem;
+  }
+  .feed-item__icon {
+    inline-size: 2.2rem;
+    block-size: 2.2rem;
+    font-size: 1rem;
+  }
+  .feed-item__body {
+    padding: 0.85rem;
+    padding-block-start: 0.75rem;
+  }
+  .feed-item__actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-item,
+  .feed-item__caret,
+  .feed-filter {
+    transition: none;
+  }
+}

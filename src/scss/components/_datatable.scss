@@ -295,12 +295,14 @@
   transform: translateY(1px);
 }
 
-/* Chevrons follow the writing direction: `first/prev` point to the start of
-   the reading order, `next/last` to its end. */
-[dir='ltr'] .pagination [data-nav='first'] .page-link i,
-[dir='ltr'] .pagination [data-nav='prev'] .page-link i,
-[dir='rtl'] .pagination [data-nav='next'] .page-link i,
-[dir='rtl'] .pagination [data-nav='last'] .page-link i {
+/* The pager markup is authored for RTL: `first/prev` carry chevron-right and
+   `next/last` chevron-left. In a left-to-right document *all four* have to be
+   mirrored — flipping only first/prev used to leave «next» and «last»
+   pointing the same way as the others (the reported "all arrows point the
+   same direction" bug). */
+
+[dir='ltr'] .pagination [data-nav] .page-link i,
+[dir='ltr'] .pagination [data-nav] .page-link svg {
   transform: scaleX(-1);
 }
 

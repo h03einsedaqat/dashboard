@@ -734,6 +734,14 @@ const data = await analyticsService.report('sales', { range: '12m' });</code></p
       </div>
     </footer>
 
+    <!-- Only the marketing page ships a back-to-top affordance: a dashboard
+         page already has a sticky header and its own navigation. -->
+    <button class="back-to-top" type="button" data-back-to-top data-i18n-aria="ui.backToTopAria" aria-label="بازگشت به بالای صفحه">
+      <span class="back-to-top__progress" aria-hidden="true"></span>
+      <span class="back-to-top__icon" aria-hidden="true"><i class="bi bi-arrow-up"></i></span>
+      <span class="back-to-top__label" aria-hidden="true" data-i18n="ui.backToTop">بازگشت به بالا</span>
+    </button>
+
     <div data-overlays></div>
     <script type="module" src="./src/main.js"></script>
   </body>

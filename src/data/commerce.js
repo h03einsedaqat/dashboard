@@ -16,6 +16,12 @@ export const ORDER_STATUSES = [
   { id: 'refunded', label: 'مرجوع شده', tone: 'neutral', step: 0 },
 ];
 
+/** The tag vocabulary used by both the products and the «برچسب‌ها» page. */
+export const TAG_NAMES = [
+  'پرفروش', 'جدید', 'پیشنهاد ویژه', 'گارانتی', 'ارسال رایگان', 'اورجینال',
+  'زمستانه', 'تابستانه', 'دست‌ساز', 'محدود',
+];
+
 export const PAYMENT_METHODS = [
   { id: 'card', label: 'کارت بانکی', icon: 'credit-card' },
   { id: 'wallet', label: 'کیف پول', icon: 'wallet2' },
@@ -99,11 +105,15 @@ export const products = Array.from({ length: 48 }).map((_, i) => {
     sold: int(4, 1450),
     views: int(400, 32000),
     image: `assets/img/products/product-${String((i % 24) + 1).padStart(2, '0')}.svg`,
+    /* Four real views per product (cover first) so the details page can show the
+       same carousel as the product studio. Derived positionally — no RNG draws,
+       which keeps every dataset in this file byte-identical. */
+    images: [0, 7, 13, 19].map((offset) => `assets/img/products/product-${String(((i + offset) % 24) + 1).padStart(2, '0')}.svg`),
     createdAt: date(int(5, 700), int(9, 18)),
     description:
       'محصولی با کیفیت ساخت بالا، مناسب استفاده حرفه‌ای روزمره. دارای گارانتی رسمی ۱۸ ماهه و پشتیبانی فنی سراسر کشور. طراحی ارگونومیک و متریال مقاوم، عمر مفید دستگاه را افزایش می‌دهد.',
     shortDescription: 'کیفیت ساخت بالا، گارانتی ۱۸ ماهه و ارسال سریع به سراسر کشور.',
-    tags: picks(['پرفروش', 'جدید', 'پیشنهاد ویژه', 'گارانتی', 'ارسال رایگان', 'اورجینال'], 3),
+    tags: picks(TAG_NAMES, 3),
     seoTitle: `${name} | خرید آنلاین`,
     seoDescription: `خرید ${name} با قیمت مناسب، ارسال سریع و ضمانت بازگشت کالا.`,
   };
@@ -164,9 +174,14 @@ export const coupons = Array.from({ length: 12 }).map((_, i) => {
   };
 });
 
-export const tags = ['پرفروش', 'جدید', 'پیشنهاد ویژه', 'گارانتی', 'ارسال رایگان', 'اورجینال', 'زمستانه', 'تابستانه', 'دست‌ساز', 'محدود'].map(
-  (name, i) => ({ id: `tag-${i + 1}`, name, products: int(3, 42), color: pick(['primary', 'success', 'warning', 'info', 'violet']) }),
-);
+export const tags = TAG_NAMES.map((name, i) => ({
+  id: `tag-${i + 1}`,
+  name,
+  // The two draws below keep the shared RNG stream aligned with the datasets
+  // that follow (orders); the real numbers are written in the metrics block.
+  products: int(3, 42),
+  color: pick(['primary', 'success', 'warning', 'info', 'violet']),
+}));
 
 /* ------------------------------------------------------------------- orders */
 export const orders = Array.from({ length: 64 }).map((_, i) => {
@@ -246,10 +261,135 @@ salesByCategory.forEach((c) => {
   c.share = Math.round((c.value / catTotal) * 1000) / 10;
 });
 
+/* ------------------------------------------------- brand & tag metrics ------ */
+/*
+ * Curated identity for every brand (country of origin, founding year, website,
+ * positioning) plus metrics that are *derived* from the catalogue and the order
+ * book — so «برندها» and «برچسب‌ها» show numbers that match the products,
+ * orders and reviews pages instead of unrelated random values.
+ *
+ * The randomness needed for trend figures uses its own RNG stream, which leaves
+ * the shared stream (and therefore every dataset above) untouched.
+ */
+const { float: brandFloat } = makeHelpers(7301);
+
+const slugify = (value) =>
+  value
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^\w-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+
+/** `https://novatek.example.com` → `novatek` (slugs stay ASCII for pretty URLs). */
+const slugFromSite = (site = '') => slugify(String(site).replace(/^https?:\/\//, '').split('.')[0]);
+
+const BRAND_META = {
+  نوواتک: { country: 'ایران', city: 'تهران', since: 1392, tier: 'برتر', color: 'primary', website: 'https://novatek.example.com', description: 'تولیدکننده داخلی تجهیزات شبکه و لوازم جانبی کامپیوتر با گارانتی سه‌ساله.' },
+  پارس‌الکترونیک: { country: 'ایران', city: 'اصفهان', since: 1385, tier: 'برتر', color: 'info', website: 'https://parselectronic.example.com', description: 'پخش سراسری لپ‌تاپ، مانیتور و تجهیزات اداری با شبکه ۱۴ نمایندگی.' },
+  آرکادیا: { country: 'آلمان', city: 'مونیخ', since: 1378, tier: 'حرفه‌ای', color: 'violet', website: 'https://arkadia.example.de', description: 'برند آلمانی تجهیزات صوتی و تصویری حرفه‌ای؛ واردات رسمی با استاندارد CE.' },
+  زیتک: { country: 'چین', city: 'شنژن', since: 1390, tier: 'اقتصادی', color: 'warning', website: 'https://zitech.example.cn', description: 'تولیدکننده انبوه لوازم جانبی موبایل و ذخیره‌سازی داده با قیمت رقابتی.' },
+  'مکس‌لاین': { country: 'امارات', city: 'دبی', since: 1396, tier: 'حرفه‌ای', color: 'success', website: 'https://maxline.example.ae', description: 'هاب توزیع منطقه‌ای گیمینگ و لوازم جانبی رده بالا در خاورمیانه.' },
+  ویرا: { country: 'ایران', city: 'شیراز', since: 1398, tier: 'برتر', color: 'primary', website: 'https://vira.example.com', description: 'استارتاپ ایرانی خانه هوشمند و تجهیزات شبکه؛ تمرکز روی پشتیبانی محلی.' },
+  'ای‌تک': { country: 'ترکیه', city: 'استانبول', since: 1393, tier: 'اقتصادی', color: 'info', website: 'https://etech.example.tr', description: 'تولید تجهیزات اداری و چاپگر با نمایندگی رسمی در ایران.' },
+  کاسپین: { country: 'ایران', city: 'رشت', since: 1389, tier: 'حرفه‌ای', color: 'success', website: 'https://caspian.example.com', description: 'مونتاژ و توزیع مانیتور و تجهیزات ذخیره‌سازی در شمال کشور.' },
+  تکنوسان: { country: 'ترکیه', city: 'آنکارا', since: 1391, tier: 'اقتصادی', color: 'warning', website: 'https://teknosan.example.tr', description: 'لوازم جانبی کامپیوتر و ماوس/کیبورد ارگونومیک برای بازار خاورمیانه.' },
+  هایپرلینک: { country: 'چین', city: 'هانگژو', since: 1395, tier: 'حرفه‌ای', color: 'violet', website: 'https://hyperlinq.example.cn', description: 'تجهیزات شبکه پرسرعت، روتر و ماژول‌های فیبر نوری نسل جدید.' },
+  مگاتک: { country: 'امارات', city: 'شارجه', since: 1399, tier: 'جدید', color: 'danger', website: 'https://megatech.example.ae', description: 'تأمین‌کننده نوظهور استوریج و لوازم گیمینگ؛ رشد سریع سهم بازار.' },
+  نوردیکس: { country: 'آلمان', city: 'هامبورگ', since: 1383, tier: 'برتر', color: 'primary', website: 'https://nordix.example.de', description: 'برند پیشرو تجهیزات صنعتی و اداری با استاندارد TÜV آلمان.' },
+};
+
+const productByBrand = new Map();
+products.forEach((product) => {
+  if (!productByBrand.has(product.brand)) productByBrand.set(product.brand, []);
+  productByBrand.get(product.brand).push(product);
+});
+
+const revenueByBrand = new Map();
+orders.forEach((order) => {
+  order.items.forEach((item) => {
+    const owner = products.find((p) => p.name === item.name);
+    const brand = owner?.brand ?? 'نامشخص';
+    revenueByBrand.set(brand, (revenueByBrand.get(brand) ?? 0) + item.price * item.qty);
+  });
+});
+
+const brandRevenueTotal = [...revenueByBrand.values()].reduce((sum, value) => sum + value, 0) || 1;
+const brandRatingPeak = Math.max(...brands.map((b) => b.rating), 1);
+
+brands.forEach((brand) => {
+  const meta = BRAND_META[brand.name] ?? {};
+  const list = productByBrand.get(brand.name) ?? [];
+  const revenue = revenueByBrand.get(brand.name) ?? 0;
+  brand.country = meta.country ?? brand.country;
+  brand.city = meta.city ?? '';
+  brand.since = meta.since ?? 1390;
+  brand.tier = meta.tier ?? 'حرفه‌ای';
+  brand.color = meta.color ?? 'primary';
+  brand.website = meta.website ?? '';
+  brand.description = meta.description ?? '';
+  brand.slug = slugFromSite(brand.website) || slugify(brand.name) || brand.id;
+  brand.products = list.length;
+  brand.catalogShare = brand.products / Math.max(1, products.length);
+  brand.rating = Math.round((list.reduce((sum, p) => sum + p.rating, 0) / Math.max(1, list.length)) * 10) / 10 || brand.rating;
+  brand.reviews = list.reduce((sum, p) => sum + p.reviews, 0);
+  brand.sold = list.reduce((sum, p) => sum + p.sold, 0);
+  brand.stock = list.reduce((sum, p) => sum + p.stock, 0);
+  brand.lowStock = list.filter((p) => p.stock > 0 && p.stock < 30).length;
+  brand.outOfStock = list.filter((p) => p.stock === 0).length;
+  brand.revenue = revenue;
+  brand.share = Math.round((revenue / brandRevenueTotal) * 1000) / 10;
+  brand.ratingScore = Math.round((brand.rating / brandRatingPeak) * 100);
+  brand.growth = brandFloat(-6, 34, 1);
+  brand.featured = brand.tier === 'برتر' || (brand.rating >= 4.6 && brand.products >= 4);
+  brand.categories = [...new Set(list.map((p) => p.category))];
+  brand.status = list.length && brand.status !== 'inactive' ? 'active' : brand.status;
+});
+
+/* — tags — */
+const TAG_META = {
+  'پرفروش': { slug: 'bestseller', kind: 'auto', color: 'success', description: 'به‌صورت خودکار به کالاهایی با بیش از ۲۰۰ فروش در ۳۰ روز گذشته می‌چسبد.' },
+  'جدید': { slug: 'new', kind: 'auto', color: 'info', description: 'هر محصول تازه‌منتشرشده تا ۳۰ روز پس از انتشار این برچسب را می‌گیرد.' },
+  'پیشنهاد ویژه': { slug: 'featured', kind: 'manual', color: 'warning', description: 'انتخاب دستی تیم بازاریابی برای ویترین صفحه اصلی و ارسال پیامک.' },
+  'گارانتی': { slug: 'warranty', kind: 'auto', color: 'primary', description: 'محصولات دارای گارانتی رسمی شرکتی با پشتیبانی سراسری ۱۸ ماهه.' },
+  'ارسال رایگان': { slug: 'free-shipping', kind: 'auto', color: 'success', description: 'کالاهای مشمول ارسال رایگان برای سفارش‌های بالای ۲۰ میلیون ریال.' },
+  'اورجینال': { slug: 'original', kind: 'auto', color: 'violet', description: 'اصالت کالا تأییدشده؛ موجود در همه انبارهای رسمی سازمان.' },
+  'زمستانه': { slug: 'winter', kind: 'manual', color: 'info', description: 'کمپین فصلی زمستان — تخفیف‌های ویژه دسامبر تا اسفند.' },
+  'تابستانه': { slug: 'summer', kind: 'manual', color: 'warning', description: 'کمپین فصلی تابستان با تمرکز روی تجهیزات سرمایشی و سفر.' },
+  'دست‌ساز': { slug: 'handmade', kind: 'manual', color: 'danger', description: 'محصولات کارگاه‌های کوچک با تولید محدود و کیفیت ساخت بالا.' },
+  'محدود': { slug: 'limited', kind: 'manual', color: 'neutral', description: 'موجودی کمتر از ۱۰ عدد در کل شبکه انبارها؛ نمایش شمارنده فروش.' },
+};
+
+const tagUsage = new Map(TAG_NAMES.map((name) => [name, 0]));
+products.forEach((product) => product.tags.forEach((tag) => tagUsage.set(tag, (tagUsage.get(tag) ?? 0) + 1)));
+
+const tagPeak = Math.max(...tagUsage.values(), 1);
+tags.forEach((tag, index) => {
+  const meta = TAG_META[tag.name] ?? {};
+  const list = products.filter((product) => product.tags.includes(tag.name));
+  tag.color = meta.color ?? tag.color;
+  tag.kind = meta.kind ?? 'manual';
+  tag.description = meta.description ?? '';
+  tag.slug = meta.slug ?? slugify(tag.name) ?? tag.id;
+  tag.products = list.length;
+  tag.usageShare = Math.round((list.length / Math.max(1, products.length)) * 1000) / 10;
+  tag.popularity = Math.round((list.length / tagPeak) * 100);
+  tag.views = list.reduce((sum, p) => sum + p.views, 0);
+  tag.conversion = brandFloat(1.4, 8.6, 1);
+  tag.revenue = list.reduce((sum, p) => sum + p.sold * p.finalPrice, 0);
+  tag.growth = brandFloat(-8, 42, 1);
+  // Out-of-season and retired tags stay visible for reporting but are hidden
+  // from the storefront suggestion list.
+  tag.status = ['زمستانه', 'دست‌ساز'].includes(tag.name) ? 'archived' : 'active';
+  tag.featured = ['پرفروش', 'پیشنهاد ویژه', 'اورجینال'].includes(tag.name);
+  tag.createdAt = date(120 + index * 26, 9, 15);
+});
+
 export default {
   products,
   categories,
   brands,
+  TAG_NAMES,
   tags,
   orders,
   orderStats,

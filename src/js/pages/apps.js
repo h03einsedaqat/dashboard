@@ -15,6 +15,7 @@ import { createDataTable } from '../core/datatable.js';
 import { initCalendar, newCalendarEvent } from '../core/calendar.js';
 import { goTo, url } from '../core/links.js';
 import * as kit from './kit.js';
+import { initRails } from '../core/rail.js';
 
 const { card, statCard, infoRows, host, pageHeader, formMarkup, openRecordForm, exportable, emptyState, statusBadge, toolButtons, chartBox, services } = kit;
 
@@ -657,105 +658,124 @@ async function notificationsPage() {
 
   let currentCategory = 'all';
 
+  const CATEGORIES = [
+    { id: 'all', label: 'همه' },
+    { id: 'unread', label: 'خوانده‌نشده' },
+    { id: 'finance', label: 'مالی' },
+    { id: 'security', label: 'امنیت' },
+    { id: 'orders', label: 'سفارش‌ها و لجستیک' },
+    { id: 'ai', label: 'هوش مصنوعی' },
+    { id: 'system', label: 'سیستم' },
+  ];
+  const CATEGORY_TONE = {
+    finance: 'success',
+    security: 'danger',
+    orders: 'primary',
+    system: 'info',
+    ai: 'warning',
+  };
+  const PRIORITY = {
+    urgent: { label: 'فوری', tone: 'danger' },
+    high: { label: 'مهم', tone: 'warning' },
+    normal: { label: null, tone: 'neutral' },
+  };
+  const isPhone = () => window.matchMedia('(max-width: 767.98px)').matches;
+
+  const itemMarkup = (item) => {
+    const priority = PRIORITY[item.priority] ?? PRIORITY.normal;
+    const tone = item.type ?? CATEGORY_TONE[item.category] ?? 'primary';
+    return `<details class="feed-item${item.read ? '' : ' is-unread'}" data-id="${escapeHtml(item.id)}" open>
+      <summary class="feed-item__head">
+        <span class="feed-item__icon feed-item__icon--${escapeHtml(tone)}"><i class="bi bi-${escapeHtml(item.icon)}" aria-hidden="true"></i></span>
+        <span class="feed-item__headline">
+          <span class="feed-item__title">${escapeHtml(item.title)}</span>
+          <span class="feed-item__meta">
+            ${item.read ? '' : '<span class="feed-item__unread">خوانده‌نشده</span>'}
+            ${priority.label ? statusBadge(priority.label, priority.tone) : ''}
+            <span class="feed-item__time"><i class="bi bi-clock" aria-hidden="true"></i> ${escapeHtml(item.time)}</span>
+          </span>
+        </span>
+        <i class="bi bi-chevron-down feed-item__caret" aria-hidden="true"></i>
+      </summary>
+      <div class="feed-item__body">
+        <p class="feed-item__text">${escapeHtml(item.text)}</p>
+        <div class="feed-item__actions">
+          ${item.action ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(item.action.url)}">${escapeHtml(item.action.label)} <i class="bi bi-arrow-left" aria-hidden="true"></i></a>` : ''}
+          <button class="btn btn-light btn-sm" type="button" data-toggle-read="${escapeHtml(item.id)}">${item.read ? 'علامت خوانده‌نشده' : 'علامت خوانده‌شد'}</button>
+          <button class="btn btn-light btn-sm text-danger" type="button" data-delete-notif="${escapeHtml(item.id)}" aria-label="حذف اعلان"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+        </div>
+      </div>
+    </details>`;
+  };
+
   const renderContent = () => {
-    const unreadCount = notifications.filter(n => !n.read).length;
-    const filtered = notifications.filter(n => {
+    const unreadCount = notifications.filter((item) => !item.read).length;
+    const filtered = notifications.filter((item) => {
       if (currentCategory === 'all') return true;
-      if (currentCategory === 'unread') return !n.read;
-      return n.category === currentCategory;
+      if (currentCategory === 'unread') return !item.read;
+      return item.category === currentCategory;
     });
+    const countOf = (id) => (id === 'all' ? notifications.length : id === 'unread' ? unreadCount : notifications.filter((item) => item.category === id).length);
 
     render(
       node,
-      `<div class="dashboard-shell">
+      `<div class="dashboard-shell feed">
         ${pageHeader({
           title: 'مرکز اعلان‌ها و رخدادهای سیستم',
-          subtitle: 'مدیریت و پیگیری هشدارهای بلادرنگ امنیتی، مالی، انبار و عملکرد محصول',
+          subtitle: 'هشدارهای امنیتی، مالی، انبار و محصول — دسته‌بندی‌شده و قابل پیگیری',
           icon: 'bell-fill',
-          actions: `
-            <div class="d-flex gap-2">
-              <button class="btn btn-light btn-sm" type="button" data-mark-all-read><i class="bi bi-check2-all"></i> خواندن همه</button>
-              <button class="btn btn-outline-danger btn-sm" type="button" data-clear-read><i class="bi bi-trash3"></i> پاک‌سازی خوانده‌شده‌ها</button>
-              <a class="btn btn-light btn-sm" href="settings/notifications.html"><i class="bi bi-gear"></i> تنظیمات</a>
-            </div>
-          `,
+          badges: [statusBadge(`${toDigits(unreadCount)} خوانده‌نشده`, unreadCount ? 'warning' : 'success'), statusBadge(`${toDigits(notifications.length)} اعلان`, 'neutral')],
+          actions: '<button class="btn btn-light" type="button" data-mark-all-read><i class="bi bi-check2-all"></i> خواندن همه</button><button class="btn btn-light" type="button" data-clear-read><i class="bi bi-trash3"></i> پاک‌سازی خوانده‌شده‌ها</button><a class="btn btn-light" href="settings/notifications.html"><i class="bi bi-gear"></i> تنظیمات</a>',
         })}
 
         <div class="kpi-row grid grid--4 mb-4">
-          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
-            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">کل اعلان‌ها</div>
-            <div style="font-size:22px; font-weight:900; color:var(--nv-heading);">${toDigits(notifications.length)}</div>
-            <div style="font-size:11px; color:var(--nv-text-muted); margin-top:4px;">در ۳۰ روز گذشته</div>
-          </div>
-          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
-            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">اعلان‌های خوانده‌نشده</div>
-            <div style="font-size:22px; font-weight:900; color:var(--nv-primary);">${toDigits(unreadCount)}</div>
-            <div style="font-size:11px; color:var(--nv-primary); margin-top:4px;">${unreadCount > 0 ? 'نیازمند بررسی شما' : 'همه موارد بررسی شد'}</div>
-          </div>
-          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
-            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">هشدارهای امنیتی</div>
-            <div style="font-size:22px; font-weight:900; color:var(--nv-danger);">${toDigits(notifications.filter(n=>n.category==='security').length)}</div>
-            <div style="font-size:11px; color:var(--nv-danger); margin-top:4px;">۱ مورد با اولویت بالا</div>
-          </div>
-          <div class="stat-card" style="padding:16px; background:var(--nv-surface); border:1px solid var(--nv-border); border-radius:16px;">
-            <div style="font-size:11px; color:var(--nv-text-muted); margin-bottom:4px;">تراکنش‌ها و مالی</div>
-            <div style="font-size:22px; font-weight:900; color:var(--nv-success);">${toDigits(notifications.filter(n=>n.category==='finance').length)}</div>
-            <div style="font-size:11px; color:var(--nv-success); margin-top:4px;">تسویه موفق بانکی</div>
-          </div>
+          ${kit.statCard({ label: 'کل اعلان‌ها', value: toDigits(notifications.length), meta: 'در ۳۰ روز گذشته', tone: 'primary', icon: 'bell', id: 'feed-total' })}
+          ${kit.statCard({ label: 'خوانده‌نشده', value: toDigits(unreadCount), meta: unreadCount ? 'نیازمند بررسی شما' : 'همه موارد بررسی شد', tone: unreadCount ? 'warning' : 'success', icon: 'envelope-open', id: 'feed-unread' })}
+          ${kit.statCard({ label: 'هشدارهای امنیتی', value: toDigits(notifications.filter((item) => item.category === 'security').length), meta: 'نیازمند تأیید هویت', tone: 'danger', icon: 'shield-exclamation', id: 'feed-security' })}
+          ${kit.statCard({ label: 'رخدادهای مالی', value: toDigits(notifications.filter((item) => item.category === 'finance').length), meta: 'تسویه و پرداخت موفق', tone: 'success', icon: 'cash-stack', id: 'feed-finance' })}
         </div>
 
-        <div class="card" style="border-radius:18px;">
-          <div class="card__head" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--nv-border);">
-            <div class="segmented" data-notif-filter style="overflow-x:auto; max-width:100%;">
-              <button type="button" class="segmented__item ${currentCategory==='all'?'is-active':''}" data-cat="all">همه (${toDigits(notifications.length)})</button>
-              <button type="button" class="segmented__item ${currentCategory==='unread'?'is-active':''}" data-cat="unread">خوانده‌نشده (${toDigits(unreadCount)})</button>
-              <button type="button" class="segmented__item ${currentCategory==='finance'?'is-active':''}" data-cat="finance">مالی</button>
-              <button type="button" class="segmented__item ${currentCategory==='security'?'is-active':''}" data-cat="security">امنیت</button>
-              <button type="button" class="segmented__item ${currentCategory==='orders'?'is-active':''}" data-cat="orders">سفارش‌ها و لجستیک</button>
-              <button type="button" class="segmented__item ${currentCategory==='system'?'is-active':''}" data-cat="system">سیستم و هوش مصنوعی</button>
+        <section class="card feed-board">
+          <header class="card__head feed-board__head">
+            <span class="card__icon"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+            <div>
+              <h2 class="card__title">اعلان‌ها</h2>
+              <p class="card__subtitle">نمایش ${toDigits(filtered.length)} از ${toDigits(notifications.length)} مورد${isPhone() ? ' — روی هر عنوان بزنید تا جزئیات باز شود' : ''}</p>
             </div>
-            <div style="font-size:12px; color:var(--nv-text-muted);">
-              نمایش ${toDigits(filtered.length)} اعلان
+            <div class="card__actions feed-filters" role="group" aria-label="فیلتر دسته‌بندی" data-rail>
+              ${CATEGORIES.map(
+                (category) => `<button type="button" class="feed-filter${currentCategory === category.id ? ' is-active' : ''}" data-cat="${category.id}">${escapeHtml(category.label)}<span class="numeric">${toDigits(countOf(category.id))}</span></button>`,
+              ).join('')}
+            </div>
+          </header>
+          <div class="card__body card__body--flush">
+            <div class="feed-list" data-notif-list>
+              ${filtered.length ? filtered.map(itemMarkup).join('') : kit.emptyState({ title: 'اعلانی در این دسته نیست', text: 'دسته دیگری را انتخاب کنید یا فیلتر را روی «همه» بگذارید.', icon: 'bell-slash' })}
             </div>
           </div>
-
-          <div class="card__body" style="padding:12px; display:flex; flex-direction:column; gap:10px;" data-notif-list>
-            ${filtered.length === 0 ? `
-              <div style="padding:48px 24px; text-align:center;">
-                <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--nv-text-muted); opacity:0.6;"></i>
-                <h4 style="margin:12px 0 6px; font-size:15px; font-weight:800;">هیچ اعلانی در این دسته یافت نشد</h4>
-                <p style="margin:0; font-size:12px; color:var(--nv-text-muted);">می‌توانید فیلترهای دیگر را انتخاب کنید.</p>
-              </div>
-            ` : filtered.map(item => `
-              <div class="notif-card ${!item.read ? 'notif-card--unread' : ''}" data-id="${item.id}" style="padding:16px; border-radius:14px; border:1px solid ${!item.read ? 'var(--nv-primary)' : 'var(--nv-border)'}; background:${!item.read ? 'var(--nv-primary-soft)' : 'var(--nv-surface-2)'}; display:flex; align-items:start; gap:14px; transition:all 0.2s;">
-                <span class="tile tile--soft tile--icon tile--soft-${item.type || 'primary'}" style="width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex-shrink:0;">
-                  <i class="bi bi-${item.icon}" style="font-size:1.25rem;"></i>
-                </span>
-                <div style="flex:1; min-width:0;">
-                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                      <strong style="font-size:13px; font-weight:800; color:var(--nv-heading);">${escapeHtml(item.title)}</strong>
-                      ${!item.read ? '<span class="status-dot status-dot--primary" title="خوانده‌نشده"></span>' : ''}
-                      ${item.priority === 'urgent' ? '<span class="badge badge--soft-danger" style="font-size:10px;">فوری</span>' : item.priority === 'high' ? '<span class="badge badge--soft-warning" style="font-size:10px;">مهم</span>' : ''}
-                    </div>
-                    <small style="font-size:11px; color:var(--nv-text-muted);">${item.time}</small>
-                  </div>
-                  <p style="margin:0 0 10px; font-size:12px; color:var(--nv-text); line-height:1.7;">${escapeHtml(item.text)}</p>
-                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    ${item.action ? `<a class="btn btn-sm btn-primary" href="${item.action.url}" style="font-size:11px; padding:4px 10px;">${item.action.label} <i class="bi bi-arrow-left"></i></a>` : ''}
-                    <button class="btn btn-sm btn-light" type="button" data-toggle-read="${item.id}" style="font-size:11px; padding:4px 10px;">${item.read ? 'علامت به عنوان خوانده‌نشده' : 'علامت خوانده شد'}</button>
-                    <button class="btn btn-sm btn-ghost text-danger" type="button" data-delete-notif="${item.id}" style="font-size:11px; padding:4px 8px;" title="حذف اعلان"><i class="bi bi-trash3"></i></button>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
+        </section>
       </div>`,
     );
+
+    /* Phones get a collapsed drawer per item: the summary is the notification,
+       tapping expands it to the full text + actions. */
+    if (isPhone()) {
+      const items = $$('.feed-item', node);
+      const firstUnread = items.find((item) => item.classList.contains('is-unread'));
+      items.forEach((item) => {
+        item.open = item === firstUnread;
+      });
+    }
+    initRails(node);
   };
 
   renderContent();
+
+  /* Re-collapse/expand when the viewport crosses the phone breakpoint. */
+  const phoneQuery = window.matchMedia('(max-width: 767.98px)');
+  const onBreakpoint = () => renderContent();
+  if (phoneQuery.addEventListener) phoneQuery.addEventListener('change', onBreakpoint);
+  else phoneQuery.addListener(onBreakpoint);
 
   on(node, 'click', async (event) => {
     const catBtn = event.target.closest('[data-cat]');
@@ -766,8 +786,7 @@ async function notificationsPage() {
     }
     const toggleBtn = event.target.closest('[data-toggle-read]');
     if (toggleBtn) {
-      const id = toggleBtn.dataset.toggleRead;
-      const target = notifications.find(n => n.id === id);
+      const target = notifications.find((item) => item.id === toggleBtn.dataset.toggleRead);
       if (target) {
         target.read = !target.read;
         renderContent();
@@ -776,23 +795,22 @@ async function notificationsPage() {
     }
     const deleteBtn = event.target.closest('[data-delete-notif]');
     if (deleteBtn) {
-      const id = deleteBtn.dataset.deleteNotif;
-      notifications = notifications.filter(n => n.id !== id);
-      toast.info('اعلان حذف شد');
+      notifications = notifications.filter((item) => item.id !== deleteBtn.dataset.deleteNotif);
+      toast.info('اعلان حذف شد', 'این مورد از فهرست شما برداشته شد.');
       renderContent();
       return;
     }
     if (event.target.closest('[data-mark-all-read]')) {
-      notifications.forEach(n => n.read = true);
-      toast.success('همه اعلان‌ها خوانده شدند');
+      notifications.forEach((item) => (item.read = true));
+      toast.success('همه اعلان‌ها خوانده شدند', `${toDigits(notifications.length)} مورد علامت‌گذاری شد.`);
       renderContent();
       return;
     }
     if (event.target.closest('[data-clear-read]')) {
-      notifications = notifications.filter(n => !n.read);
-      toast.info('اعلان‌های خوانده‌شده پاک شدند');
+      const removed = notifications.filter((item) => item.read).length;
+      notifications = notifications.filter((item) => !item.read);
+      toast.info('اعلان‌های خوانده‌شده پاک شدند', `${toDigits(removed)} مورد حذف شد.`);
       renderContent();
-      return;
     }
   });
 }

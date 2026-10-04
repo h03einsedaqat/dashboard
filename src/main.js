@@ -34,6 +34,8 @@ import { beginProgress, endProgress, initConnectivity, initKeepAlive } from './j
 import { fixLinks, observeLinks, resolveUrl, goTo } from './js/core/links.js';
 import { reconcilePageHeads, observePageHeads } from './js/core/heads.js';
 import { enhanceTables, observeTables } from './js/core/tables.js';
+import { initRails, observeRails } from './js/core/rail.js';
+import { initDatePickers } from './js/core/datepicker.js';
 import { humanize, observeHumanize } from './js/core/humanize.js';
 import { renderGenericApps } from './js/pages/generic.js';
 import { config } from './config/config.js';
@@ -418,6 +420,7 @@ async function boot() {
   }
   /** The language this document was rendered in; a switch away from it reloads. */
   const bootLanguage = i18n.lang;
+  const bootCalendar = document.documentElement.getAttribute('data-calendar');
   setPhraseLanguage(i18n.lang);
   applyPhrases(document.body);
   observePhrases(document.body);
@@ -514,6 +517,19 @@ async function boot() {
   observePageHeads(document.body);
   $$('[data-kanban]').forEach((node) => initKanban(node));
   $$('[data-calendar]').forEach((node) => initCalendar(node));
+  /**
+   * Horizontal scrollers (chat chip rows, conversation strip, mail folders) get
+   * arrow paging and edge fades, and every `<input type="date">` gets the
+   * locale-aware picker (Jalali in Persian, Gregorian in English). Both run in
+   * one guarded block, so a failure there can never take the page boot down.
+   */
+  try {
+    initRails(document);
+    observeRails(document.body);
+    initDatePickers(document.body);
+  } catch (error) {
+    console.warn('[nova:polish] rails/datepicker skipped', error);
+  }
 
   // Late panels (opened from the header) also need the small UI behaviours.
   /*
@@ -535,8 +551,7 @@ async function boot() {
    * instantly because `theme-boot.js` applies the stored language before the
    * first paint (no flash of Persian).
    */
-  bus.on(EVENTS.language, ({ lang } = {}) => {
-    if (!lang || lang === bootLanguage) return;
+  const reloadForPreference = (lang) => {
     if (window.__novaLanguageReload) return;
     window.__novaLanguageReload = true;
     document.documentElement.classList.add('is-switching-language');
@@ -550,13 +565,29 @@ async function boot() {
        */
       try {
         const url = new URL(window.location.href);
-        url.searchParams.set('lang', lang);
+        if (lang) url.searchParams.set('lang', lang);
         window.location.assign(url.toString());
       } catch {
         if (typeof window.location.reload === 'function') window.location.reload();
         else window.location.assign(window.location.href);
       }
     }, 80);
+  };
+
+  bus.on(EVENTS.language, ({ lang } = {}) => {
+    if (!lang || lang === bootLanguage) return;
+    reloadForPreference(lang);
+  });
+
+  /**
+   * The customizer's calendar preference (Jalali ↔ Gregorian, Persian only)
+   * repaints every date, chart axis and grid exactly like a language switch, so
+   * it takes the same one clean reload — otherwise half the page would still be
+   * showing the previous calendar.
+   */
+  bus.on(EVENTS.calendarDate, ({ value } = {}) => {
+    if (!value || value === bootCalendar) return;
+    reloadForPreference(bootLanguage);
   });
   document.documentElement.classList.add('app-ready');
   bus.emit('app:ready', { page: document.body.dataset.page });

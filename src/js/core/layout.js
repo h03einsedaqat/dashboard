@@ -186,9 +186,31 @@ export const layout = {
     });
   },
 
+  /**
+   * The mobile drawer closes on every «dismiss» gesture a phone user expects:
+   * the backdrop, a tap anywhere on the page content, and Escape. The × button
+   * and swipe-to-close were the only ways out before, so a tap on the dimmed
+   * page felt broken.
+   */
   initBackdrop() {
     on(document, 'click', (event) => {
-      if (event.target.closest('[data-sidebar-backdrop]')) layout.closeDrawer();
+      if (!state.open) return;
+      if (event.target.closest('[data-sidebar-backdrop]')) {
+        layout.closeDrawer();
+        return;
+      }
+      /**
+       * Anything inside the drawer, the control that opens it, or the app bar
+       * itself stays put. The header is chrome, not page content: tapping the
+       * notification bell while the menu is open has to open the panel — it
+       * used to close the menu *and* follow whatever link sat underneath.
+       */
+      if (event.target.closest('[data-app-sidebar], [data-sidebar-toggle], [data-sidebar-open], .app-sidebar, .app-header')) return;
+      layout.closeDrawer();
+    });
+
+    on(document, 'keydown', (event) => {
+      if (event.key === 'Escape' && state.open) layout.closeDrawer();
     });
   },
 
@@ -222,7 +244,13 @@ export const layout = {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       header?.classList.toggle('is-scrolled', scrollY > 8);
       if (progress) progress.style.width = `${max > 0 ? Math.min(100, (scrollY / max) * 100) : 0}%`;
-      if (toTop) toTop.classList.toggle('is-visible', scrollY > 480);
+      if (toTop) {
+        toTop.classList.toggle('is-visible', scrollY > 480);
+        /* The ring around the button doubles as a reading-progress gauge, so the
+           control is informative instead of decorative. */
+        const ratio = max > 0 ? Math.min(1, scrollY / max) : 0;
+        toTop.style.setProperty('--nv-progress', ratio.toFixed(4));
+      }
     };
     on(window, 'scroll', debounce(update, 40), { passive: true });
     on(toTop, 'click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
@@ -531,9 +559,9 @@ export const layout = {
     applySidebar();
     layout.highlightActive();
     layout.initNav();
-    layout.initBackdrop();
     layout.initSwipe();
     layout.initScrollEffects();
+    layout.initBackdrop();
     layout.initStickyTables();
     layout.initSecondaryNav();
     layout.initTopNav();

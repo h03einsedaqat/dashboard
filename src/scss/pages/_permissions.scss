@@ -1,0 +1,436 @@
+/* ==========================================================================
+   NOVAADMIN — permission matrix (`users/permissions.html`)
+   --------------------------------------------------------------------------
+   Role chips on top of a live matrix: every cell is a real checkbox styled as a
+   switch, the module column has a bulk toggle, and the side cards summarise
+   coverage per role. The matrix scrolls horizontally inside its card on
+   phones — the page itself never does.
+   ========================================================================== */
+
+.perm {
+  min-inline-size: 0;
+}
+.perm-cell--all {
+  inline-size: 6rem;
+}
+.perm-board__body {
+  display: grid;
+  gap: var(--nv-space-4);
+}
+
+/* ------------------------------------------------------------ role chips -- */
+.perm-roles {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-block-end: 0.25rem;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+.perm-role {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+  color: var(--nv-text-2);
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease),
+    box-shadow var(--nv-dur-fast) var(--nv-ease);
+}
+.perm-role:hover {
+  border-color: color-mix(in srgb, var(--nv-primary) 40%, var(--nv-border));
+  background: var(--nv-surface-2);
+}
+.perm-role.is-active {
+  border-color: var(--nv-primary);
+  background: var(--nv-primary-soft);
+  color: var(--nv-primary-soft-fg);
+  box-shadow: 0 6px 16px -10px rgba(var(--nv-primary-rgb), 0.9);
+}
+.perm-role__dot {
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-primary);
+  flex: 0 0 auto;
+}
+.perm-role__dot--info {
+  background: var(--nv-info);
+}
+.perm-role__dot--warning {
+  background: var(--nv-warning);
+}
+.perm-role__dot--success {
+  background: var(--nv-success);
+}
+.perm-role__dot--violet {
+  background: #8b5cf6;
+}
+.perm-role__dot--neutral {
+  background: var(--nv-neutral);
+}
+.perm-role__body {
+  display: grid;
+  line-height: 1.25;
+}
+.perm-role__body b {
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-bold);
+  color: inherit;
+}
+.perm-role__body small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+.perm-role.is-active .perm-role__body small {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* ---------------------------------------------------------------- toolbar -- */
+.perm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nv-space-3);
+}
+.perm-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.perm-search > i {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  color: var(--nv-text-muted);
+  pointer-events: none;
+}
+.perm-search .form-control {
+  padding-inline-start: 2.25rem;
+}
+.perm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.perm-toolbar__actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-inline-start: auto;
+}
+.perm-hint {
+  margin: 0;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-text-muted);
+}
+.perm-hint strong {
+  color: var(--nv-heading);
+}
+.perm-mobile-note {
+  display: none;
+  margin: 0;
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+}
+
+/* ----------------------------------------------------------------- matrix -- */
+.perm-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-lg);
+  background: var(--nv-surface);
+}
+.perm-table {
+  min-inline-size: 34rem;
+  margin: 0;
+}
+.perm-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--nv-surface-2);
+  border-block-end: 1px solid var(--nv-border);
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-bold);
+  color: var(--nv-text-2);
+  white-space: nowrap;
+}
+.perm-table__module,
+.perm-module {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--nv-surface);
+  min-inline-size: 9.5rem;
+}
+.perm-table thead .perm-table__module {
+  z-index: 3;
+  background: var(--nv-surface-2);
+}
+.perm-table tbody tr:hover .perm-module,
+.perm-table tbody tr:hover td {
+  background: var(--nv-surface-2);
+}
+.perm-module__name {
+  display: block;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+}
+.perm-module__id {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  background: none;
+  padding: 0;
+}
+.perm-cell {
+  text-align: center;
+  vertical-align: middle;
+  inline-size: 4.5rem;
+}
+
+/* --------------------------------------------------------------- switches -- */
+.perm-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.perm-switch input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 0;
+  block-size: 0;
+}
+.perm-switch__track {
+  position: relative;
+  inline-size: 2.35rem;
+  block-size: 1.25rem;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  border: 1px solid var(--nv-border);
+  transition: background-color var(--nv-dur-fast) var(--nv-ease), border-color var(--nv-dur-fast) var(--nv-ease);
+}
+.perm-switch__knob {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0.15rem;
+  transform: translateY(-50%);
+  inline-size: 0.85rem;
+  block-size: 0.85rem;
+  border-radius: var(--nv-radius-circle);
+  background: var(--nv-surface);
+  box-shadow: var(--nv-shadow-xs);
+  transition: inset-inline-start var(--nv-dur-fast) var(--nv-ease), background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.perm-switch.is-on .perm-switch__track {
+  background: var(--nv-primary);
+  border-color: var(--nv-primary);
+}
+.perm-switch.is-on .perm-switch__knob {
+  inset-inline-start: calc(100% - 1rem);
+  background: #fff;
+}
+.perm-switch input:focus-visible + .perm-switch__track {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+}
+.perm-switch:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.perm-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface);
+  color: var(--nv-text-muted);
+  font-family: inherit;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--nv-dur-fast) var(--nv-ease), color var(--nv-dur-fast) var(--nv-ease),
+    background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.perm-all:hover {
+  border-color: var(--nv-primary);
+  color: var(--nv-primary);
+}
+.perm-all.is-on {
+  background: var(--nv-success-soft);
+  border-color: var(--nv-success);
+  color: var(--nv-success-soft-fg);
+}
+.perm-all.is-partial {
+  background: var(--nv-warning-soft);
+  border-color: var(--nv-warning);
+  color: var(--nv-warning-soft-fg);
+}
+
+.perm-empty {
+  padding: var(--nv-space-5) 0;
+}
+
+/* ------------------------------------------------------------- side cards -- */
+.perm-side {
+  display: grid;
+  gap: var(--nv-card-gap);
+}
+.perm-summary {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.perm-summary__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 3.5rem auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--nv-radius-md);
+  cursor: pointer;
+  transition: background-color var(--nv-dur-fast) var(--nv-ease);
+}
+.perm-summary__row:hover {
+  background: var(--nv-surface-2);
+}
+.perm-summary__row.is-active {
+  background: var(--nv-primary-soft);
+}
+.perm-summary__name {
+  min-width: 0;
+  font-size: var(--nv-text-caption);
+  font-weight: var(--nv-fw-semibold);
+  color: var(--nv-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.perm-summary__name small {
+  display: block;
+  font-size: var(--nv-text-micro);
+  font-weight: var(--nv-fw-regular);
+  color: var(--nv-text-muted);
+}
+.perm-summary__meter {
+  display: block;
+  block-size: 6px;
+  border-radius: var(--nv-radius-pill);
+  background: var(--nv-surface-3, var(--nv-neutral-soft));
+  overflow: hidden;
+}
+.perm-summary__meter i {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nv-primary), var(--nv-info));
+  transition: inline-size var(--nv-dur) var(--nv-ease);
+}
+.perm-summary__row b {
+  font-size: var(--nv-text-caption);
+  color: var(--nv-heading);
+}
+
+.perm-legend {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.perm-legend__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: start;
+}
+.perm-legend__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 1.9rem;
+  block-size: 1.9rem;
+  border-radius: var(--nv-radius-md);
+  background: var(--nv-surface-2);
+  color: var(--nv-primary);
+  font-size: 0.85rem;
+}
+.perm-legend__body b {
+  display: block;
+  font-size: var(--nv-text-caption);
+  color: var(--nv-heading);
+}
+.perm-legend__body small {
+  font-size: var(--nv-text-micro);
+  color: var(--nv-text-muted);
+  line-height: var(--nv-lh-snug);
+}
+
+/* ------------------------------------------------------------------ phone -- */
+@media (max-width: 991.98px) {
+  .perm-toolbar__actions {
+    margin-inline-start: 0;
+    flex: 1 1 100%;
+  }
+  .perm-mobile-note {
+    display: block;
+  }
+  .perm-table {
+    min-inline-size: 32rem;
+  }
+  .perm-cell {
+    inline-size: 3.4rem;
+  }
+  .perm-switch__track {
+    inline-size: 2rem;
+    block-size: 1.1rem;
+  }
+  .perm-switch__knob {
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+  }
+  .perm-switch.is-on .perm-switch__knob {
+    inset-inline-start: calc(100% - 0.9rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .perm-role,
+  .perm-switch__track,
+  .perm-switch__knob,
+  .perm-summary__meter i {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ layout --
+   The matrix owns the full width; the summary and legend cards flow below. */
+.perm-board {
+  min-inline-size: 0;
+}
+.perm-board .perm-table-wrap {
+  overflow-x: auto;
+}
+.perm-side {
+  align-items: start;
+}
