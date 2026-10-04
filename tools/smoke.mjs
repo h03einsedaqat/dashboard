@@ -684,9 +684,94 @@ async function checkThemeToggle(document) {
   return { ok: after.mode !== before.mode, before, after, back };
 }
 
+async function checkMobileOverlayInteractions(document, label) {
+  const passed = [];
+  const pause = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
+  const clickDocument = (target) =>
+    document.dispatchEvent({ type: 'click', target, preventDefault() {}, stopPropagation() {} });
+  const latestModal = () => document.querySelectorAll('.modal-backdrop').at(-1) ?? null;
+  const require = (condition, message) => {
+    if (!condition) throw new Error(`mobile overlay regression: ${message}`);
+  };
+
+  if (label === 'apps/calendar.html') {
+    const createButton = document.querySelector('[data-calendar-new]');
+    require(createButton, 'calendar create action exists');
+    const appHost = document.querySelector('[data-app]');
+    require(appHost && !appHost.contains(createButton), 'page-head reconciliation moves the create action out of its original host');
+    // The real page-head reconciler moves this button outside [data-app]. A
+    // direct click verifies its handler survives that move (delegation on the
+    // old host does not).
+    createButton.click();
+    await pause();
+    let modal = latestModal();
+    require(modal?.querySelector('[data-calendar-form]'), 'new-event action opens its form after the toolbar is reconciled');
+    passed.push('calendar create button');
+    modal.querySelector('[data-modal-close]')?.click();
+    await pause(240);
+
+    const calendar = document.querySelector('[data-calendar]');
+    const day = calendar?.querySelector('[data-calendar-slot]');
+    require(calendar && day, 'calendar day cell is rendered');
+    calendar.dispatchEvent({ type: 'click', target: day, preventDefault() {}, stopPropagation() {} });
+    modal = latestModal();
+    require(modal?.querySelector('[data-agenda-add]'), 'tapping a day opens the agenda sheet');
+    const addEvent = modal.querySelector('[data-agenda-add]');
+    modal.firstElementChild.dispatchEvent({ type: 'click', target: addEvent, preventDefault() {}, stopPropagation() {} });
+    await pause(260);
+    modal = latestModal();
+    require(modal?.querySelector('[data-calendar-form]'), 'agenda action opens the event form');
+    passed.push('calendar day agenda and add-event flow');
+    modal.querySelector('[data-modal-close]')?.click();
+    await pause(240);
+  }
+
+  if (label === 'apps/notifications.html') {
+    const bell = document.querySelectorAll('[data-dropdown-toggle]').find((button) => button.getAttribute('aria-label') === 'اعلان‌ها');
+    const panel = document.querySelector('.notif-panel');
+    require(bell && panel, 'notification bell and panel exist');
+    require(document.querySelectorAll('[data-notification]').length > 0, 'notifications render before the panel is opened');
+    clickDocument(bell);
+    require(panel.classList.contains('is-open'), 'bell opens the notification panel');
+
+    const systemFilter = panel.querySelector('[data-notif-filter="system"]');
+    require(systemFilter, 'system filter exists');
+    clickDocument(systemFilter);
+    await pause(420);
+    require(panel.classList.contains('is-open'), 'filtering does not dismiss the mobile panel');
+
+    const readAll = panel.querySelector('[data-notif-read-all]');
+    require(readAll, 'mark-all-read action exists');
+    clickDocument(readAll);
+    require(panel.classList.contains('is-open'), 'marking notifications read does not dismiss the panel');
+    passed.push('notification list, filters, and read actions');
+
+    const { notificationService } = await import('../src/services/user.service.js');
+    const listNotifications = notificationService.list;
+    try {
+      notificationService.list = async () => { throw new Error('simulated offline'); };
+      const ordersFilter = panel.querySelector('[data-notif-filter="orders"]');
+      clickDocument(ordersFilter);
+      await pause();
+      require(panel.querySelector('[data-notif-retry]'), 'a list failure shows a retry action instead of an unhandled rejection');
+
+      notificationService.list = listNotifications;
+      clickDocument(panel.querySelector('[data-notif-retry]'));
+      await pause(420);
+      require(document.querySelectorAll('[data-notification]').length > 0, 'retry reloads the notifications');
+      passed.push('notification error recovery');
+    } finally {
+      notificationService.list = listNotifications;
+    }
+  }
+
+  return passed;
+}
+
 async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
   shimIssues.length = 0;
   const { document, documentElement, body } = buildDocument(pageHtml);
+  const viewportWidth = CHECK_OVERLAYS ? 390 : 1440;
   const warnings = [];
   const errors = [];
   const store = new Map();
@@ -723,10 +808,21 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
       reload() {},
     },
     navigator: { userAgent: 'node', platform: 'Linux', language: 'fa-IR', languages: ['fa-IR'], clipboard: { writeText: async () => {} }, onLine: true },
-    innerWidth: 1440,
-    innerHeight: 900,
+    innerWidth: viewportWidth,
+    innerHeight: CHECK_OVERLAYS ? 844 : 900,
     devicePixelRatio: 1,
-    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }),
+    matchMedia: (query) => {
+      let matches = false;
+      if (CHECK_OVERLAYS) {
+        const max = query.match(/max-width\s*:\s*([\d.]+)px/);
+        const min = query.match(/min-width\s*:\s*([\d.]+)px/);
+        const widthQuery = Boolean(max || min);
+        matches = widthQuery
+          ? (!max || viewportWidth <= Number(max[1])) && (!min || viewportWidth >= Number(min[1]))
+          : /pointer\s*:\s*coarse|hover\s*:\s*none/.test(query);
+      }
+      return { matches, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} };
+    },
     addEventListener: (type, handler) => documentElement.addEventListener(type, handler),
     removeEventListener: () => {},
     /** `window.dispatchEvent` exists on the real object; toast/theme code uses it. */
@@ -863,6 +959,7 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
     // settle window for the mock services (latency is 180–420 ms)
     await new Promise((resolve) => setTimeout(resolve, settle));
 
+    if (CHECK_OVERLAYS) result.overlayChecks = await checkMobileOverlayInteractions(document, label);
     if (inspect) result.metrics = inspect(document);
     if (CHECK_I18N) result.i18n = await checkLanguageSwitch(document, win);
     if (CHECK_THEME) result.theme = await checkThemeToggle(document);
@@ -889,6 +986,7 @@ async function bootScenario(pageHtml, label, inspect = null, settle = 260) {
 /* ------------------------------------------------------------------- runner */
 
 const VERBOSE = process.argv.includes('--verbose');
+const CHECK_OVERLAYS = process.argv.includes('--overlays');
 const i18nReport = [];
 /** `--i18n` additionally clicks every language control and reports the result. */
 const CHECK_I18N = process.argv.includes('--i18n');
@@ -1186,11 +1284,13 @@ const filterTerm = ARGV.find((arg, index) => !arg.startsWith('--') && ARGV[index
    the curated scenario list; `--dump`/`--filter` still has to be able to reach
    them (`node tools/smoke.mjs --dump --selector '[data-landing-demos]' index.html`). */
 const FILTER_POOL = [...SCENARIOS, ...ALL_PAGES.filter((url) => !SCENARIOS.includes(url))];
-const selected = allMode
-  ? ALL_PAGES.filter((url) => !filterTerm || url.includes(filterTerm))
-  : filterTerm
-    ? FILTER_POOL.filter((url) => url.includes(filterTerm))
-    : SCENARIOS;
+const selected = CHECK_OVERLAYS
+  ? ['apps/calendar.html', 'apps/notifications.html']
+  : allMode
+    ? ALL_PAGES.filter((url) => !filterTerm || url.includes(filterTerm))
+    : filterTerm
+      ? FILTER_POOL.filter((url) => url.includes(filterTerm))
+      : SCENARIOS;
 let failures = 0;
 const thin = [];
 const errored = [];
@@ -1274,6 +1374,7 @@ for (const url of selected) {
     dumpLines.length = 0;
   }
   if (result.error) console.log(`    error: ${result.error.message}\n${String(result.error.stack).split('\n').slice(1, 4).join('\n')}`);
+  if (CHECK_OVERLAYS && result.overlayChecks?.length) console.log(`    mobile overlays: ${result.overlayChecks.join(' · ')}`);
   (result.shimIssues ?? []).slice(0, 2).forEach((line) => console.log(`    dom: ${line.slice(0, 170)}`));
   result.errors.slice(0, 3).forEach((line) => console.log(`    console.error: ${line.slice(0, 160)}`));
   result.warnings.slice(0, 3).forEach((line) => console.log(`    warn: ${line.slice(0, 160)}`));

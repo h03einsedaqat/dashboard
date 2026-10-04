@@ -52,7 +52,7 @@
         <i class="bi bi-bell" aria-hidden="true"></i>
         <span class="icon-btn__dot" data-notif-count hidden>0</span>
       </button>
-      <div class="dropdown-menu notif-panel" data-dropdown-menu>
+      <div class="dropdown-menu notif-panel" data-dropdown-menu data-dropdown-keep-open>
         <span class="notif-panel__grabber" aria-hidden="true"></span>
         <div class="notif-panel__head">
           <div class="notif-panel__head-top">
@@ -87,7 +87,7 @@
             </button>
           </div>
         </div>
-        <div class="notification-list" data-notification-list role="list"></div>
+        <div class="notification-list" data-notification-list role="list" aria-live="polite"></div>
         <div class="notif-panel__foot">
           <a class="notif-panel__viewall" href="{{ROOT}}apps/notifications.html">
             <i class="bi bi-bell" aria-hidden="true"></i>

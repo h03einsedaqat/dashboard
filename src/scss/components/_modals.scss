@@ -246,6 +246,12 @@
 
 /* ---------------------------------------------------------------- the stage */
 .modal-backdrop[data-modal-id] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,9 +435,12 @@ html.is-scroll-locked body {
 @media (max-width: 575.98px) {
   .modal-backdrop[data-modal-id] {
     --nv-modal-gap: 0px;
+    --nv-modal-top-inset: max(env(safe-area-inset-top, 0px), 2.5rem);
+    --nv-modal-bottom-inset: env(safe-area-inset-bottom, 0px);
     align-items: flex-end;
     padding: 0;
-    padding-block-start: max(env(safe-area-inset-top, 0px), 2.5rem);
+    padding-block-start: var(--nv-modal-top-inset);
+    padding-block-end: var(--nv-modal-bottom-inset);
   }
   .modal-backdrop[data-modal-id] > .modal,
   .modal-backdrop[data-modal-id] > .modal-sm,
@@ -439,8 +448,8 @@ html.is-scroll-locked body {
   .modal-backdrop[data-modal-id] > .modal-xl,
   .modal-backdrop[data-modal-id] > .modal-full {
     width: 100%;
-    max-height: calc(100vh - 2.5rem);
-    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 2.5rem));
+    max-height: calc(100vh - var(--nv-modal-top-inset) - var(--nv-modal-bottom-inset));
+    max-height: calc(100dvh - var(--nv-modal-top-inset) - var(--nv-modal-bottom-inset));
     margin: 0;
     border-radius: 1.25rem 1.25rem 0 0;
     border-block-end: 0;
@@ -501,13 +510,16 @@ html.is-scroll-locked body {
   }
   /* Confirm / alert dialogs stay compact centred cards. */
   .modal-backdrop[data-modal-id]:has(> .modal-sm.modal--centered) {
+    --nv-modal-top-inset: max(env(safe-area-inset-top, 0px), var(--nv-space-4));
+    --nv-modal-bottom-inset: max(env(safe-area-inset-bottom, 0px), var(--nv-space-4));
     align-items: center;
-    padding: var(--nv-space-4);
+    padding: var(--nv-modal-top-inset) var(--nv-space-4) var(--nv-modal-bottom-inset);
   }
   .modal-backdrop[data-modal-id] > .modal-sm.modal--centered {
     border-radius: var(--nv-radius-xl);
     border-block-end: 1px solid var(--nv-border);
-    max-height: calc(100dvh - 2rem);
+    max-height: calc(100vh - var(--nv-modal-top-inset) - var(--nv-modal-bottom-inset));
+    max-height: calc(100dvh - var(--nv-modal-top-inset) - var(--nv-modal-bottom-inset));
   }
   .modal-backdrop[data-modal-id] > .modal-sm.modal--centered::before {
     display: none;
