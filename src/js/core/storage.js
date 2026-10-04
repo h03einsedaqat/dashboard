@@ -49,7 +49,16 @@ export const storage = {
   get(key, fallback = null) {
     const namespaced = key.startsWith(PREFIX) ? key : PREFIX + key;
     if (!available) return memory.has(namespaced) ? memory.get(namespaced) : fallback;
-    const raw = window.localStorage.getItem(namespaced);
+    let raw;
+    try {
+      raw = window.localStorage.getItem(namespaced);
+    } catch {
+      // WebViews and privacy modes can revoke storage access after the initial
+      // capability probe. Fall back to this-tab memory instead of letting a
+      // preference read break chrome rendering (including notifications).
+      available = false;
+      return memory.has(namespaced) ? memory.get(namespaced) : fallback;
+    }
     if (raw === null || raw === undefined) return fallback;
     try {
       return JSON.parse(raw);

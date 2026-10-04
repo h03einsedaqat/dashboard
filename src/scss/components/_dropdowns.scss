@@ -426,6 +426,22 @@
   text-align: center;
 }
 
+.notification-list__loading .notification-list__empty-icon i {
+  animation: nv-notification-loading 1s linear infinite;
+}
+
+@keyframes nv-notification-loading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-list__loading .notification-list__empty-icon i {
+    animation: none;
+  }
+}
+
 .notification-list__empty-icon {
   width: 56px;
   height: 56px;
@@ -764,6 +780,7 @@
     translate: none;
     border-radius: 1.35rem 1.35rem 0 0;
     border-block-end: 0;
+    max-height: min(86vh, 46rem);
     max-height: min(86dvh, 46rem);
     box-shadow: 0 -22px 48px -24px rgba(15, 23, 42, 0.5);
     animation: nv-sheet-up 0.3s var(--nv-ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) both;

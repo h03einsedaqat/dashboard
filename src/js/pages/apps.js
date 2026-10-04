@@ -497,17 +497,26 @@ async function calendarApp() {
     </div>`,
   );
 
-  // Initialize unified calendar (month only)
+  // Initialize the calendar before wiring its actions. The page-head reconciler
+  // moves `[data-calendar-new]` out of this host into the global toolbar, so the
+  // create action needs its own listener (a delegated listener on `node` would
+  // stop receiving clicks as soon as the button is moved).
+  const calendarRoot = $('[data-calendar]', node);
+  let calendarReady = Promise.resolve(null);
   try {
-    initCalendar($('[data-calendar]', node));
-  } catch (e) {
-    console.warn('calendar init failed', e);
+    calendarReady = initCalendar(calendarRoot).catch((error) => {
+      console.warn('calendar init failed', error);
+      return null;
+    });
+  } catch (error) {
+    console.warn('calendar init failed', error);
   }
 
+  on($('[data-calendar-new]', node), 'click', async () => {
+    await calendarReady;
+    if (!newCalendarEvent(calendarRoot)) toast.info('رویداد جدید', 'تقویم هنوز در حال بارگذاری است؛ لحظه‌ای بعد دوباره امتحان کنید.');
+  });
   on(node, 'click', (event) => {
-    if (event.target.closest('[data-calendar-new]')) {
-      if (!newCalendarEvent($('[data-calendar]', node))) toast.info('رویداد جدید', 'تقویم هنوز در حال بارگذاری است؛ لحظه‌ای بعد دوباره امتحان کنید.');
-    }
     if (event.target.closest('[data-calendar-today]')) {
       bus.emit(EVENTS.calendarToday || 'calendar:today');
     }

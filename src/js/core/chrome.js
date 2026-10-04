@@ -292,6 +292,12 @@ export function openShortcuts() {
 
 let _currentNotifFilter = 'all';
 let _lastNotifItems = [];
+let _notifRenderRequest = 0;
+
+function readNotificationIds() {
+  const value = storage.get(KEYS.notificationsRead, []);
+  return Array.isArray(value) ? value : [];
+}
 
 function notifMatches(item, filter, read) {
   const isUnread = !item.read && !read.includes(item.id);
@@ -326,49 +332,85 @@ async function renderNotifications(filter = _currentNotifFilter) {
   _currentNotifFilter = filter;
   const host = $('[data-notification-list]');
   if (!host) return;
-  const items = await notificationService.list();
-  _lastNotifItems = items;
-  const read = storage.get(KEYS.notificationsRead, []) ?? [];
+  const request = ++_notifRenderRequest;
 
-  updateNotifChrome(items.filter((item) => !item.read && !read.includes(item.id)).length);
-
-  for (const tab of ['all', 'unread', 'system', 'orders']) {
-    const el = $(`[data-notif-tab-count="${tab}"]`);
-    if (el) el.textContent = toDigits(items.filter((item) => notifMatches(item, tab, read)).length);
-  }
-
-  const filtered = items.filter((item) => notifMatches(item, filter, read));
-
-  if (filtered.length === 0) {
+  if (!host.firstElementChild) {
     render(
       host,
-      `<div class="notification-list__empty">
-        <span class="notification-list__empty-icon"><i class="bi bi-bell-slash" aria-hidden="true"></i></span>
-        <span class="notification-list__empty-title">${escapeHtml(t('ui.notifEmpty', 'حالا اعلانی اینجا نیست'))}</span>
-        <span class="notification-list__empty-hint">${escapeHtml(t('ui.notifEmptyHint', 'وقتی خبری پیش بیاید، همین‌جا می‌بینی‌اش.'))}</span>
-      </div>`
+      `<div class="notification-list__empty notification-list__loading" role="status">
+        <span class="notification-list__empty-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span>
+        <span class="notification-list__empty-title">${escapeHtml(t('ui.notifLoading', 'در حال بارگذاری اعلان‌ها…'))}</span>
+      </div>`,
     );
-    return;
   }
 
-  render(
-    host,
-    filtered
-      .map((item) => {
-        const isUnread = !item.read && !read.includes(item.id);
-        const icon = item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle';
-        return `<div class="notification-item ${isUnread ? 'is-unread' : ''}" role="listitem" data-notification="${escapeHtml(item.id)}">
-            <span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-${icon}" aria-hidden="true"></i></span>
-            <span class="notification-item__body">
-              <span class="notification-item__title">${escapeHtml(item.title)}</span>
-              <span class="notification-item__text">${escapeHtml(item.text)}</span>
-              ${item.at ? `<span class="notification-item__time"><i class="bi bi-clock" aria-hidden="true"></i>${escapeHtml(relativeTime(item.at))}</span>` : ''}
-            </span>
-            ${isUnread ? `<button type="button" class="notification-item__read" data-mark-single-read="${escapeHtml(item.id)}" aria-label="${escapeHtml(t('ui.notifMarkRead', 'علامت خوانده‌شد'))}"><i class="bi bi-check2" aria-hidden="true"></i></button>` : ''}
-          </div>`;
-      })
-      .join(''),
-  );
+  try {
+    const result = await notificationService.list();
+    // Several filter taps or data-change events can overlap on a slow phone.
+    // Only the latest request is allowed to paint, so an old response cannot
+    // replace the currently selected tab.
+    if (request !== _notifRenderRequest || host !== $('[data-notification-list]')) return;
+    const items = Array.isArray(result) ? result : [];
+    _lastNotifItems = items;
+    const read = readNotificationIds();
+
+    updateNotifChrome(items.filter((item) => !item.read && !read.includes(item.id)).length);
+
+    for (const tab of ['all', 'unread', 'system', 'orders']) {
+      const el = $(`[data-notif-tab-count="${tab}"]`);
+      if (el) el.textContent = toDigits(items.filter((item) => notifMatches(item, tab, read)).length);
+    }
+
+    const filtered = items.filter((item) => notifMatches(item, filter, read));
+
+    if (filtered.length === 0) {
+      render(
+        host,
+        `<div class="notification-list__empty">
+          <span class="notification-list__empty-icon"><i class="bi bi-bell-slash" aria-hidden="true"></i></span>
+          <span class="notification-list__empty-title">${escapeHtml(t('ui.notifEmpty', 'حالا اعلانی اینجا نیست'))}</span>
+          <span class="notification-list__empty-hint">${escapeHtml(t('ui.notifEmptyHint', 'وقتی خبری پیش بیاید، همین‌جا می‌بینی‌اش.'))}</span>
+        </div>`
+      );
+      return;
+    }
+
+    render(
+      host,
+      filtered
+        .map((item) => {
+          const isUnread = !item.read && !read.includes(item.id);
+          const icon = item.type === 'success' ? 'check2-circle' : item.type === 'warning' ? 'exclamation-triangle' : item.type === 'danger' ? 'x-octagon' : 'info-circle';
+          return `<div class="notification-item ${isUnread ? 'is-unread' : ''}" role="listitem" data-notification="${escapeHtml(item.id)}">
+              <span class="notification-item__icon notification-item__icon--${escapeHtml(item.type)}"><i class="bi bi-${icon}" aria-hidden="true"></i></span>
+              <span class="notification-item__body">
+                <span class="notification-item__title">${escapeHtml(item.title)}</span>
+                <span class="notification-item__text">${escapeHtml(item.text)}</span>
+                ${item.at ? `<span class="notification-item__time"><i class="bi bi-clock" aria-hidden="true"></i>${escapeHtml(relativeTime(item.at))}</span>` : ''}
+              </span>
+              ${isUnread ? `<button type="button" class="notification-item__read" data-mark-single-read="${escapeHtml(item.id)}" aria-label="${escapeHtml(t('ui.notifMarkRead', 'علامت خوانده‌شد'))}"><i class="bi bi-check2" aria-hidden="true"></i></button>` : ''}
+            </div>`;
+        })
+        .join(''),
+    );
+  } catch (error) {
+    if (request !== _notifRenderRequest) return;
+    _lastNotifItems = [];
+    updateNotifChrome(0);
+    for (const tab of ['all', 'unread', 'system', 'orders']) {
+      const el = $(`[data-notif-tab-count="${tab}"]`);
+      if (el) el.textContent = toDigits(0);
+    }
+    console.warn('[notifications] list unavailable', error);
+    render(
+      host,
+      `<div class="notification-list__empty" role="alert">
+        <span class="notification-list__empty-icon"><i class="bi bi-cloud-slash" aria-hidden="true"></i></span>
+        <span class="notification-list__empty-title">${escapeHtml(t('ui.notifLoadFailed', 'اعلان‌ها بارگذاری نشدند'))}</span>
+        <button type="button" class="btn btn-light btn-sm" data-notif-retry>${escapeHtml(t('ui.notifRetry', 'تلاش دوباره'))}</button>
+      </div>`,
+    );
+  }
 }
 
 /**
@@ -376,7 +418,7 @@ async function renderNotifications(filter = _currentNotifFilter) {
  * would reset the scroll position and kill the hover state under the cursor.
  */
 function markNotificationReadInPlace(id) {
-  const read = storage.get(KEYS.notificationsRead, []) ?? [];
+  const read = readNotificationIds();
   if (!read.includes(id)) {
     storage.set(KEYS.notificationsRead, [...new Set([...read, id])]);
   }
@@ -391,6 +433,12 @@ function markNotificationReadInPlace(id) {
 
 function initNotifications() {
   on(document, 'click', (event) => {
+    if (event.target.closest('[data-notif-retry]')) {
+      event.preventDefault();
+      renderNotifications();
+      return;
+    }
+
     const filterBtn = event.target.closest('[data-notif-filter]');
     if (filterBtn) {
       event.preventDefault();
